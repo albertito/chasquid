@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/mail"
 	"net/textproto"
 	"strings"
 
@@ -53,8 +54,14 @@ func ListenAndServe() {
 }
 
 type Conn struct {
+	// Connection information.
 	netconn net.Conn
 	tc      *textproto.Conn
+
+	// Message data.
+	mail_from string
+	rcpt_to   []string
+	data      string
 }
 
 func (c *Conn) Handle() {
@@ -88,6 +95,20 @@ loop:
 			code, msg = c.EHLO(params)
 		case "HELP":
 			code, msg = c.HELP(params)
+		case "NOOP":
+			code, msg = c.NOOP(params)
+		case "RSET":
+			code, msg = c.RSET(params)
+		case "MAIL":
+			code, msg = c.MAIL(params)
+		case "RCPT":
+			code, msg = c.RCPT(params)
+		case "DATA":
+			code, msg = c.DATA(params)
+			if code == 354 {
+				// TODO: write response, read until dot, store in data, send
+				// reply.
+			}
 		case "QUIT":
 			c.writeResponse(221, "Be seeing you...")
 			break loop
@@ -136,8 +157,91 @@ func (c *Conn) HELP(params string) (code int, msg string) {
 	return 214, "hoy por ti, mañana por mi"
 }
 
+func (c *Conn) RSET(params string) (code int, msg string) {
+	c.resetMessageData()
+
+	msgs := []string{
+		"Who was that Maud person anyway?",
+		"Thinking of Maud you forget everything else.",
+		"Your mind releases itself from mundane concerns.",
+		"As your mind turns inward on itself, you forget everything else.",
+	}
+	return 250, msgs[rand.Int()%len(msgs)]
+}
+
 func (c *Conn) NOOP(params string) (code int, msg string) {
 	return 250, "noooooooooooooooooooop"
+}
+
+func (c *Conn) MAIL(params string) (code int, msg string) {
+	// params should be: "FROM:<name@host>"
+	// First, get rid of the "FROM:" part (but check it, it's mandatory).
+	sp := strings.SplitN(params, ":", 2)
+	if len(sp) != 2 || sp[0] != "FROM" {
+		return 500, "unknown command"
+	}
+
+	e, err := mail.ParseAddress(sp[1])
+	if err != nil || e.Address == "" {
+		return 501, "malformed address"
+	}
+
+	if !strings.Contains(e.Address, "@") {
+		return 501, "sender address must contain a domain"
+	}
+
+	c.resetMessageData()
+	c.mail_from = e.Address
+	return 250, "You feel like you are being watched"
+}
+
+func (c *Conn) RCPT(params string) (code int, msg string) {
+	// params should be: "TO:<name@host>"
+	// First, get rid of the "TO:" part (but check it, it's mandatory).
+	sp := strings.SplitN(params, ":", 2)
+	if len(sp) != 2 || sp[0] != "TO" {
+		return 500, "unknown command"
+	}
+
+	e, err := mail.ParseAddress(sp[1])
+	if err != nil || e.Address == "" {
+		return 501, "malformed address"
+	}
+
+	if c.mail_from == "" {
+		return 503, "sender not yet given"
+	}
+
+	// RFC says 100 is the minimum limit for this, but it seems excessive.
+	if len(c.rcpt_to) > 100 {
+		return
+	}
+
+	// TODO: do we allow receivers without a domain?
+	// TODO: check the case:
+	//  - local recipient, always ok
+	//  - external recipient, only ok if mail_from is local (needs auth)
+
+	c.rcpt_to = append(c.rcpt_to, e.Address)
+	return 250, "You have an eerie feeling..."
+}
+
+func (c *Conn) DATA(params string) (code int, msg string) {
+	if c.mail_from == "" {
+		return 503, "sender not yet given"
+	}
+
+	if len(c.rcpt_to) == 0 {
+		return 503, "need an address to send to"
+	}
+
+	return 354, "You experience a strange sense of peace"
+}
+
+func (c *Conn) resetMessageData() {
+	c.mail_from = ""
+	c.rcpt_to = nil
+	c.data = ""
 }
 
 func (c *Conn) readCommand() (cmd, params string, err error) {
