@@ -1,0 +1,12 @@
+
+# Ignore anything beginning with a dot: these are usually temporary or
+# unimportant.
+.*
+
+# Exceptions to the rules above: files we care about that would otherwise be
+# excluded.
+!.gitignore
+
+# The binary.
+chasquid
+
