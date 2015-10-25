@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -27,7 +28,11 @@ func main() {
 }
 
 const (
+	// TODO: get this via config/dynamically. It's only used for show.
 	hostname = "charqui.com.ar"
+
+	// Maximum data size, in bytes.
+	maxDataSize = 52428800
 )
 
 func ListenAndServe() {
@@ -61,7 +66,7 @@ type Conn struct {
 	// Message data.
 	mail_from string
 	rcpt_to   []string
-	data      string
+	data      []byte
 }
 
 func (c *Conn) Handle() {
@@ -104,11 +109,8 @@ loop:
 		case "RCPT":
 			code, msg = c.RCPT(params)
 		case "DATA":
-			code, msg = c.DATA(params)
-			if code == 354 {
-				// TODO: write response, read until dot, store in data, send
-				// reply.
-			}
+			// DATA handles the whole sequence.
+			code, msg = c.DATA(params, tr)
 		case "QUIT":
 			c.writeResponse(221, "Be seeing you...")
 			break loop
@@ -117,7 +119,7 @@ loop:
 			msg = "unknown command"
 		}
 
-		tr.LazyPrintf("<- %d", code)
+		tr.LazyPrintf("<- %d  %s", code, msg)
 
 		err = c.writeResponse(code, msg)
 		if err != nil {
@@ -147,7 +149,7 @@ func (c *Conn) EHLO(params string) (code int, msg string) {
 	fmt.Fprintf(buf, hostname+" - Your hour of destiny has come.\n")
 	fmt.Fprintf(buf, "8BITMIME\n")
 	fmt.Fprintf(buf, "PIPELINING\n")
-	fmt.Fprintf(buf, "SIZE 52428800\n")
+	fmt.Fprintf(buf, "SIZE %d\n", maxDataSize)
 	fmt.Fprintf(buf, "STARTTLS\n")
 	fmt.Fprintf(buf, "HELP\n")
 	return 250, buf.String()
@@ -226,7 +228,7 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 	return 250, "You have an eerie feeling..."
 }
 
-func (c *Conn) DATA(params string) (code int, msg string) {
+func (c *Conn) DATA(params string, tr trace.Trace) (code int, msg string) {
 	if c.mail_from == "" {
 		return 503, "sender not yet given"
 	}
@@ -235,13 +237,42 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 		return 503, "need an address to send to"
 	}
 
-	return 354, "You experience a strange sense of peace"
+	// We're going ahead.
+	err := c.writeResponse(354, "You experience a strange sense of peace")
+	if err != nil {
+		return 554, fmt.Sprintf("error writing DATA response: %v", err)
+	}
+
+	tr.LazyPrintf("<- 354  You experience a strange sense of peace")
+
+	dotr := io.LimitReader(c.tc.DotReader(), maxDataSize)
+	c.data, err = ioutil.ReadAll(dotr)
+	if err != nil {
+		return 554, fmt.Sprintf("error reading DATA: %v", err)
+	}
+
+	tr.LazyPrintf("-> ... %d bytes of data", len(c.data))
+
+	// TODO: here is where we queue/send/process the message!
+
+	// It is very important that we reset the envelope before returning,
+	// so clients can send other emails right away without needing to RSET.
+	c.resetMessageData()
+
+	msgs := []string{
+		"You offer the Amulet of Yendor to Anhur...",
+		"An invisible choir sings, and you are bathed in radiance...",
+		"The voice of Anhur booms out: Congratulations, mortal!",
+		"In return to thy service, I grant thee the gift of Immortality!",
+		"You ascend to the status of Demigod(dess)...",
+	}
+	return 250, msgs[rand.Int()%len(msgs)]
 }
 
 func (c *Conn) resetMessageData() {
 	c.mail_from = ""
 	c.rcpt_to = nil
-	c.data = ""
+	c.data = nil
 }
 
 func (c *Conn) readCommand() (cmd, params string, err error) {
