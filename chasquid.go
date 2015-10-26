@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -35,7 +36,31 @@ const (
 	maxDataSize = 52428800
 )
 
+func getTLSConfig() (*tls.Config, error) {
+	var err error
+	conf := &tls.Config{}
+
+	// TODO: Get these from the configuration (we have to support many, not
+	// just 1 like here).
+	conf.Certificates = make([]tls.Certificate, 1)
+	conf.Certificates[0], err = tls.LoadX509KeyPair(".cert.pem", ".key.pem")
+	if err != nil {
+		return nil, fmt.Errorf("Error loading client certificate: %v", err)
+	}
+
+	conf.BuildNameToCertificate()
+
+	return conf, nil
+}
+
 func ListenAndServe() {
+	// Configure TLS.
+	tlsConfig, err := getTLSConfig()
+	if err != nil {
+		glog.Fatalf("Error loading TLS config: %v", err)
+	}
+
+	// Listen.
 	addr := ":1025"
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -44,6 +69,8 @@ func ListenAndServe() {
 	defer l.Close()
 
 	glog.Infof("Server listening on %s", addr)
+
+	// Serve.
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -51,8 +78,9 @@ func ListenAndServe() {
 		}
 
 		sc := &Conn{
-			netconn: conn,
-			tc:      textproto.NewConn(conn),
+			netconn:   conn,
+			tc:        textproto.NewConn(conn),
+			tlsConfig: tlsConfig,
 		}
 		go sc.Handle()
 	}
@@ -63,7 +91,10 @@ type Conn struct {
 	netconn net.Conn
 	tc      *textproto.Conn
 
-	// Message data.
+	// TLS configuration.
+	tlsConfig *tls.Config
+
+	// Envelope.
 	mail_from string
 	rcpt_to   []string
 	data      []byte
@@ -111,6 +142,8 @@ loop:
 		case "DATA":
 			// DATA handles the whole sequence.
 			code, msg = c.DATA(params, tr)
+		case "STARTTLS":
+			code, msg = c.STARTTLS(params, tr)
 		case "QUIT":
 			c.writeResponse(221, "Be seeing you...")
 			break loop
@@ -119,11 +152,13 @@ loop:
 			msg = "unknown command"
 		}
 
-		tr.LazyPrintf("<- %d  %s", code, msg)
+		if code > 0 {
+			tr.LazyPrintf("<- %d  %s", code, msg)
 
-		err = c.writeResponse(code, msg)
-		if err != nil {
-			break
+			err = c.writeResponse(code, msg)
+			if err != nil {
+				break
+			}
 		}
 	}
 
@@ -160,7 +195,7 @@ func (c *Conn) HELP(params string) (code int, msg string) {
 }
 
 func (c *Conn) RSET(params string) (code int, msg string) {
-	c.resetMessageData()
+	c.resetEnvelope()
 
 	msgs := []string{
 		"Who was that Maud person anyway?",
@@ -192,7 +227,7 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 		return 501, "sender address must contain a domain"
 	}
 
-	c.resetMessageData()
+	c.resetEnvelope()
 	c.mail_from = e.Address
 	return 250, "You feel like you are being watched"
 }
@@ -238,7 +273,7 @@ func (c *Conn) DATA(params string, tr trace.Trace) (code int, msg string) {
 	}
 
 	// We're going ahead.
-	err := c.writeResponse(354, "You experience a strange sense of peace")
+	err := c.writeResponse(354, "You suddenly realize it is unnaturally quiet")
 	if err != nil {
 		return 554, fmt.Sprintf("error writing DATA response: %v", err)
 	}
@@ -257,7 +292,7 @@ func (c *Conn) DATA(params string, tr trace.Trace) (code int, msg string) {
 
 	// It is very important that we reset the envelope before returning,
 	// so clients can send other emails right away without needing to RSET.
-	c.resetMessageData()
+	c.resetEnvelope()
 
 	msgs := []string{
 		"You offer the Amulet of Yendor to Anhur...",
@@ -269,7 +304,34 @@ func (c *Conn) DATA(params string, tr trace.Trace) (code int, msg string) {
 	return 250, msgs[rand.Int()%len(msgs)]
 }
 
-func (c *Conn) resetMessageData() {
+func (c *Conn) STARTTLS(params string, tr trace.Trace) (code int, msg string) {
+	err := c.writeResponse(220, "You experience a strange sense of peace")
+	if err != nil {
+		return 554, fmt.Sprintf("error writing STARTTLS response: %v", err)
+	}
+
+	tr.LazyPrintf("<- 220  You experience a strange sense of peace")
+
+	client := tls.Server(c.netconn, c.tlsConfig)
+	err = client.Handshake()
+	if err != nil {
+		return 554, fmt.Sprintf("error in client handshake: %v", err)
+	}
+
+	tr.LazyPrintf("<> ...  jump to TLS was successful")
+
+	// Override the connections. We don't need the older ones anymore.
+	c.netconn = client
+	c.tc = textproto.NewConn(client)
+
+	// Reset the envelope; clients must start over after switching to TLS.
+	c.resetEnvelope()
+
+	// 0 indicates not to send back a reply.
+	return 0, ""
+}
+
+func (c *Conn) resetEnvelope() {
 	c.mail_from = ""
 	c.rcpt_to = nil
 	c.data = nil
