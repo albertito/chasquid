@@ -263,14 +263,27 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 		return 500, "unknown command"
 	}
 
-	e, err := mail.ParseAddress(sp[1])
-	if err != nil || e.Address == "" {
-		return 501, "malformed address"
+	// Special case a null reverse-path, which is explicitly allowed and used
+	// for notification messages.
+	// It should be written "<>", we check for that and remove spaces just to
+	// be more flexible.
+	e := &mail.Address{}
+	if strings.Replace(sp[1], " ", "", -1) == "<>" {
+		e.Address = "<>"
+	} else {
+		var err error
+		e, err = mail.ParseAddress(sp[1])
+		if err != nil || e.Address == "" {
+			return 501, "malformed address"
+		}
+
+		if !strings.Contains(e.Address, "@") {
+			return 501, "sender address must contain a domain"
+		}
 	}
 
-	if !strings.Contains(e.Address, "@") {
-		return 501, "sender address must contain a domain"
-	}
+	// Note some servers check (and fail) if we had a previous MAIL command,
+	// but that's not according to the RFC. We reset the envelope instead.
 
 	c.resetEnvelope()
 	c.mail_from = e.Address
