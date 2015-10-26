@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/golang/glog"
 	"golang.org/x/net/trace"
 )
