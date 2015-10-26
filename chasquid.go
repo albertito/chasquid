@@ -157,6 +157,9 @@ type Conn struct {
 	rcpt_to   []string
 	data      []byte
 
+	// Are we using TLS?
+	onTLS bool
+
 	// When we should close this connection, no matter what.
 	deadline time.Time
 
@@ -395,6 +398,10 @@ func (c *Conn) DATA(params string, tr trace.Trace) (code int, msg string) {
 }
 
 func (c *Conn) STARTTLS(params string, tr trace.Trace) (code int, msg string) {
+	if c.onTLS {
+		return 503, "You are already wearing that!"
+	}
+
 	err := c.writeResponse(220, "You experience a strange sense of peace")
 	if err != nil {
 		return 554, fmt.Sprintf("error writing STARTTLS response: %v", err)
@@ -416,6 +423,8 @@ func (c *Conn) STARTTLS(params string, tr trace.Trace) (code int, msg string) {
 
 	// Reset the envelope; clients must start over after switching to TLS.
 	c.resetEnvelope()
+
+	c.onTLS = true
 
 	// 0 indicates not to send back a reply.
 	return 0, ""

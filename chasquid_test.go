@@ -198,6 +198,21 @@ func TestReset(t *testing.T) {
 	}
 }
 
+func TestRepeatedStartTLS(t *testing.T) {
+	c, err := smtp.Dial(srvAddr)
+	if err != nil {
+		t.Fatalf("smtp.Dial: %v", err)
+	}
+
+	if err = c.StartTLS(tlsConfig); err != nil {
+		t.Fatalf("StartTLS: %v", err)
+	}
+
+	if err = c.StartTLS(tlsConfig); err == nil {
+		t.Errorf("Second STARTTLS did not fail as expected")
+	}
+}
+
 //
 // === Benchmarks ===
 //
