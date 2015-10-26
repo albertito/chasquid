@@ -13,20 +13,11 @@ import (
 	"net/mail"
 	"net/textproto"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"golang.org/x/net/trace"
 )
-
-func main() {
-	flag.Parse()
-
-	monAddr := ":1099"
-	glog.Infof("Monitoring HTTP server listening on %s", monAddr)
-	go http.ListenAndServe(monAddr, nil)
-
-	ListenAndServe()
-}
 
 const (
 	// TODO: get this via config/dynamically. It's only used for show.
@@ -36,41 +27,95 @@ const (
 	maxDataSize = 52428800
 )
 
-func getTLSConfig() (*tls.Config, error) {
+func main() {
+	flag.Parse()
+
+	monAddr := ":1099"
+	glog.Infof("Monitoring HTTP server listening on %s", monAddr)
+	go http.ListenAndServe(monAddr, nil)
+
+	s := NewServer(hostname)
+	s.AddCerts(".cert.pem", ".key.pem")
+	s.AddAddr(":1025")
+	s.ListenAndServe()
+}
+
+type Server struct {
+	// Certificate and key pairs.
+	certs, keys []string
+
+	// Addresses.
+	addrs []string
+
+	// Main hostname, used for display only.
+	hostname string
+
+	// TLS config.
+	tlsConfig *tls.Config
+}
+
+func NewServer(hostname string) *Server {
+	return &Server{
+		hostname: hostname,
+	}
+}
+
+func (s *Server) AddCerts(cert, key string) {
+	s.certs = append(s.certs, cert)
+	s.keys = append(s.keys, key)
+}
+
+func (s *Server) AddAddr(a string) {
+	s.addrs = append(s.addrs, a)
+}
+
+func (s *Server) getTLSConfig() (*tls.Config, error) {
 	var err error
 	conf := &tls.Config{}
 
-	// TODO: Get these from the configuration (we have to support many, not
-	// just 1 like here).
-	conf.Certificates = make([]tls.Certificate, 1)
-	conf.Certificates[0], err = tls.LoadX509KeyPair(".cert.pem", ".key.pem")
-	if err != nil {
-		return nil, fmt.Errorf("Error loading client certificate: %v", err)
+	conf.Certificates = make([]tls.Certificate, len(s.certs))
+	for i := 0; i < len(s.certs); i++ {
+		conf.Certificates[i], err = tls.LoadX509KeyPair(s.certs[i], s.keys[i])
+		if err != nil {
+			return nil, fmt.Errorf("Error loading client certificate: %v", err)
+		}
 	}
 
 	conf.BuildNameToCertificate()
 
 	return conf, nil
 }
+func (s *Server) ListenAndServe() {
+	var err error
 
-func ListenAndServe() {
 	// Configure TLS.
-	tlsConfig, err := getTLSConfig()
+	s.tlsConfig, err = s.getTLSConfig()
 	if err != nil {
 		glog.Fatalf("Error loading TLS config: %v", err)
 	}
 
-	// Listen.
-	addr := ":1025"
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		glog.Fatalf("Error listening: %v", err)
+	for _, addr := range s.addrs {
+		// Listen.
+		l, err := net.Listen("tcp", addr)
+		if err != nil {
+			glog.Fatalf("Error listening: %v", err)
+		}
+		defer l.Close()
+
+		glog.Infof("Server listening on %s", addr)
+
+		// Serve.
+		go s.serve(l)
 	}
-	defer l.Close()
 
-	glog.Infof("Server listening on %s", addr)
+	// Never return. If the serve goroutines have problems, they will abort
+	// execution.
+	for {
+		time.Sleep(24 * time.Hour)
+	}
+}
 
-	// Serve.
+func (s *Server) serve(l net.Listener) {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -80,7 +125,7 @@ func ListenAndServe() {
 		sc := &Conn{
 			netconn:   conn,
 			tc:        textproto.NewConn(conn),
-			tlsConfig: tlsConfig,
+			tlsConfig: s.tlsConfig,
 		}
 		go sc.Handle()
 	}
