@@ -54,11 +54,19 @@ type Server struct {
 
 	// TLS config.
 	tlsConfig *tls.Config
+
+	// Time before we give up on a connection, even if it's sending data.
+	connTimeout time.Duration
+
+	// Time we wait for command round-trips (excluding DATA).
+	commandTimeout time.Duration
 }
 
 func NewServer(hostname string) *Server {
 	return &Server{
-		hostname: hostname,
+		hostname:       hostname,
+		connTimeout:    20 * time.Minute,
+		commandTimeout: 1 * time.Minute,
 	}
 }
 
@@ -87,6 +95,7 @@ func (s *Server) getTLSConfig() (*tls.Config, error) {
 
 	return conf, nil
 }
+
 func (s *Server) ListenAndServe() {
 	var err error
 
@@ -125,9 +134,11 @@ func (s *Server) serve(l net.Listener) {
 		}
 
 		sc := &Conn{
-			netconn:   conn,
-			tc:        textproto.NewConn(conn),
-			tlsConfig: s.tlsConfig,
+			netconn:        conn,
+			tc:             textproto.NewConn(conn),
+			tlsConfig:      s.tlsConfig,
+			deadline:       time.Now().Add(s.connTimeout),
+			commandTimeout: s.commandTimeout,
 		}
 		go sc.Handle()
 	}
@@ -145,13 +156,20 @@ type Conn struct {
 	mail_from string
 	rcpt_to   []string
 	data      []byte
+
+	// When we should close this connection, no matter what.
+	deadline time.Time
+
+	// Time we wait for network operations.
+	commandTimeout time.Duration
 }
 
 func (c *Conn) Handle() {
 	defer c.netconn.Close()
 
-	tr := trace.New("SMTP", "connection")
+	tr := trace.New("SMTP", "Connection")
 	defer tr.Finish()
+	tr.LazyPrintf("RemoteAddr: %s", c.netconn.RemoteAddr())
 
 	c.tc.PrintfLine("220 %s ESMTP charquid", hostname)
 
@@ -160,6 +178,14 @@ func (c *Conn) Handle() {
 
 loop:
 	for {
+		if time.Since(c.deadline) > 0 {
+			tr.LazyPrintf("connection deadline exceeded")
+			err = fmt.Errorf("connection deadline exceeded")
+			break
+		}
+
+		c.netconn.SetDeadline(time.Now().Add(c.commandTimeout))
+
 		cmd, params, err = c.readCommand()
 		if err != nil {
 			c.tc.PrintfLine("554 error reading command: %v", err)
@@ -339,6 +365,10 @@ func (c *Conn) DATA(params string, tr trace.Trace) (code int, msg string) {
 	}
 
 	tr.LazyPrintf("<- 354  You experience a strange sense of peace")
+
+	// Increase the deadline for the data transfer to the connection-level
+	// one, we don't want the command timeout to interfere.
+	c.netconn.SetDeadline(c.deadline)
 
 	dotr := io.LimitReader(c.tc.DotReader(), maxDataSize)
 	c.data, err = ioutil.ReadAll(dotr)
