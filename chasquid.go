@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/config"
+	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/systemd"
 
 	_ "net/http/pprof"
@@ -119,12 +120,16 @@ type Server struct {
 
 	// Time we wait for command round-trips (excluding DATA).
 	commandTimeout time.Duration
+
+	// Queue where we put incoming mail.
+	queue *queue.Queue
 }
 
 func NewServer() *Server {
 	return &Server{
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
+		queue:          queue.New(),
 	}
 }
 
@@ -211,6 +216,7 @@ func (s *Server) serve(l net.Listener) {
 			tlsConfig:      s.tlsConfig,
 			deadline:       time.Now().Add(s.connTimeout),
 			commandTimeout: s.commandTimeout,
+			queue:          s.queue,
 		}
 		go sc.Handle()
 	}
@@ -243,6 +249,9 @@ type Conn struct {
 
 	// When we should close this connection, no matter what.
 	deadline time.Time
+
+	// Queue where we put incoming mails.
+	queue *queue.Queue
 
 	// Time we wait for network operations.
 	commandTimeout time.Duration
@@ -321,6 +330,7 @@ loop:
 
 	if err != nil {
 		tr.LazyPrintf("exiting with error: %v", err)
+		tr.SetError()
 	}
 }
 
@@ -396,8 +406,8 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 
 	// Note some servers check (and fail) if we had a previous MAIL command,
 	// but that's not according to the RFC. We reset the envelope instead.
-
 	c.resetEnvelope()
+
 	c.mail_from = e.Address
 	return 250, "You feel like you are being watched"
 }
@@ -463,6 +473,18 @@ func (c *Conn) DATA(params string, tr trace.Trace) (code int, msg string) {
 	tr.LazyPrintf("-> ... %d bytes of data", len(c.data))
 
 	// TODO: here is where we queue/send/process the message!
+	// There are no partial failures here: we put it in the queue, and then if
+	// individual deliveries fail, we report via email.
+	// TODO: this should queue, not send, the message.
+	// TODO: trace this.
+	msgID, err := c.queue.Put(c.mail_from, c.rcpt_to, c.data)
+	if err != nil {
+		tr.LazyPrintf("   error queueing: %v", err)
+		tr.SetError()
+		return 554, fmt.Sprintf("Failed to enqueue message: %v", err)
+	}
+
+	tr.LazyPrintf("   ... queued: %q", msgID)
 
 	// It is very important that we reset the envelope before returning,
 	// so clients can send other emails right away without needing to RSET.

@@ -224,6 +224,9 @@ func BenchmarkManyEmails(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		sendEmail(b, c)
+
+		// TODO: Make sendEmail() wait for delivery, and remove this.
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
@@ -234,6 +237,9 @@ func BenchmarkManyEmailsParallel(b *testing.B) {
 
 		for pb.Next() {
 			sendEmail(b, c)
+
+			// TODO: Make sendEmail() wait for delivery, and remove this.
+			time.Sleep(100 * time.Millisecond)
 		}
 	})
 }
