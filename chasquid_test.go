@@ -356,7 +356,9 @@ func realMain(m *testing.M) int {
 			return 1
 		}
 
-		s := NewServer("localhost")
+		s := NewServer()
+		s.Hostname = "localhost"
+		s.MaxDataSize = 50 * 1024 * 1025
 		s.AddCerts(tmpDir+"/cert.pem", tmpDir+"/key.pem")
 		s.AddAddr(srvAddr)
 		go s.ListenAndServe()

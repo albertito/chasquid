@@ -12,8 +12,11 @@ import (
 	"net/http"
 	"net/mail"
 	"net/textproto"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"blitiri.com.ar/go/chasquid/internal/config"
 
 	_ "net/http/pprof"
 
@@ -21,36 +24,74 @@ import (
 	"golang.org/x/net/trace"
 )
 
-const (
-	// TODO: get this via config/dynamically. It's only used for show.
-	hostname = "charqui.com.ar"
+var (
+	configDir = flag.String("config_dir", "/etc/chasquid",
+		"configuration directory")
 
-	// Maximum data size, in bytes.
-	maxDataSize = 52428800
+	testCert = flag.String("test_cert", ".cert.pem",
+		"Certificate file, for testing purposes")
+	testKey = flag.String("test_key", ".key.pem",
+		"Key file, for testing purposes")
 )
 
 func main() {
 	flag.Parse()
 
-	monAddr := ":1099"
-	glog.Infof("Monitoring HTTP server listening on %s", monAddr)
-	go http.ListenAndServe(monAddr, nil)
+	conf, err := config.Load(*configDir + "/chasquid.conf")
+	if err != nil {
+		glog.Fatalf("Error reading config")
+	}
 
-	s := NewServer(hostname)
-	s.AddCerts(".cert.pem", ".key.pem")
-	s.AddAddr(":1025")
+	if conf.MonitoringAddress != "" {
+		glog.Infof("Monitoring HTTP server listening on %s",
+			conf.MonitoringAddress)
+		go http.ListenAndServe(conf.MonitoringAddress, nil)
+	}
+
+	s := NewServer()
+	s.Hostname = conf.Hostname
+	s.MaxDataSize = conf.MaxDataSizeMb * 1024 * 1024
+
+	// Load domains.
+	domains, err := filepath.Glob(*configDir + "/domains/*")
+	if err != nil {
+		glog.Fatalf("Error in glob: %v", err)
+	}
+	if len(domains) == 0 {
+		glog.Warningf("No domains found in config, using test certs")
+		s.AddCerts(*testCert, *testKey)
+	} else {
+		glog.Infof("Domain config paths:")
+		for _, d := range domains {
+			glog.Infof("  %s", d)
+			s.AddCerts(d+"/cert.pem", d+"/key.pem")
+		}
+	}
+
+	// Load addresses.
+	for _, addr := range conf.Address {
+		if addr == "systemd" {
+			// TODO
+		} else {
+			s.AddAddr(addr)
+		}
+	}
+
 	s.ListenAndServe()
 }
 
 type Server struct {
+	// Main hostname, used for display only.
+	Hostname string
+
+	// Maximum data size.
+	MaxDataSize int64
+
 	// Certificate and key pairs.
 	certs, keys []string
 
 	// Addresses.
 	addrs []string
-
-	// Main hostname, used for display only.
-	hostname string
 
 	// TLS config.
 	tlsConfig *tls.Config
@@ -62,9 +103,8 @@ type Server struct {
 	commandTimeout time.Duration
 }
 
-func NewServer(hostname string) *Server {
+func NewServer() *Server {
 	return &Server{
-		hostname:       hostname,
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
 	}
@@ -134,6 +174,8 @@ func (s *Server) serve(l net.Listener) {
 		}
 
 		sc := &Conn{
+			hostname:       s.Hostname,
+			maxDataSize:    s.MaxDataSize,
 			netconn:        conn,
 			tc:             textproto.NewConn(conn),
 			tlsConfig:      s.tlsConfig,
@@ -145,9 +187,18 @@ func (s *Server) serve(l net.Listener) {
 }
 
 type Conn struct {
+	// Main hostname, used for display only.
+	hostname string
+
+	// Maximum data size.
+	maxDataSize int64
+
 	// Connection information.
 	netconn net.Conn
 	tc      *textproto.Conn
+
+	// System configuration.
+	config *config.Config
 
 	// TLS configuration.
 	tlsConfig *tls.Config
@@ -174,7 +225,7 @@ func (c *Conn) Handle() {
 	defer tr.Finish()
 	tr.LazyPrintf("RemoteAddr: %s", c.netconn.RemoteAddr())
 
-	c.tc.PrintfLine("220 %s ESMTP charquid", hostname)
+	c.tc.PrintfLine("220 %s ESMTP chasquid", c.hostname)
 
 	var cmd, params string
 	var err error
@@ -257,10 +308,10 @@ func (c *Conn) HELO(params string) (code int, msg string) {
 
 func (c *Conn) EHLO(params string) (code int, msg string) {
 	buf := bytes.NewBuffer(nil)
-	fmt.Fprintf(buf, hostname+" - Your hour of destiny has come.\n")
+	fmt.Fprintf(buf, c.hostname+" - Your hour of destiny has come.\n")
 	fmt.Fprintf(buf, "8BITMIME\n")
 	fmt.Fprintf(buf, "PIPELINING\n")
-	fmt.Fprintf(buf, "SIZE %d\n", maxDataSize)
+	fmt.Fprintf(buf, "SIZE %d\n", c.maxDataSize)
 	fmt.Fprintf(buf, "STARTTLS\n")
 	fmt.Fprintf(buf, "HELP\n")
 	return 250, buf.String()
@@ -373,7 +424,7 @@ func (c *Conn) DATA(params string, tr trace.Trace) (code int, msg string) {
 	// one, we don't want the command timeout to interfere.
 	c.netconn.SetDeadline(c.deadline)
 
-	dotr := io.LimitReader(c.tc.DotReader(), maxDataSize)
+	dotr := io.LimitReader(c.tc.DotReader(), c.maxDataSize)
 	c.data, err = ioutil.ReadAll(dotr)
 	if err != nil {
 		return 554, fmt.Sprintf("error reading DATA: %v", err)

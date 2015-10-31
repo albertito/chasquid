@@ -1,0 +1,22 @@
+
+syntax = "proto3";
+
+message Config {
+	// Hostname to use when we say hello.
+	// For aesthetic purposes, but may help if our ip address resolves to it.
+	// Default: machine hostname.
+	string hostname = 1;
+
+	// Maximum email size, in megabytes.
+	// Default: 50.
+	int64 max_data_size_mb = 2;
+
+	// Addresses to listen on.
+	// Default: "systemd", which means systemd passes sockets to us.
+	repeated string address = 3;
+
+	// Address for the monitoring http server.
+	// Default: no monitoring http server.
+	string monitoring_address = 4;
+}
+
