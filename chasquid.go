@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/config"
+	"blitiri.com.ar/go/chasquid/internal/systemd"
 
 	_ "net/http/pprof"
 
@@ -69,12 +70,26 @@ func main() {
 	}
 
 	// Load addresses.
+	acount := 0
 	for _, addr := range conf.Address {
+		// The "systemd" address indicates we get listeners via systemd.
 		if addr == "systemd" {
-			// TODO
+			ls, err := systemd.Listeners()
+			if err != nil {
+				glog.Fatalf("Error getting listeners via systemd: %v", err)
+			}
+			s.AddListeners(ls)
+			acount += len(ls)
 		} else {
 			s.AddAddr(addr)
+			acount++
 		}
+	}
+
+	if acount == 0 {
+		glog.Errorf("No addresses/listeners configured")
+		glog.Errorf("If using systemd, check that you started chasquid.socket")
+		glog.Fatalf("Exiting")
 	}
 
 	s.ListenAndServe()
@@ -92,6 +107,9 @@ type Server struct {
 
 	// Addresses.
 	addrs []string
+
+	// Listeners (that came via systemd).
+	listeners []net.Listener
 
 	// TLS config.
 	tlsConfig *tls.Config
@@ -117,6 +135,10 @@ func (s *Server) AddCerts(cert, key string) {
 
 func (s *Server) AddAddr(a string) {
 	s.addrs = append(s.addrs, a)
+}
+
+func (s *Server) AddListeners(ls []net.Listener) {
+	s.listeners = append(s.listeners, ls...)
 }
 
 func (s *Server) getTLSConfig() (*tls.Config, error) {
@@ -154,6 +176,14 @@ func (s *Server) ListenAndServe() {
 		defer l.Close()
 
 		glog.Infof("Server listening on %s", addr)
+
+		// Serve.
+		go s.serve(l)
+	}
+
+	for _, l := range s.listeners {
+		defer l.Close()
+		glog.Infof("Server listening on %s (via systemd)", l.Addr())
 
 		// Serve.
 		go s.serve(l)
