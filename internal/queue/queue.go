@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"blitiri.com.ar/go/chasquid/internal/courier"
+
 	"github.com/golang/glog"
 	"golang.org/x/net/trace"
 )
@@ -57,19 +59,29 @@ type Queue struct {
 
 	// Mutex protecting q.
 	mu sync.RWMutex
+
+	// Courier to use to deliver mail.
+	courier courier.Courier
 }
 
 // TODO: Store the queue on disk.
 // Load the queue and launch the sending loops on startup.
-func New() *Queue {
+func New(c courier.Courier) *Queue {
 	return &Queue{
-		q: map[string]*Item{},
+		q:       map[string]*Item{},
+		courier: c,
 	}
+}
+
+func (q *Queue) Len() int {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	return len(q.q)
 }
 
 // Put an envelope in the queue.
 func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
-	if len(q.q) >= maxQueueSize {
+	if q.Len() >= maxQueueSize {
 		return "", queueFullError
 	}
 
@@ -85,7 +97,7 @@ func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
 	q.q[item.ID] = item
 	q.mu.Unlock()
 
-	glog.Infof("Queue accepted %s  from %q", item.ID, from)
+	glog.Infof("%s accepted from %q", item.ID, from)
 
 	// Begin to send it right away.
 	go item.SendLoop(q)
@@ -131,6 +143,7 @@ func (item *Item) SendLoop(q *Queue) {
 	defer tr.Finish()
 	tr.LazyPrintf("from: %s", item.From)
 
+	var err error
 	for time.Since(item.Created) < giveUpAfter {
 		// Send to all recipients that are still pending.
 		successful := 0
@@ -144,11 +157,16 @@ func (item *Item) SendLoop(q *Queue) {
 			tr.LazyPrintf("%s sending", to)
 
 			// TODO: deliver, serially or in parallel with a waitgroup.
-			// Fake a successful send for now.
-			item.Results[to] = nil
-			successful++
-
-			tr.LazyPrintf("%s successful", to)
+			err = q.courier.Deliver(item.From, to, item.Data)
+			item.Results[to] = err
+			if err != nil {
+				tr.LazyPrintf("error: %v", err)
+				glog.Infof("%s  -> %q fail: %v", item.ID, to, err)
+			} else {
+				successful++
+				tr.LazyPrintf("%s successful", to)
+				glog.Infof("%s  -> %q sent", item.ID, to)
+			}
 		}
 
 		if successful == len(item.To) {
@@ -165,7 +183,7 @@ func (item *Item) SendLoop(q *Queue) {
 		// Put a table and function below, to change this easily.
 		// We should track the duration of the previous one too? Or computed
 		// based on created?
-		time.Sleep(3 * time.Minute)
+		time.Sleep(30 * time.Second)
 
 	}
 

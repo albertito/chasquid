@@ -6,8 +6,34 @@ import (
 	"time"
 )
 
+// Our own courier, for testing purposes.
+// Delivery is done by sending on a channel.
+type ChanCourier struct {
+	requests chan deliverRequest
+	results  chan error
+}
+
+type deliverRequest struct {
+	from string
+	to   string
+	data []byte
+}
+
+func (cc *ChanCourier) Deliver(from string, to string, data []byte) error {
+	cc.requests <- deliverRequest{from, to, data}
+	return <-cc.results
+}
+
+func newCourier() *ChanCourier {
+	return &ChanCourier{
+		requests: make(chan deliverRequest),
+		results:  make(chan error),
+	}
+}
+
 func TestBasic(t *testing.T) {
-	q := New()
+	courier := newCourier()
+	q := New(courier)
 
 	id, err := q.Put("from", []string{"to"}, []byte("data"))
 	if err != nil {
@@ -22,23 +48,27 @@ func TestBasic(t *testing.T) {
 	item := q.q[id]
 	q.mu.RUnlock()
 
-	// TODO: There's a race because the item may finish the loop before we
-	// poll it from the queue, and we would get a nil item in that case.
-	// We have to live with this for now, and will close it later once we
-	// implement deliveries.
 	if item == nil {
-		t.Logf("hit item race, nothing else to do")
-		return
+		t.Fatalf("item not in queue, racy test?")
 	}
 
 	if item.From != "from" || item.To[0] != "to" ||
 		!bytes.Equal(item.Data, []byte("data")) {
 		t.Errorf("different item: %#v", item)
 	}
+
+	// Test that we delivered the item.
+	req := <-courier.requests
+	courier.results <- nil
+
+	if req.from != "from" || req.to != "to" ||
+		!bytes.Equal(req.data, []byte("data")) {
+		t.Errorf("different courier request: %#v", req)
+	}
 }
 
 func TestFullQueue(t *testing.T) {
-	q := New()
+	q := New(newCourier())
 
 	// Force-insert maxQueueSize items in the queue.
 	oneID := ""

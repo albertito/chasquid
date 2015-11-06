@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/config"
+	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/systemd"
 	"blitiri.com.ar/go/chasquid/internal/trace"
@@ -55,20 +56,27 @@ func main() {
 	s.MaxDataSize = conf.MaxDataSizeMb * 1024 * 1024
 
 	// Load domains.
-	domains, err := filepath.Glob(*configDir + "/domains/*")
+	domainDirs, err := ioutil.ReadDir(*configDir + "/domains/")
 	if err != nil {
 		glog.Fatalf("Error in glob: %v", err)
 	}
-	if len(domains) == 0 {
+	if len(domainDirs) == 0 {
 		glog.Warningf("No domains found in config, using test certs")
 		s.AddCerts(*testCert, *testKey)
 	} else {
 		glog.Infof("Domain config paths:")
-		for _, d := range domains {
-			glog.Infof("  %s", d)
-			s.AddCerts(d+"/cert.pem", d+"/key.pem")
+		for _, info := range domainDirs {
+			glog.Infof("  %s", info.Name())
+			s.AddDomain(info.Name())
+			dir := filepath.Join(*configDir, "domains", info.Name())
+			s.AddCerts(dir+"/cert.pem", dir+"/key.pem")
 		}
 	}
+
+	// Always include localhost as local domain.
+	// This can prevent potential trouble if we were to accidentally treat it
+	// as a remote domain (for loops, alias resolutions, etc.).
+	s.AddDomain("localhost")
 
 	// Load addresses.
 	acount := 0
@@ -115,6 +123,9 @@ type Server struct {
 	// TLS config.
 	tlsConfig *tls.Config
 
+	// Local domains.
+	localDomains map[string]bool
+
 	// Time before we give up on a connection, even if it's sending data.
 	connTimeout time.Duration
 
@@ -129,7 +140,7 @@ func NewServer() *Server {
 	return &Server{
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
-		queue:          queue.New(),
+		localDomains:   map[string]bool{},
 	}
 }
 
@@ -144,6 +155,10 @@ func (s *Server) AddAddr(a string) {
 
 func (s *Server) AddListeners(ls []net.Listener) {
 	s.listeners = append(s.listeners, ls...)
+}
+
+func (s *Server) AddDomain(d string) {
+	s.localDomains[d] = true
 }
 
 func (s *Server) getTLSConfig() (*tls.Config, error) {
@@ -171,6 +186,15 @@ func (s *Server) ListenAndServe() {
 	if err != nil {
 		glog.Fatalf("Error loading TLS config: %v", err)
 	}
+
+	// Create the queue, giving it a routing courier for delivery.
+	// We need to do this early, before accepting connections.
+	courier := &courier.Router{
+		Local:        &courier.Procmail{},
+		Remote:       &courier.SMTP{},
+		LocalDomains: s.localDomains,
+	}
+	s.queue = queue.New(courier)
 
 	for _, addr := range s.addrs {
 		// Listen.
@@ -419,6 +443,10 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 	if len(sp) != 2 || sp[0] != "to" {
 		return 500, "unknown command"
 	}
+
+	// TODO: Write our own parser (we have different needs, mail.ParseAddress
+	// is useful for other things).
+	// Allow utf8, but prevent "control" characters.
 
 	e, err := mail.ParseAddress(sp[1])
 	if err != nil || e.Address == "" {
