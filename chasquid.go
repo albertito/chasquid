@@ -380,8 +380,8 @@ func (c *Conn) NOOP(params string) (code int, msg string) {
 func (c *Conn) MAIL(params string) (code int, msg string) {
 	// params should be: "FROM:<name@host>"
 	// First, get rid of the "FROM:" part (but check it, it's mandatory).
-	sp := strings.SplitN(params, ":", 2)
-	if len(sp) != 2 || sp[0] != "FROM" {
+	sp := strings.SplitN(strings.ToLower(params), ":", 2)
+	if len(sp) != 2 || sp[0] != "from" {
 		return 500, "unknown command"
 	}
 
@@ -415,8 +415,8 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 func (c *Conn) RCPT(params string) (code int, msg string) {
 	// params should be: "TO:<name@host>"
 	// First, get rid of the "TO:" part (but check it, it's mandatory).
-	sp := strings.SplitN(params, ":", 2)
-	if len(sp) != 2 || sp[0] != "TO" {
+	sp := strings.SplitN(strings.ToLower(params), ":", 2)
+	if len(sp) != 2 || sp[0] != "to" {
 		return 500, "unknown command"
 	}
 
