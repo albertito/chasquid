@@ -142,7 +142,6 @@ func (item *Item) SendLoop(q *Queue) {
 			}
 
 			tr.LazyPrintf("%s sending", to)
-			glog.Infof("%s %q -> %q", item.ID, item.From, to)
 
 			// TODO: deliver, serially or in parallel with a waitgroup.
 			// Fake a successful send for now.

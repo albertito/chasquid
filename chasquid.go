@@ -19,11 +19,11 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/systemd"
+	"blitiri.com.ar/go/chasquid/internal/trace"
 
 	_ "net/http/pprof"
 
 	"github.com/golang/glog"
-	"golang.org/x/net/trace"
 )
 
 var (
@@ -443,7 +443,7 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 	return 250, "You have an eerie feeling..."
 }
 
-func (c *Conn) DATA(params string, tr trace.Trace) (code int, msg string) {
+func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
 	if c.mail_from == "" {
 		return 503, "sender not yet given"
 	}
@@ -500,7 +500,7 @@ func (c *Conn) DATA(params string, tr trace.Trace) (code int, msg string) {
 	return 250, msgs[rand.Int()%len(msgs)]
 }
 
-func (c *Conn) STARTTLS(params string, tr trace.Trace) (code int, msg string) {
+func (c *Conn) STARTTLS(params string, tr *trace.Trace) (code int, msg string) {
 	if c.onTLS {
 		return 503, "You are already wearing that!"
 	}
