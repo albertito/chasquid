@@ -146,26 +146,36 @@ func (item *Item) SendLoop(q *Queue) {
 	var err error
 	for time.Since(item.Created) < giveUpAfter {
 		// Send to all recipients that are still pending.
-		successful := 0
+		var wg sync.WaitGroup
 		for _, to := range item.To {
 			if err, ok := item.Results[to]; ok && err == nil {
 				// Successful send for this recipient, nothing to do.
-				successful++
 				continue
 			}
 
-			tr.LazyPrintf("%s sending", to)
+			wg.Add(1)
+			go func(to string) {
+				defer wg.Done()
+				tr.LazyPrintf("%s sending", to)
 
-			// TODO: deliver, serially or in parallel with a waitgroup.
-			err = q.courier.Deliver(item.From, to, item.Data)
-			item.Results[to] = err
-			if err != nil {
-				tr.LazyPrintf("error: %v", err)
-				glog.Infof("%s  -> %q fail: %v", item.ID, to, err)
-			} else {
+				err = q.courier.Deliver(item.From, to, item.Data)
+				item.Results[to] = err
+
+				if err != nil {
+					tr.LazyPrintf("error: %v", err)
+					glog.Infof("%s  -> %q fail: %v", item.ID, to, err)
+				} else {
+					tr.LazyPrintf("%s successful", to)
+					glog.Infof("%s  -> %q sent", item.ID, to)
+				}
+			}(to)
+		}
+		wg.Wait()
+
+		successful := 0
+		for _, to := range item.To {
+			if err, ok := item.Results[to]; ok && err == nil {
 				successful++
-				tr.LazyPrintf("%s successful", to)
-				glog.Infof("%s  -> %q sent", item.ID, to)
 			}
 		}
 
