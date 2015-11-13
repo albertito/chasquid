@@ -144,6 +144,7 @@ func (item *Item) SendLoop(q *Queue) {
 	tr.LazyPrintf("from: %s", item.From)
 
 	var err error
+	var delay time.Duration
 	for time.Since(item.Created) < giveUpAfter {
 		// Send to all recipients that are still pending.
 		var wg sync.WaitGroup
@@ -188,14 +189,23 @@ func (item *Item) SendLoop(q *Queue) {
 		// TODO: Consider sending a non-final notification after 30m or so,
 		// that some of the messages have been delayed.
 
-		// TODO: Next attempt incremental wrt. previous one.
-		// Do 3m, 5m, 10m, 15m, 40m, 60m, 2h, 5h, 12h, perturbed.
-		// Put a table and function below, to change this easily.
-		// We should track the duration of the previous one too? Or computed
-		// based on created?
-		time.Sleep(30 * time.Second)
-
+		delay = nextDelay(delay)
+		glog.Infof("%s waiting for %v", item.ID, delay)
+		time.Sleep(delay)
 	}
 
 	// TODO: Send a notification message for the recipients we failed to send.
+}
+
+func nextDelay(last time.Duration) time.Duration {
+	switch {
+	case last < 1*time.Minute:
+		return 1 * time.Minute
+	case last < 5*time.Minute:
+		return 5 * time.Minute
+	case last < 10*time.Minute:
+		return 10 * time.Minute
+	default:
+		return 20 * time.Minute
+	}
 }
