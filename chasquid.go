@@ -325,6 +325,10 @@ loop:
 			code, msg = c.NOOP(params)
 		case "RSET":
 			code, msg = c.RSET(params)
+		case "VRFY":
+			code, msg = c.VRFY(params)
+		case "EXPN":
+			code, msg = c.EXPN(params)
 		case "MAIL":
 			code, msg = c.MAIL(params)
 		case "RCPT":
@@ -397,8 +401,22 @@ func (c *Conn) RSET(params string) (code int, msg string) {
 	return 250, msgs[rand.Int()%len(msgs)]
 }
 
+func (c *Conn) VRFY(params string) (code int, msg string) {
+	// 252 can be used for cases like ours, when we don't really want to
+	// confirm or deny anything.
+	// See https://tools.ietf.org/html/rfc2821#section-3.5.3.
+	return 252, "You have a strange feeling for a moment, then it passes."
+}
+
+func (c *Conn) EXPN(params string) (code int, msg string) {
+	// 252 can be used for cases like ours, when we don't really want to
+	// confirm or deny anything.
+	// See https://tools.ietf.org/html/rfc2821#section-3.5.3.
+	return 252, "You feel disoriented for a moment."
+}
+
 func (c *Conn) NOOP(params string) (code int, msg string) {
-	return 250, "noooooooooooooooooooop"
+	return 250, "You hear a faint typing noise."
 }
 
 func (c *Conn) MAIL(params string) (code int, msg string) {

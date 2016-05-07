@@ -155,30 +155,23 @@ func TestRcptBeforeMail(t *testing.T) {
 	}
 }
 
-func TestHelp(t *testing.T) {
-	c := mustDial(t, false)
-	defer c.Close()
-
-	if err := c.Text.PrintfLine("HELP"); err != nil {
-		t.Fatalf("Failed to write HELP: %v", err)
+func simpleCmd(t *testing.T, c *smtp.Client, cmd string, expected int) {
+	if err := c.Text.PrintfLine(cmd); err != nil {
+		t.Fatalf("Failed to write %s: %v", cmd, err)
 	}
 
-	if _, _, err := c.Text.ReadResponse(214); err != nil {
-		t.Errorf("Incorrect HELP response: %v", err)
+	if _, _, err := c.Text.ReadResponse(expected); err != nil {
+		t.Errorf("Incorrect %s response: %v", cmd, err)
 	}
 }
 
-func TestNoop(t *testing.T) {
+func TestSimpleCommands(t *testing.T) {
 	c := mustDial(t, false)
 	defer c.Close()
-
-	if err := c.Text.PrintfLine("NOOP"); err != nil {
-		t.Fatalf("Failed to write NOOP: %v", err)
-	}
-
-	if _, _, err := c.Text.ReadResponse(250); err != nil {
-		t.Errorf("Incorrect NOOP response: %v", err)
-	}
+	simpleCmd(t, c, "HELP", 214)
+	simpleCmd(t, c, "NOOP", 250)
+	simpleCmd(t, c, "VRFY", 252)
+	simpleCmd(t, c, "EXPN", 252)
 }
 
 func TestReset(t *testing.T) {
