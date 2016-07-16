@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"blitiri.com.ar/go/chasquid/internal/userdb"
+
 	"github.com/golang/glog"
 )
 
@@ -66,7 +68,17 @@ func mustDial(tb testing.TB, useTLS bool) *smtp.Client {
 }
 
 func sendEmail(tb testing.TB, c *smtp.Client) {
+	sendEmailWithAuth(tb, c, nil)
+}
+
+func sendEmailWithAuth(tb testing.TB, c *smtp.Client, auth smtp.Auth) {
 	var err error
+
+	if auth != nil {
+		if err = c.Auth(auth); err != nil {
+			tb.Errorf("Auth: %v", err)
+		}
+	}
 
 	if err = c.Mail("from@from"); err != nil {
 		tb.Errorf("Mail: %v", err)
@@ -109,6 +121,14 @@ func TestManyEmails(t *testing.T) {
 	sendEmail(t, c)
 	sendEmail(t, c)
 	sendEmail(t, c)
+}
+
+func TestAuth(t *testing.T) {
+	c := mustDial(t, true)
+	defer c.Close()
+
+	auth := smtp.PlainAuth("", "testuser@localhost", "testpasswd", "127.0.0.1")
+	sendEmailWithAuth(t, c, auth)
 }
 
 func TestWrongMailParsing(t *testing.T) {
@@ -360,6 +380,11 @@ func realMain(m *testing.M) int {
 		s.MaxDataSize = 50 * 1024 * 1025
 		s.AddCerts(tmpDir+"/cert.pem", tmpDir+"/key.pem")
 		s.AddAddr(srvAddr)
+
+		udb := userdb.New("/dev/null")
+		udb.AddUser("testuser", "testpasswd")
+		s.AddUserDB("localhost", udb)
+
 		go s.ListenAndServe()
 	}
 

@@ -12,15 +12,18 @@ import (
 	"net/http"
 	"net/mail"
 	"net/textproto"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"blitiri.com.ar/go/chasquid/internal/auth"
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/systemd"
 	"blitiri.com.ar/go/chasquid/internal/trace"
+	"blitiri.com.ar/go/chasquid/internal/userdb"
 
 	_ "net/http/pprof"
 
@@ -39,6 +42,9 @@ var (
 
 func main() {
 	flag.Parse()
+
+	// Seed the PRNG, just to prevent for it to be totally predictable.
+	rand.Seed(time.Now().UnixNano())
 
 	conf, err := config.Load(*configDir + "/chasquid.conf")
 	if err != nil {
@@ -69,10 +75,9 @@ func main() {
 	} else {
 		glog.Infof("Domain config paths:")
 		for _, info := range domainDirs {
-			glog.Infof("  %s", info.Name())
-			s.AddDomain(info.Name())
-			dir := filepath.Join(*configDir, "domains", info.Name())
-			s.AddCerts(dir+"/cert.pem", dir+"/key.pem")
+			name := info.Name()
+			dir := filepath.Join(*configDir, "domains", name)
+			loadDomain(s, name, dir)
 		}
 	}
 
@@ -107,6 +112,27 @@ func main() {
 	s.ListenAndServe()
 }
 
+// Helper to load a single domain configuration into the server.
+func loadDomain(s *Server, name, dir string) {
+	glog.Infof("  %s", name)
+	s.AddDomain(name)
+	s.AddCerts(dir+"/cert.pem", dir+"/key.pem")
+
+	if _, err := os.Stat(dir + "/users"); err == nil {
+		glog.Infof("    adding users")
+		udb, warnings, err := userdb.Load(dir + "/users")
+		if err != nil {
+			glog.Errorf("      error: %v", err)
+		} else {
+			for _, w := range warnings {
+				glog.Warningf("     %v", w)
+			}
+			s.AddUserDB(name, udb)
+			// TODO: periodically reload the database.
+		}
+	}
+}
+
 type Server struct {
 	// Main hostname, used for display only.
 	Hostname string
@@ -129,6 +155,12 @@ type Server struct {
 	// Local domains.
 	localDomains map[string]bool
 
+	// User databases (per domain).
+	userDBs map[string]*userdb.DB
+
+	// Local courier.
+	localCourier courier.Courier
+
 	// Time before we give up on a connection, even if it's sending data.
 	connTimeout time.Duration
 
@@ -144,6 +176,7 @@ func NewServer() *Server {
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
 		localDomains:   map[string]bool{},
+		userDBs:        map[string]*userdb.DB{},
 	}
 }
 
@@ -162,6 +195,10 @@ func (s *Server) AddListeners(ls []net.Listener) {
 
 func (s *Server) AddDomain(d string) {
 	s.localDomains[d] = true
+}
+
+func (s *Server) AddUserDB(domain string, db *userdb.DB) {
+	s.userDBs[domain] = db
 }
 
 func (s *Server) getTLSConfig() (*tls.Config, error) {
@@ -241,6 +278,7 @@ func (s *Server) serve(l net.Listener) {
 			netconn:        conn,
 			tc:             textproto.NewConn(conn),
 			tlsConfig:      s.tlsConfig,
+			userDBs:        s.userDBs,
 			deadline:       time.Now().Add(s.connTimeout),
 			commandTimeout: s.commandTimeout,
 			queue:          s.queue,
@@ -273,6 +311,19 @@ type Conn struct {
 
 	// Are we using TLS?
 	onTLS bool
+
+	// User databases - taken from the server at creation time.
+	userDBs map[string]*userdb.DB
+
+	// Have we successfully completed AUTH?
+	completedAuth bool
+
+	// How many times have we attempted AUTH?
+	authAttempts int
+
+	// Authenticated user and domain, empty if !completedAuth.
+	authUser   string
+	authDomain string
 
 	// When we should close this connection, no matter what.
 	deadline time.Time
@@ -341,6 +392,8 @@ loop:
 			code, msg = c.DATA(params, tr)
 		case "STARTTLS":
 			code, msg = c.STARTTLS(params, tr)
+		case "AUTH":
+			code, msg = c.AUTH(params, tr)
 		case "QUIT":
 			c.writeResponse(221, "Be seeing you...")
 			break loop
@@ -383,7 +436,11 @@ func (c *Conn) EHLO(params string) (code int, msg string) {
 	fmt.Fprintf(buf, "8BITMIME\n")
 	fmt.Fprintf(buf, "PIPELINING\n")
 	fmt.Fprintf(buf, "SIZE %d\n", c.maxDataSize)
-	fmt.Fprintf(buf, "STARTTLS\n")
+	if c.onTLS {
+		fmt.Fprintf(buf, "AUTH PLAIN\n")
+	} else {
+		fmt.Fprintf(buf, "STARTTLS\n")
+	}
 	fmt.Fprintf(buf, "HELP\n")
 	return 250, buf.String()
 }
@@ -582,6 +639,73 @@ func (c *Conn) STARTTLS(params string, tr *trace.Trace) (code int, msg string) {
 	return 0, ""
 }
 
+func (c *Conn) AUTH(params string, tr *trace.Trace) (code int, msg string) {
+	if !c.onTLS {
+		return 503, "You feel vulnerable"
+	}
+
+	if c.completedAuth {
+		// After a successful AUTH command completes, a server MUST reject
+		// any further AUTH commands with a 503 reply.
+		// https://tools.ietf.org/html/rfc4954#section-4
+		return 503, "You are already wearing that!"
+	}
+
+	if c.authAttempts > 3 {
+		// TODO: close the connection?
+		return 503, "Too many attempts - go away"
+	}
+	c.authAttempts++
+
+	// We only support PLAIN for now, so no need to make this too complicated.
+	// Params should be either "PLAIN" or "PLAIN <response>".
+	// If the response is not there, we reply with 334, and expect the
+	// response back from the client in the next message.
+
+	sp := strings.SplitN(params, " ", 2)
+	if len(sp) < 1 || sp[0] != "PLAIN" {
+		// As we only offer plain, this should not really happen.
+		return 534, "Asmodeus demands 534 zorkmids for safe passage"
+	}
+
+	// Note we use more "serious" error messages from now own, as these may
+	// find their way to the users in some circumstances.
+
+	// Get the response, either from the message or interactively.
+	response := ""
+	if len(sp) == 2 {
+		response = sp[1]
+	} else {
+		// Reply 334 and expect the user to provide it.
+		// In this case, the text IS relevant, as it is taken as the
+		// server-side SASL challenge (empty for PLAIN).
+		// https://tools.ietf.org/html/rfc4954#section-4
+		err := c.writeResponse(334, "")
+		if err != nil {
+			return 554, fmt.Sprintf("error writing AUTH 334: %v", err)
+		}
+
+		response, err = c.readLine()
+		if err != nil {
+			return 554, fmt.Sprintf("error reading AUTH response: %v", err)
+		}
+	}
+
+	user, domain, passwd, err := auth.DecodeResponse(response)
+	if err != nil {
+		return 535, fmt.Sprintf("error decoding AUTH response: %v", err)
+	}
+
+	if auth.Authenticate(c.userDBs[domain], user, passwd) {
+		c.authUser = user
+		c.authDomain = domain
+		c.completedAuth = true
+		return 235, ""
+	} else {
+		return 535, "Incorrect user or password"
+	}
+}
+
 func (c *Conn) resetEnvelope() {
 	c.mail_from = ""
 	c.rcpt_to = nil
@@ -603,6 +727,10 @@ func (c *Conn) readCommand() (cmd, params string, err error) {
 	}
 
 	return cmd, params, err
+}
+
+func (c *Conn) readLine() (line string, err error) {
+	return c.tc.ReadLine()
 }
 
 func (c *Conn) writeResponse(code int, msg string) error {
