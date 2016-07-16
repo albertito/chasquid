@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"unicode"
 
 	"blitiri.com.ar/go/chasquid/internal/trace"
 )
@@ -79,14 +80,19 @@ func (p *Procmail) Deliver(from string, to string, data []byte) error {
 	return nil
 }
 
-// sanitizeForProcmail cleans the string, leaving only [a-zA-Z-.].
+// sanitizeForProcmail cleans the string, removing characters that could be
+// problematic considering we will run an external command.
+//
+// The server does not rely on this to do substitution or proper filtering,
+// that's done at a different layer; this is just for defense in depth.
 func sanitizeForProcmail(s string) string {
 	valid := func(r rune) rune {
 		switch {
-		case r >= 'A' && r <= 'Z', r >= 'a' && r <= 'z', r == '-', r == '.':
-			return r
-		default:
+		case unicode.IsSpace(r), unicode.IsControl(r),
+			strings.ContainsRune("/;\"'\\|*&$%()[]{}`!", r):
 			return rune(-1)
+		default:
+			return r
 		}
 	}
 	return strings.Map(valid, s)

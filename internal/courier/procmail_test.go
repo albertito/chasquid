@@ -63,3 +63,32 @@ func TestProcmailBadCommandLine(t *testing.T) {
 		t.Errorf("Unexpected success: %q %v", procmailBin, procmailArgs)
 	}
 }
+
+func TestSanitize(t *testing.T) {
+	cases := []struct{ v, expected string }{
+		// These are the same.
+		{"thisisfine", "thisisfine"},
+		{"ñaca", "ñaca"},
+		{"123-456_789", "123-456_789"},
+		{"123+456~789", "123+456~789"},
+
+		// These have problematic characters that get dropped.
+		{"with spaces", "withspaces"},
+		{"with/slash", "withslash"},
+		{"quote';andsemicolon", "quoteandsemicolon"},
+		{"a;b", "ab"},
+		{`"test"`, "test"},
+
+		// Interesting cases taken from
+		// http://www.user.uni-hannover.de/nhtcapri/bidirectional-text.html
+		// We allow them, they're the same on both sides.
+		{"١٩٩٩–١٢–٣١", "١٩٩٩–١٢–٣١"},
+		{"موزه‌ها", "موزه\u200cها"},
+	}
+	for _, c := range cases {
+		out := sanitizeForProcmail(c.v)
+		if out != c.expected {
+			t.Errorf("%q: expected %q, got %q", c.v, c.expected, out)
+		}
+	}
+}
