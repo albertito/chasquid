@@ -14,8 +14,10 @@ import (
 var (
 	// Location of the procmail binary, and arguments to use.
 	// The string "%user%" will be replaced with the local user.
-	procmailBin  = "procmail"
-	procmailArgs = []string{"-d", "%user%"}
+	// TODO: Make these a part of the courier instance itself? Why do they
+	// have to be global?
+	MailDeliveryAgentBin  = "procmail"
+	MailDeliveryAgentArgs = []string{"-d", "%user%"}
 
 	// Give procmail 1m to deliver mail.
 	procmailTimeout = 1 * time.Minute
@@ -39,10 +41,10 @@ func (p *Procmail) Deliver(from string, to string, data []byte) error {
 
 	// Prepare the command, replacing the necessary arguments.
 	args := []string{}
-	for _, a := range procmailArgs {
+	for _, a := range MailDeliveryAgentArgs {
 		args = append(args, strings.Replace(a, "%user%", user, -1))
 	}
-	cmd := exec.Command(procmailBin, args...)
+	cmd := exec.Command(MailDeliveryAgentBin, args...)
 
 	cmdStdin, err := cmd.StdinPipe()
 	if err != nil {

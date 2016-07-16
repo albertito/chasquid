@@ -51,6 +51,9 @@ func main() {
 		go http.ListenAndServe(conf.MonitoringAddress, nil)
 	}
 
+	courier.MailDeliveryAgentBin = conf.MailDeliveryAgentBin
+	courier.MailDeliveryAgentArgs = conf.MailDeliveryAgentArgs
+
 	s := NewServer()
 	s.Hostname = conf.Hostname
 	s.MaxDataSize = conf.MaxDataSizeMb * 1024 * 1024

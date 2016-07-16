@@ -18,5 +18,19 @@ message Config {
 	// Address for the monitoring http server.
 	// Default: no monitoring http server.
 	string monitoring_address = 4;
+
+	// Mail delivery agent (MDA, also known as LDA) to use.
+	// This should point to the binary to use to deliver email to local users.
+	// The content of the email will be passed via stdin.
+	// If it exits unsuccessfully, we assume the mail was not delivered.
+	// Default: "procmail".
+	string mail_delivery_agent_bin = 5;
+
+	// Command line arguments for the mail delivery agent. One per argument.
+	// Some replacements will be done:
+	//  - "%user%"   -> local user (anything before the @)
+	//  - "%domain%" -> domain (anything after the @)
+	// Default: "-d", "%user"  (adequate for procmail)
+	repeated string mail_delivery_agent_args = 6;
 }
 

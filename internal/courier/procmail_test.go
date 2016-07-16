@@ -15,8 +15,8 @@ func TestProcmail(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	procmailBin = "tee"
-	procmailArgs = []string{dir + "/%user%"}
+	MailDeliveryAgentBin = "tee"
+	MailDeliveryAgentArgs = []string{dir + "/%user%"}
 
 	p := Procmail{}
 	err = p.Deliver("from@x", "to@y", []byte("data"))
@@ -31,8 +31,8 @@ func TestProcmail(t *testing.T) {
 }
 
 func TestProcmailTimeout(t *testing.T) {
-	procmailBin = "/bin/sleep"
-	procmailArgs = []string{"1"}
+	MailDeliveryAgentBin = "/bin/sleep"
+	MailDeliveryAgentArgs = []string{"1"}
 	procmailTimeout = 100 * time.Millisecond
 
 	p := Procmail{}
@@ -48,19 +48,21 @@ func TestProcmailBadCommandLine(t *testing.T) {
 	p := Procmail{}
 
 	// Non-existent binary.
-	procmailBin = "thisdoesnotexist"
+	MailDeliveryAgentBin = "thisdoesnotexist"
 	err := p.Deliver("from", "to", []byte("data"))
 	if err == nil {
-		t.Errorf("Unexpected success: %q %v", procmailBin, procmailArgs)
+		t.Errorf("Unexpected success: %q %v",
+			MailDeliveryAgentBin, MailDeliveryAgentArgs)
 	}
 
 	// Incorrect arguments.
-	procmailBin = "cat"
-	procmailArgs = []string{"--fail_unknown_option"}
+	MailDeliveryAgentBin = "cat"
+	MailDeliveryAgentArgs = []string{"--fail_unknown_option"}
 
 	err = p.Deliver("from", "to", []byte("data"))
 	if err == nil {
-		t.Errorf("Unexpected success: %q %v", procmailBin, procmailArgs)
+		t.Errorf("Unexpected success: %q %v",
+			MailDeliveryAgentBin, MailDeliveryAgentArgs)
 	}
 }
 

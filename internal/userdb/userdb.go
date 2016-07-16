@@ -79,6 +79,13 @@ var (
 	InvalidUsernameErr = errors.New("username contains invalid characters")
 )
 
+func New(fname string) *DB {
+	return &DB{
+		fname: fname,
+		users: map[string]user{},
+	}
+}
+
 // Load the database from the given file.
 // Return the database, a list of warnings (if any), and a fatal error if the
 // database could not be loaded.
@@ -194,7 +201,11 @@ func (db *DB) Write() error {
 			base64.StdEncoding.EncodeToString([]byte(user.password)))
 	}
 
-	return safeio.WriteFile(db.fname, buf.Bytes(), db.finfo.Mode())
+	mode := os.FileMode(0660)
+	if db.finfo != nil {
+		mode = db.finfo.Mode()
+	}
+	return safeio.WriteFile(db.fname, buf.Bytes(), mode)
 }
 
 // Does this user exist in the database?

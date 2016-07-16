@@ -1,6 +1,7 @@
 package userdb
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -41,7 +42,7 @@ func dbEquals(a, b *DB) bool {
 
 	for k, av := range a.users {
 		bv, ok := b.users[k]
-		if !ok || av != bv {
+		if !ok || av.name != bv.name || av.password != bv.password {
 			return false
 		}
 	}
@@ -200,6 +201,25 @@ func TestWrite(t *testing.T) {
 		if db.Authenticate(c.user, c.passwd) != c.expected {
 			t.Errorf("auth(%q, %q) != %v", c.user, c.passwd, c.expected)
 		}
+	}
+}
+
+func TestNew(t *testing.T) {
+	fname := fmt.Sprintf("%s/userdb_test-%d", os.TempDir(), os.Getpid())
+	db1 := New(fname)
+	db1.AddUser("user", "passwd")
+	db1.Write()
+
+	db2, ws, err := Load(fname)
+	if err != nil {
+		t.Fatalf("error loading: %v", err)
+	}
+	if len(ws) != 0 {
+		t.Errorf("warnings loading: %v", ws)
+	}
+
+	if !dbEquals(db1, db2) {
+		t.Errorf("databases differ. db1:%v  !=  db2:%v", db1, db2)
 	}
 }
 
