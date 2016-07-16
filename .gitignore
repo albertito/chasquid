@@ -10,3 +10,6 @@
 # The binary.
 chasquid
 
+# Exclude any .pem files, to prevent accidentally including test keys and
+# certificates.
+*.pem
