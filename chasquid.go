@@ -474,11 +474,17 @@ func (c *Conn) NOOP(params string) (code int, msg string) {
 }
 
 func (c *Conn) MAIL(params string) (code int, msg string) {
-	// params should be: "FROM:<name@host>"
-	// First, get rid of the "FROM:" part (but check it, it's mandatory).
-	sp := strings.SplitN(strings.ToLower(params), ":", 2)
-	if len(sp) != 2 || sp[0] != "from" {
+	// params should be: "FROM:<name@host>", and possibly followed by
+	// "BODY=8BITMIME" (which we ignore).
+	// Check that it begins with "FROM:" first, otherwise it's pointless.
+	if !strings.HasPrefix(strings.ToLower(params), "from:") {
 		return 500, "unknown command"
+	}
+
+	addr := ""
+	_, err := fmt.Sscanf(params[5:], "%s ", &addr)
+	if err != nil {
+		return 500, "malformed command - " + err.Error()
 	}
 
 	// Special case a null reverse-path, which is explicitly allowed and used
@@ -486,11 +492,11 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 	// It should be written "<>", we check for that and remove spaces just to
 	// be more flexible.
 	e := &mail.Address{}
-	if strings.Replace(sp[1], " ", "", -1) == "<>" {
+	if strings.Replace(addr, " ", "", -1) == "<>" {
 		e.Address = "<>"
 	} else {
 		var err error
-		e, err = mail.ParseAddress(sp[1])
+		e, err = mail.ParseAddress(addr)
 		if err != nil || e.Address == "" {
 			return 501, "malformed address"
 		}

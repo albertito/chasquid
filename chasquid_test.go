@@ -135,7 +135,7 @@ func TestWrongMailParsing(t *testing.T) {
 	c := mustDial(t, false)
 	defer c.Close()
 
-	addrs := []string{"", "from", "a b c", "a @ b", "<x>", "<x y>", "><"}
+	addrs := []string{"from", "a b c", "a @ b", "<x>", "<x y>", "><"}
 
 	for _, addr := range addrs {
 		if err := c.Mail(addr); err == nil {
@@ -158,7 +158,7 @@ func TestNullMailFrom(t *testing.T) {
 	c := mustDial(t, false)
 	defer c.Close()
 
-	addrs := []string{"<>", "  <>", " <  > "}
+	addrs := []string{"", "<>", "  <>", " <  > "}
 	for _, addr := range addrs {
 		if err := c.Text.PrintfLine(addr); err != nil {
 			t.Fatalf("MAIL FROM failed with addr %q: %v", addr, err)
