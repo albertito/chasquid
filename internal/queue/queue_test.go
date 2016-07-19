@@ -2,12 +2,15 @@ package queue
 
 import (
 	"bytes"
+	"sync"
 	"testing"
 	"time"
+
+	"blitiri.com.ar/go/chasquid/internal/set"
 )
 
-// Our own courier, for testing purposes.
-// Delivery is done by sending on a channel.
+// Test courier. Delivery is done by sending on a channel, so users have fine
+// grain control over the results.
 type ChanCourier struct {
 	requests chan deliverRequest
 	results  chan error
@@ -23,19 +26,42 @@ func (cc *ChanCourier) Deliver(from string, to string, data []byte) error {
 	cc.requests <- deliverRequest{from, to, data}
 	return <-cc.results
 }
-
-func newCourier() *ChanCourier {
+func newChanCourier() *ChanCourier {
 	return &ChanCourier{
 		requests: make(chan deliverRequest),
 		results:  make(chan error),
 	}
 }
 
-func TestBasic(t *testing.T) {
-	courier := newCourier()
-	q := New(courier)
+// Courier for test purposes. Never fails, and always remembers everything.
+type TestCourier struct {
+	wg       sync.WaitGroup
+	requests []*deliverRequest
+	reqFor   map[string]*deliverRequest
+}
 
-	id, err := q.Put("from", []string{"to"}, []byte("data"))
+func (tc *TestCourier) Deliver(from string, to string, data []byte) error {
+	defer tc.wg.Done()
+	dr := &deliverRequest{from, to, data}
+	tc.requests = append(tc.requests, dr)
+	tc.reqFor[to] = dr
+	return nil
+}
+
+func newTestCourier() *TestCourier {
+	return &TestCourier{
+		reqFor: map[string]*deliverRequest{},
+	}
+}
+
+func TestBasic(t *testing.T) {
+	localC := newTestCourier()
+	remoteC := newTestCourier()
+	q := New(localC, remoteC, set.NewString("loco"))
+
+	localC.wg.Add(2)
+	remoteC.wg.Add(1)
+	id, err := q.Put("from", []string{"am@loco", "x@remote", "nodomain"}, []byte("data"))
 	if err != nil {
 		t.Fatalf("Put: %v", err)
 	}
@@ -44,31 +70,35 @@ func TestBasic(t *testing.T) {
 		t.Errorf("short ID: %v", id)
 	}
 
-	q.mu.RLock()
-	item := q.q[id]
-	q.mu.RUnlock()
+	localC.wg.Wait()
+	remoteC.wg.Wait()
 
-	if item == nil {
-		t.Fatalf("item not in queue, racy test?")
+	cases := []struct {
+		courier    *TestCourier
+		expectedTo string
+	}{
+		{localC, "nodomain"},
+		{localC, "am@loco"},
+		{remoteC, "x@remote"},
 	}
+	for _, c := range cases {
+		req := c.courier.reqFor[c.expectedTo]
+		if req == nil {
+			t.Errorf("missing request for %q", c.expectedTo)
+			continue
+		}
 
-	if item.From != "from" || item.To[0] != "to" ||
-		!bytes.Equal(item.Data, []byte("data")) {
-		t.Errorf("different item: %#v", item)
-	}
-
-	// Test that we delivered the item.
-	req := <-courier.requests
-	courier.results <- nil
-
-	if req.from != "from" || req.to != "to" ||
-		!bytes.Equal(req.data, []byte("data")) {
-		t.Errorf("different courier request: %#v", req)
+		if req.from != "from" || req.to != c.expectedTo ||
+			!bytes.Equal(req.data, []byte("data")) {
+			t.Errorf("wrong request for %q: %v", c.expectedTo, req)
+		}
 	}
 }
 
 func TestFullQueue(t *testing.T) {
-	q := New(newCourier())
+	localC := newChanCourier()
+	remoteC := newChanCourier()
+	q := New(localC, remoteC, set.NewString())
 
 	// Force-insert maxQueueSize items in the queue.
 	oneID := ""

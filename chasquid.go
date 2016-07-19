@@ -21,6 +21,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/queue"
+	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/systemd"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
@@ -153,13 +154,10 @@ type Server struct {
 	tlsConfig *tls.Config
 
 	// Local domains.
-	localDomains map[string]bool
+	localDomains *set.String
 
 	// User databases (per domain).
 	userDBs map[string]*userdb.DB
-
-	// Local courier.
-	localCourier courier.Courier
 
 	// Time before we give up on a connection, even if it's sending data.
 	connTimeout time.Duration
@@ -175,7 +173,7 @@ func NewServer() *Server {
 	return &Server{
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
-		localDomains:   map[string]bool{},
+		localDomains:   &set.String{},
 		userDBs:        map[string]*userdb.DB{},
 	}
 }
@@ -194,7 +192,7 @@ func (s *Server) AddListeners(ls []net.Listener) {
 }
 
 func (s *Server) AddDomain(d string) {
-	s.localDomains[d] = true
+	s.localDomains.Add(d)
 }
 
 func (s *Server) AddUserDB(domain string, db *userdb.DB) {
@@ -227,14 +225,10 @@ func (s *Server) ListenAndServe() {
 		glog.Fatalf("Error loading TLS config: %v", err)
 	}
 
-	// Create the queue, giving it a routing courier for delivery.
-	// We need to do this early, before accepting connections.
-	courier := &courier.Router{
-		Local:        &courier.Procmail{},
-		Remote:       &courier.SMTP{},
-		LocalDomains: s.localDomains,
-	}
-	s.queue = queue.New(courier)
+	// TODO: Create the queue when creating the server?
+	// Or even before, and just give it to the server?
+	s.queue = queue.New(
+		&courier.Procmail{}, &courier.SMTP{}, s.localDomains)
 
 	for _, addr := range s.addrs {
 		// Listen.
@@ -578,11 +572,8 @@ func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
 
 	tr.LazyPrintf("-> ... %d bytes of data", len(c.data))
 
-	// TODO: here is where we queue/send/process the message!
 	// There are no partial failures here: we put it in the queue, and then if
 	// individual deliveries fail, we report via email.
-	// TODO: this should queue, not send, the message.
-	// TODO: trace this.
 	msgID, err := c.queue.Put(c.mail_from, c.rcpt_to, c.data)
 	if err != nil {
 		tr.LazyPrintf("   error queueing: %v", err)

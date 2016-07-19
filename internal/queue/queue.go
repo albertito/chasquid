@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/courier"
+	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/set"
 
 	"github.com/golang/glog"
 	"golang.org/x/net/trace"
@@ -60,16 +62,22 @@ type Queue struct {
 	// Mutex protecting q.
 	mu sync.RWMutex
 
-	// Courier to use to deliver mail.
-	courier courier.Courier
+	// Couriers to use to deliver mail.
+	localC  courier.Courier
+	remoteC courier.Courier
+
+	// Domains we consider local.
+	localDomains *set.String
 }
 
 // TODO: Store the queue on disk.
 // Load the queue and launch the sending loops on startup.
-func New(c courier.Courier) *Queue {
+func New(localC, remoteC courier.Courier, localDomains *set.String) *Queue {
 	return &Queue{
-		q:       map[string]*Item{},
-		courier: c,
+		q:            map[string]*Item{},
+		localC:       localC,
+		remoteC:      remoteC,
+		localDomains: localDomains,
 	}
 }
 
@@ -151,7 +159,6 @@ func (item *Item) SendLoop(q *Queue) {
 	defer tr.Finish()
 	tr.LazyPrintf("from: %s", item.From)
 
-	var err error
 	var delay time.Duration
 	for time.Since(item.Created) < giveUpAfter {
 		// Send to all recipients that are still pending.
@@ -167,12 +174,24 @@ func (item *Item) SendLoop(q *Queue) {
 				defer wg.Done()
 				tr.LazyPrintf("%s sending", to)
 
-				err = q.courier.Deliver(item.From, to, item.Data)
+				var err error
+				// TODO: If this is all the difference we end up having
+				// between the two couriers, consider going back to using a
+				// routing courier.
+				if envelope.DomainIn(to, q.localDomains) {
+					err = q.localC.Deliver(item.From, to, item.Data)
+				} else {
+					err = q.remoteC.Deliver(item.From, to, item.Data)
+				}
 				item.mu.Lock()
 				item.Results[to] = err
 				item.mu.Unlock()
 
 				if err != nil {
+					// TODO: Local deliveries should not be retried, if they
+					// fail due to the user not existing.
+					// -> we need to know the users.
+					// Or maybe we can just not care?
 					tr.LazyPrintf("error: %v", err)
 					glog.Infof("%s  -> %q fail: %v", item.ID, to, err)
 				} else {
