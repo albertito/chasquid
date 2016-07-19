@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
@@ -33,7 +34,7 @@ func (s *SMTP) Deliver(from string, to string, data []byte) error {
 	defer tr.Finish()
 	tr.LazyPrintf("%s  ->  %s", from, to)
 
-	mx, err := lookupMX(domainOf(to))
+	mx, err := lookupMX(envelope.DomainOf(to))
 	if err != nil {
 		return tr.Errorf("Could not find mail server: %v", err)
 	}

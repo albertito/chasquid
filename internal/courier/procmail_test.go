@@ -19,7 +19,8 @@ func TestProcmail(t *testing.T) {
 	MailDeliveryAgentArgs = []string{dir + "/%user%"}
 
 	p := Procmail{}
-	err = p.Deliver("from@x", "to@y", []byte("data"))
+
+	err = p.Deliver("from@x", "to@local", []byte("data"))
 	if err != nil {
 		t.Fatalf("Deliver: %v", err)
 	}
@@ -36,7 +37,8 @@ func TestProcmailTimeout(t *testing.T) {
 	procmailTimeout = 100 * time.Millisecond
 
 	p := Procmail{}
-	err := p.Deliver("from", "to", []byte("data"))
+
+	err := p.Deliver("from", "to@local", []byte("data"))
 	if err != timeoutError {
 		t.Errorf("Unexpected error: %v", err)
 	}

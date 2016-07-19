@@ -8,6 +8,7 @@ import (
 	"time"
 	"unicode"
 
+	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
@@ -36,13 +37,17 @@ func (p *Procmail) Deliver(from string, to string, data []byte) error {
 	defer tr.Finish()
 
 	// Get the user, and sanitize to be extra paranoid.
-	user := sanitizeForProcmail(userOf(to))
-	tr.LazyPrintf("%s  ->  %s (%s)", from, user, to)
+	user := sanitizeForProcmail(envelope.UserOf(to))
+	domain := sanitizeForProcmail(envelope.DomainOf(to))
+	tr.LazyPrintf("%s  ->  %s (%s @ %s)", from, user, to, domain)
 
 	// Prepare the command, replacing the necessary arguments.
+	replacer := strings.NewReplacer(
+		"%user%", user,
+		"%domain%", domain)
 	args := []string{}
 	for _, a := range MailDeliveryAgentArgs {
-		args = append(args, strings.Replace(a, "%user%", user, -1))
+		args = append(args, replacer.Replace(a))
 	}
 	cmd := exec.Command(MailDeliveryAgentBin, args...)
 
