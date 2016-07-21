@@ -1,0 +1,62 @@
+CONFDIR = ${EXIMDIR}
+
+spool_directory = CONFDIR/spool
+exim_path = CONFDIR/exim4
+
+# No need to keep anything on the environment.
+# This is the default, but exim emits a warning if it's not set
+# (https://www.exim.org/static/doc/CVE-2016-1531.txt).
+keep_environment = 
+
+# Disable TLS for now.
+tls_advertise_hosts =
+
+# Run as the current user.
+# TODO: obviously do not hard-code it!
+exim_group = ${USER}
+exim_user = ${USER}
+
+# Listen on a non-privileged port.
+daemon_smtp_port = 2025
+
+# ACLs to let anyone send mail (for testing, obviously).
+acl_smtp_rcpt = acl_check_rcpt
+acl_smtp_data = acl_check_data
+
+begin acl
+acl_check_rcpt:
+  accept
+
+acl_check_data:
+  accept
+
+
+# Forward all incoming email to chasquid (running on :1025 in this test).
+begin routers
+
+rewritedst:
+  driver = redirect
+  data = someone@srv-chasquid
+
+forwardall:
+  driver = accept
+  transport = tochasquid
+
+begin transports
+
+tochasquid:
+  driver = smtp
+
+  # exim4 will by default detect and special-case deliveries to localhost;
+  # this avoids that behaviour and tells it to go ahead anyway.
+  allow_localhost
+  hosts_override
+
+  # chasquid will be listening on localhost:1025
+  hosts = localhost
+  port = 1025
+
+  # Add headers to help debug failures.
+  delivery_date_add
+  envelope_to_add
+  return_path_add

@@ -70,7 +70,7 @@ func TestSMTP(t *testing.T) {
 	host, port, _ := net.SplitHostPort(addr)
 
 	fakeMX["to"] = host
-	smtpPort = port
+	*smtpPort = port
 
 	s := &SMTP{}
 	err := s.Deliver("me@me", "to@to", []byte("data"))
@@ -130,7 +130,7 @@ func TestSMTPErrors(t *testing.T) {
 		host, port, _ := net.SplitHostPort(addr)
 
 		fakeMX["to"] = host
-		smtpPort = port
+		*smtpPort = port
 
 		s := &SMTP{}
 		err := s.Deliver("me@me", "to@to", []byte("data"))

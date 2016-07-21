@@ -2,6 +2,7 @@ package courier
 
 import (
 	"crypto/tls"
+	"flag"
 	"net"
 	"net/smtp"
 	"time"
@@ -19,7 +20,12 @@ var (
 
 	// Port for outgoing SMTP.
 	// Tests can override this.
-	smtpPort = "25"
+	smtpPort = flag.String("testing__outgoing_smtp_port", "25",
+		"port to use for outgoing SMTP connections, ONLY FOR TESTING")
+
+	// Bypass the MX lookup, for testing purposes.
+	bypassMX = flag.Bool("testing__bypass_mx_lookup", false,
+		"bypass MX lookup, ONLY FOR TESTING")
 
 	// Fake MX records, used for testing only.
 	fakeMX = map[string]string{}
@@ -45,7 +51,7 @@ func (s *SMTP) Deliver(from string, to string, data []byte) error {
 	insecure := false
 
 retry:
-	conn, err := net.DialTimeout("tcp", mx+":"+smtpPort, smtpDialTimeout)
+	conn, err := net.DialTimeout("tcp", mx+":"+*smtpPort, smtpDialTimeout)
 	if err != nil {
 		return tr.Errorf("Could not dial: %v", err)
 	}
@@ -115,6 +121,10 @@ retry:
 func lookupMX(domain string) (string, error) {
 	if v, ok := fakeMX[domain]; ok {
 		return v, nil
+	}
+
+	if *bypassMX {
+		return domain, nil
 	}
 
 	mxs, err := net.LookupMX(domain)
