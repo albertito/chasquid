@@ -13,8 +13,10 @@ import (
 	"net/mail"
 	"net/textproto"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/auth"
@@ -43,6 +45,11 @@ var (
 
 func main() {
 	flag.Parse()
+
+	setupSignalHandling()
+
+	defer glog.Flush()
+	go periodicallyFlushLogs()
 
 	// Seed the PRNG, just to prevent for it to be totally predictable.
 	rand.Seed(time.Now().UnixNano())
@@ -132,6 +139,25 @@ func loadDomain(s *Server, name, dir string) {
 			// TODO: periodically reload the database.
 		}
 	}
+}
+
+// Flush logs periodically, to help troubleshooting if there isn't that much
+// traffic.
+func periodicallyFlushLogs() {
+	for range time.Tick(5 * time.Second) {
+		glog.Flush()
+	}
+}
+
+// Set up signal handling, to flush logs when we get killed.
+func setupSignalHandling() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		glog.Flush()
+		os.Exit(1)
+	}()
 }
 
 type Server struct {
