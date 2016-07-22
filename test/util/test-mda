@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+mkdir -p .mail
+
+# TODO: use flock to lock the file, to prevent atomic writes.
+echo "From ${1}" >> .mail/.tmp-${1}
+cat >> .mail/.tmp-${1}
+X=$?
+if [ -e .mail/.tmp-${1} ]; then
+	mv .mail/.tmp-${1} .mail/${1}
+fi
+exit $X

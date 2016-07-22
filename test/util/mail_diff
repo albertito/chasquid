@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+
+import difflib
+import email.parser
+import mailbox
+import sys
+
+f1, f2 = sys.argv[1:3]
+
+expected = email.parser.Parser().parse(open(f1))
+
+mbox = mailbox.mbox(f2, create=False)
+msg = mbox[0]
+
+diff = False
+
+for h, val in expected.items():
+	if h not in msg:
+		print("Header missing: %r" % h)
+		diff = True
+		continue
+	if msg[h] != val:
+		print("Header %r differs: %r != %r" % (h, val, msg[h]))
+		diff = True
+
+if expected.get_payload() != msg.get_payload():
+	diff = True
+	exp = expected.get_payload().splitlines()
+	got = msg.get_payload().splitlines()
+	print("Payload differs:")
+	for l in difflib.ndiff(exp, got):
+		print(l)
+
+sys.exit(0 if not diff else 1)
