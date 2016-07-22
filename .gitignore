@@ -7,8 +7,9 @@
 # excluded.
 !.gitignore
 
-# The binary.
+# The binaries.
 chasquid
+chasquid-userdb
 
 # Exclude any .pem files, to prevent accidentally including test keys and
 # certificates.
