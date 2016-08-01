@@ -117,7 +117,7 @@ func TestFullQueue(t *testing.T) {
 
 	// This one should fail due to the queue being too big.
 	id, err := q.Put("from", []string{"to"}, []byte("data"))
-	if err != queueFullError {
+	if err != errQueueFull {
 		t.Errorf("Not failed as expected: %v - %v", id, err)
 	}
 

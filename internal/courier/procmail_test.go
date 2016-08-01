@@ -39,7 +39,7 @@ func TestProcmailTimeout(t *testing.T) {
 	p := Procmail{}
 
 	err := p.Deliver("from", "to@local", []byte("data"))
-	if err != timeoutError {
+	if err != errTimeout {
 		t.Errorf("Unexpected error: %v", err)
 	}
 

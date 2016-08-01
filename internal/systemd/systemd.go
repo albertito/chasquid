@@ -12,7 +12,7 @@ import (
 
 var (
 	// Error to return when $LISTEN_PID does not refer to us.
-	PIDMismatch = errors.New("$LISTEN_PID != our PID")
+	ErrPIDMismatch = errors.New("$LISTEN_PID != our PID")
 
 	// First FD for listeners.
 	// It's 3 by definition, but using a variable simplifies testing.
@@ -36,7 +36,7 @@ func Listeners() ([]net.Listener, error) {
 		return nil, fmt.Errorf(
 			"error converting $LISTEN_PID=%q: %v", pidStr, err)
 	} else if pid != os.Getpid() {
-		return nil, PIDMismatch
+		return nil, ErrPIDMismatch
 	}
 
 	nfds, err := strconv.Atoi(os.Getenv("LISTEN_FDS"))

@@ -325,9 +325,9 @@ type Conn struct {
 	tlsConfig *tls.Config
 
 	// Envelope.
-	mail_from string
-	rcpt_to   []string
-	data      []byte
+	mailFrom string
+	rcptTo   []string
+	data     []byte
 
 	// Are we using TLS?
 	onTLS bool
@@ -536,7 +536,7 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 	// but that's not according to the RFC. We reset the envelope instead.
 	c.resetEnvelope()
 
-	c.mail_from = e.Address
+	c.mailFrom = e.Address
 	return 250, "You feel like you are being watched"
 }
 
@@ -557,30 +557,30 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 		return 501, "malformed address"
 	}
 
-	if c.mail_from == "" {
+	if c.mailFrom == "" {
 		return 503, "sender not yet given"
 	}
 
 	// RFC says 100 is the minimum limit for this, but it seems excessive.
-	if len(c.rcpt_to) > 100 {
+	if len(c.rcptTo) > 100 {
 		return
 	}
 
 	// TODO: do we allow receivers without a domain?
 	// TODO: check the case:
 	//  - local recipient, always ok
-	//  - external recipient, only ok if mail_from is local (needs auth)
+	//  - external recipient, only ok if mailFrom is local (needs auth)
 
-	c.rcpt_to = append(c.rcpt_to, e.Address)
+	c.rcptTo = append(c.rcptTo, e.Address)
 	return 250, "You have an eerie feeling..."
 }
 
 func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
-	if c.mail_from == "" {
+	if c.mailFrom == "" {
 		return 503, "sender not yet given"
 	}
 
-	if len(c.rcpt_to) == 0 {
+	if len(c.rcptTo) == 0 {
 		return 503, "need an address to send to"
 	}
 
@@ -606,7 +606,7 @@ func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
 
 	// There are no partial failures here: we put it in the queue, and then if
 	// individual deliveries fail, we report via email.
-	msgID, err := c.queue.Put(c.mail_from, c.rcpt_to, c.data)
+	msgID, err := c.queue.Put(c.mailFrom, c.rcptTo, c.data)
 	if err != nil {
 		tr.LazyPrintf("   error queueing: %v", err)
 		tr.SetError()
@@ -724,14 +724,14 @@ func (c *Conn) AUTH(params string, tr *trace.Trace) (code int, msg string) {
 		c.authDomain = domain
 		c.completedAuth = true
 		return 235, ""
-	} else {
-		return 535, "Incorrect user or password"
 	}
+
+	return 535, "Incorrect user or password"
 }
 
 func (c *Conn) resetEnvelope() {
-	c.mail_from = ""
-	c.rcpt_to = nil
+	c.mailFrom = ""
+	c.rcptTo = nil
 	c.data = nil
 }
 

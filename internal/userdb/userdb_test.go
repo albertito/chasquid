@@ -86,7 +86,7 @@ func TestLoad(t *testing.T) {
 		{"header \\r\\n", "#chasquid-userdb-v1\r\n", false, nil, false},
 		{"header EOF", "#chasquid-userdb-v1", false, nil, false},
 		{"missing header", "this is not the header",
-			true, MissingHeaderErr, false},
+			true, ErrMissingHeader, false},
 		{"invalid user", "#chasquid-userdb-v1\nnam\xa0e PLAIN pass\n",
 			false, nil, true},
 		{"too few fields", "#chasquid-userdb-v1\nfield1 field2\n",
@@ -131,7 +131,7 @@ func testOneLoad(t *testing.T, desc, content string, fatal bool, fatalErr error,
 	}
 
 	if db != nil && !dbEquals(db, emptyDB) {
-		t.Errorf("case %q: DB not empty: %#v", db)
+		t.Errorf("case %q: DB not empty: %#v", desc, db)
 	}
 }
 

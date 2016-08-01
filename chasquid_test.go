@@ -144,7 +144,7 @@ func TestWrongMailParsing(t *testing.T) {
 	}
 
 	if err := c.Mail("from@from"); err != nil {
-		t.Errorf("Mail:", err)
+		t.Errorf("Mail: %v", err)
 	}
 
 	for _, addr := range addrs {

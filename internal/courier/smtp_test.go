@@ -86,19 +86,19 @@ func TestSMTPErrors(t *testing.T) {
 
 	responses := []map[string]string{
 		// First test: hang response, should fail due to timeout.
-		map[string]string{
+		{
 			"_welcome": "220 no newline",
 		},
 
 		// MAIL FROM not allowed.
-		map[string]string{
+		{
 			"_welcome":          "220 mail from not allowed\n",
 			"EHLO localhost":    "250 ehlo ok\n",
 			"MAIL FROM:<me@me>": "501 mail error\n",
 		},
 
 		// RCPT TO not allowed.
-		map[string]string{
+		{
 			"_welcome":          "220 rcpt to not allowed\n",
 			"EHLO localhost":    "250 ehlo ok\n",
 			"MAIL FROM:<me@me>": "250 mail ok\n",
@@ -106,7 +106,7 @@ func TestSMTPErrors(t *testing.T) {
 		},
 
 		// DATA error.
-		map[string]string{
+		{
 			"_welcome":          "220 data error\n",
 			"EHLO localhost":    "250 ehlo ok\n",
 			"MAIL FROM:<me@me>": "250 mail ok\n",
@@ -115,7 +115,7 @@ func TestSMTPErrors(t *testing.T) {
 		},
 
 		// DATA response error.
-		map[string]string{
+		{
 			"_welcome":          "220 data response error\n",
 			"EHLO localhost":    "250 ehlo ok\n",
 			"MAIL FROM:<me@me>": "250 mail ok\n",

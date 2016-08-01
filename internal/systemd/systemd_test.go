@@ -53,7 +53,7 @@ func TestWrongPID(t *testing.T) {
 	}
 
 	setenv(strconv.Itoa(pid), "4")
-	if _, err := Listeners(); err != PIDMismatch {
+	if _, err := Listeners(); err != ErrPIDMismatch {
 		t.Errorf("Did not fail with PID mismatch: %v", err)
 	}
 }

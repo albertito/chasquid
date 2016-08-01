@@ -75,8 +75,8 @@ type DB struct {
 }
 
 var (
-	MissingHeaderErr   = errors.New("missing '#chasquid-userdb-v1' header")
-	InvalidUsernameErr = errors.New("username contains invalid characters")
+	ErrMissingHeader   = errors.New("missing '#chasquid-userdb-v1' header")
+	ErrInvalidUsername = errors.New("username contains invalid characters")
 )
 
 func New(fname string) *DB {
@@ -114,7 +114,7 @@ func Load(fname string) (*DB, []error, error) {
 	scanner := bufio.NewScanner(f)
 	scanner.Scan()
 	if scanner.Text() != "#chasquid-userdb-v1" {
-		return nil, nil, MissingHeaderErr
+		return nil, nil, ErrMissingHeader
 	}
 
 	var warnings []error
@@ -194,7 +194,7 @@ func (db *DB) Write() error {
 	// TODO: Sort the usernames, just to be friendlier.
 	for _, user := range db.users {
 		if strings.ContainsAny(user.name, illegalUsernameChars) {
-			return InvalidUsernameErr
+			return ErrInvalidUsername
 		}
 		fmt.Fprintf(buf, "%s %s %s\n",
 			user.name, user.scheme.String(),
@@ -247,7 +247,7 @@ const illegalUsernameChars = "\t\n\v\f\r \xa0\x85"
 // Add a user to the database. If the user is already present, override it.
 func (db *DB) AddUser(name, plainPassword string) error {
 	if !ValidUsername(name) {
-		return InvalidUsernameErr
+		return ErrInvalidUsername
 	}
 
 	s := scryptScheme{

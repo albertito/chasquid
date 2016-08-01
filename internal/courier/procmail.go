@@ -25,7 +25,7 @@ var (
 )
 
 var (
-	timeoutError = fmt.Errorf("Operation timed out")
+	errTimeout = fmt.Errorf("Operation timed out")
 )
 
 // Procmail delivers local mail via procmail.
@@ -79,7 +79,7 @@ func (p *Procmail) Deliver(from string, to string, data []byte) error {
 	timedOut := !timer.Stop()
 
 	if timedOut {
-		return tr.Error(timeoutError)
+		return tr.Error(errTimeout)
 	}
 	if err != nil {
 		return tr.Errorf("Procmail failed: %v - %q", err, output.String())

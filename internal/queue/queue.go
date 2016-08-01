@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	queueFullError = fmt.Errorf("Queue size too big, try again later")
+	errQueueFull = fmt.Errorf("Queue size too big, try again later")
 )
 
 // Channel used to get random IDs for items in the queue.
@@ -90,7 +90,7 @@ func (q *Queue) Len() int {
 // Put an envelope in the queue.
 func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
 	if q.Len() >= maxQueueSize {
-		return "", queueFullError
+		return "", errQueueFull
 	}
 
 	item := &Item{
