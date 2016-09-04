@@ -1,0 +1,23 @@
+
+This directory holds end to end tests, written usually in a combination of
+shell and some Python.
+
+They're not expected to be portable, as that gets impractical very quickly.
+They also have some dependencies, listed below.
+
+
+=== Dependencies
+
+The tests depend on the following things being installed on the system (listed
+as Debian package, for consistency):
+
+ - netcat (nc)
+ - msmtp
+ - util-linux (for /usr/bin/setsid)
+
+For t-exim (Exim interaction tests):
+ - gettext-base (for /usr/bin/envsubst)
+ - The exim binary available somewhere, but it doesn't have to be installed.
+   There's a script "get-exim4-debian.sh" to get it from the archives.
+
+
