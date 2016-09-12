@@ -24,16 +24,18 @@ import (
 
 // Flags.
 var (
-	externalServerAddr = flag.String("external_server_addr", "",
-		"address of the external server to test (defaults to use internal)")
+	externalSMTPAddr = flag.String("external_smtp_addr", "",
+		"SMTP server address to test (defaults to use internal)")
+	externalSubmissionAddr = flag.String("external_submission_addr", "",
+		"submission server address to test (defaults to use internal)")
 )
 
 var (
-	// Server address.
-	// We default to an internal one, but may get overriden via
-	// --external_server_addr.
+	// Server addresses.
+	// We default to internal ones, but may get overriden via flags.
 	// TODO: Don't hard-code the default.
-	srvAddr = "127.0.0.1:13453"
+	smtpAddr       = "127.0.0.1:13444"
+	submissionAddr = "127.0.0.1:13999"
 
 	// TLS configuration to use in the clients.
 	// Will contain the generated server certificate as root CA.
@@ -44,8 +46,14 @@ var (
 // === Tests ===
 //
 
-func mustDial(tb testing.TB, useTLS bool) *smtp.Client {
-	c, err := smtp.Dial(srvAddr)
+func mustDial(tb testing.TB, mode SocketMode, useTLS bool) *smtp.Client {
+	addr := ""
+	if mode == ModeSMTP {
+		addr = smtpAddr
+	} else {
+		addr = submissionAddr
+	}
+	c, err := smtp.Dial(addr)
 	if err != nil {
 		tb.Fatalf("smtp.Dial: %v", err)
 	}
@@ -73,18 +81,23 @@ func sendEmail(tb testing.TB, c *smtp.Client) {
 
 func sendEmailWithAuth(tb testing.TB, c *smtp.Client, auth smtp.Auth) {
 	var err error
+	from := "from@from"
 
 	if auth != nil {
 		if err = c.Auth(auth); err != nil {
 			tb.Errorf("Auth: %v", err)
 		}
+
+		// If we authenticated, we must use the user as from, as the server
+		// checks otherwise.
+		from = "testuser@localhost"
 	}
 
-	if err = c.Mail("from@from"); err != nil {
+	if err = c.Mail(from); err != nil {
 		tb.Errorf("Mail: %v", err)
 	}
 
-	if err = c.Rcpt("to@to"); err != nil {
+	if err = c.Rcpt("to@localhost"); err != nil {
 		tb.Errorf("Rcpt: %v", err)
 	}
 
@@ -104,19 +117,19 @@ func sendEmailWithAuth(tb testing.TB, c *smtp.Client, auth smtp.Auth) {
 }
 
 func TestSimple(t *testing.T) {
-	c := mustDial(t, false)
+	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()
 	sendEmail(t, c)
 }
 
 func TestSimpleTLS(t *testing.T) {
-	c := mustDial(t, true)
+	c := mustDial(t, ModeSMTP, true)
 	defer c.Close()
 	sendEmail(t, c)
 }
 
 func TestManyEmails(t *testing.T) {
-	c := mustDial(t, true)
+	c := mustDial(t, ModeSMTP, true)
 	defer c.Close()
 	sendEmail(t, c)
 	sendEmail(t, c)
@@ -124,15 +137,26 @@ func TestManyEmails(t *testing.T) {
 }
 
 func TestAuth(t *testing.T) {
-	c := mustDial(t, true)
+	c := mustDial(t, ModeSubmission, true)
 	defer c.Close()
 
 	auth := smtp.PlainAuth("", "testuser@localhost", "testpasswd", "127.0.0.1")
 	sendEmailWithAuth(t, c, auth)
 }
 
+func TestAuthOnSMTP(t *testing.T) {
+	c := mustDial(t, ModeSMTP, true)
+	defer c.Close()
+
+	auth := smtp.PlainAuth("", "testuser@localhost", "testpasswd", "127.0.0.1")
+
+	// At least for now, we allow AUTH over the SMTP port to avoid unnecessary
+	// complexity, so we expect it to work.
+	sendEmailWithAuth(t, c, auth)
+}
+
 func TestWrongMailParsing(t *testing.T) {
-	c := mustDial(t, false)
+	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()
 
 	addrs := []string{"from", "a b c", "a @ b", "<x>", "<x y>", "><"}
@@ -155,7 +179,7 @@ func TestWrongMailParsing(t *testing.T) {
 }
 
 func TestNullMailFrom(t *testing.T) {
-	c := mustDial(t, false)
+	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()
 
 	addrs := []string{"", "<>", "  <>", " <  > "}
@@ -167,11 +191,33 @@ func TestNullMailFrom(t *testing.T) {
 }
 
 func TestRcptBeforeMail(t *testing.T) {
-	c := mustDial(t, false)
+	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()
 
 	if err := c.Rcpt("to@to"); err == nil {
 		t.Errorf("Rcpt not failed as expected")
+	}
+}
+
+func TestLocalHasAuthenticated(t *testing.T) {
+	c := mustDial(t, ModeSubmission, false)
+	defer c.Close()
+
+	if err := c.Mail("from@localhost"); err == nil {
+		t.Errorf("Accepted non-authenticated local mail")
+	}
+}
+
+func TestRelayForbidden(t *testing.T) {
+	c := mustDial(t, ModeSMTP, false)
+	defer c.Close()
+
+	if err := c.Mail("from@somewhere"); err != nil {
+		t.Errorf("Mail: %v", err)
+	}
+
+	if err := c.Rcpt("to@somewhere"); err == nil {
+		t.Errorf("Accepted relay email")
 	}
 }
 
@@ -186,7 +232,7 @@ func simpleCmd(t *testing.T, c *smtp.Client, cmd string, expected int) {
 }
 
 func TestSimpleCommands(t *testing.T) {
-	c := mustDial(t, false)
+	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()
 	simpleCmd(t, c, "HELP", 214)
 	simpleCmd(t, c, "NOOP", 250)
@@ -195,7 +241,7 @@ func TestSimpleCommands(t *testing.T) {
 }
 
 func TestReset(t *testing.T) {
-	c := mustDial(t, false)
+	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()
 
 	if err := c.Mail("from@from"); err != nil {
@@ -212,7 +258,7 @@ func TestReset(t *testing.T) {
 }
 
 func TestRepeatedStartTLS(t *testing.T) {
-	c, err := smtp.Dial(srvAddr)
+	c, err := smtp.Dial(smtpAddr)
 	if err != nil {
 		t.Fatalf("smtp.Dial: %v", err)
 	}
@@ -231,7 +277,7 @@ func TestRepeatedStartTLS(t *testing.T) {
 //
 
 func BenchmarkManyEmails(b *testing.B) {
-	c := mustDial(b, false)
+	c := mustDial(b, ModeSMTP, false)
 	defer c.Close()
 
 	b.ResetTimer()
@@ -245,7 +291,7 @@ func BenchmarkManyEmails(b *testing.B) {
 
 func BenchmarkManyEmailsParallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
-		c := mustDial(b, false)
+		c := mustDial(b, ModeSMTP, false)
 		defer c.Close()
 
 		for pb.Next() {
@@ -355,8 +401,9 @@ func realMain(m *testing.M) int {
 	flag.Parse()
 	defer glog.Flush()
 
-	if *externalServerAddr != "" {
-		srvAddr = *externalServerAddr
+	if *externalSMTPAddr != "" {
+		smtpAddr = *externalSMTPAddr
+		submissionAddr = *externalSubmissionAddr
 		tlsConfig = &tls.Config{
 			InsecureSkipVerify: true,
 		}
@@ -379,16 +426,19 @@ func realMain(m *testing.M) int {
 		s.Hostname = "localhost"
 		s.MaxDataSize = 50 * 1024 * 1025
 		s.AddCerts(tmpDir+"/cert.pem", tmpDir+"/key.pem")
-		s.AddAddr(srvAddr, ModeSMTP)
+		s.AddAddr(smtpAddr, ModeSMTP)
+		s.AddAddr(submissionAddr, ModeSubmission)
 
 		udb := userdb.New("/dev/null")
 		udb.AddUser("testuser", "testpasswd")
+		s.AddDomain("localhost")
 		s.AddUserDB("localhost", udb)
 
 		go s.ListenAndServe()
 	}
 
-	waitForServer(srvAddr)
+	waitForServer(smtpAddr)
+	waitForServer(submissionAddr)
 	return m.Run()
 }
 

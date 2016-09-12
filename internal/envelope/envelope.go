@@ -9,7 +9,7 @@ import (
 )
 
 // Split an user@domain address into user and domain.
-func split(addr string) (string, string) {
+func Split(addr string) (string, string) {
 	ps := strings.SplitN(addr, "@", 2)
 	if len(ps) != 2 {
 		return addr, ""
@@ -19,12 +19,12 @@ func split(addr string) (string, string) {
 }
 
 func UserOf(addr string) string {
-	user, _ := split(addr)
+	user, _ := Split(addr)
 	return user
 }
 
 func DomainOf(addr string) string {
-	_, domain := split(addr)
+	_, domain := Split(addr)
 	return domain
 }
 

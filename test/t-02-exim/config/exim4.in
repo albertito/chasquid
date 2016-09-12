@@ -31,6 +31,13 @@ acl_check_data:
   accept
 
 
+# Rewrite envelope-from to server@srv-exim.
+# This is so when we redirect, we don't use user@srv-chasquid in the
+# envelope-from (we're not authorized to send mail on behalf of
+# @srv-chasquid).
+begin rewrite
+user@srv-chasquid  server@srv-exim F
+
 # Forward all incoming email to chasquid (running on :1025 in this test).
 begin routers
 

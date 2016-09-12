@@ -22,6 +22,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/auth"
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
+	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/systemd"
@@ -320,6 +321,7 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 			mode:           mode,
 			tlsConfig:      s.tlsConfig,
 			userDBs:        s.userDBs,
+			localDomains:   s.localDomains,
 			deadline:       time.Now().Add(s.connTimeout),
 			commandTimeout: s.commandTimeout,
 			queue:          s.queue,
@@ -356,8 +358,9 @@ type Conn struct {
 	// Are we using TLS?
 	onTLS bool
 
-	// User databases - taken from the server at creation time.
-	userDBs map[string]*userdb.DB
+	// User databases and local domains, taken from the server at creation time.
+	userDBs      map[string]*userdb.DB
+	localDomains *set.String
 
 	// Have we successfully completed AUTH?
 	completedAuth bool
@@ -560,6 +563,14 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 	// but that's not according to the RFC. We reset the envelope instead.
 	c.resetEnvelope()
 
+	// If the source is local, check that it completed auth for that user.
+	if e.Address != "<>" && envelope.DomainIn(e.Address, c.localDomains) {
+		user, domain := envelope.Split(e.Address)
+		if user != c.authUser || domain != c.authDomain {
+			return 503, "user not authorized"
+		}
+	}
+
 	c.mailFrom = e.Address
 	return 250, "You feel like you are being watched"
 }
@@ -570,6 +581,11 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 	sp := strings.SplitN(strings.ToLower(params), ":", 2)
 	if len(sp) != 2 || sp[0] != "to" {
 		return 500, "unknown command"
+	}
+
+	// RFC says 100 is the minimum limit for this, but it seems excessive.
+	if len(c.rcptTo) > 100 {
+		return 503, "too many recipients"
 	}
 
 	// TODO: Write our own parser (we have different needs, mail.ParseAddress
@@ -585,15 +601,10 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 		return 503, "sender not yet given"
 	}
 
-	// RFC says 100 is the minimum limit for this, but it seems excessive.
-	if len(c.rcptTo) > 100 {
-		return
+	remoteDst := !envelope.DomainIn(e.Address, c.localDomains)
+	if remoteDst && !c.completedAuth {
+		return 503, "relay not allowed"
 	}
-
-	// TODO: do we allow receivers without a domain?
-	// TODO: check the case:
-	//  - local recipient, always ok
-	//  - external recipient, only ok if mailFrom is local (needs auth)
 
 	c.rcptTo = append(c.rcptTo, e.Address)
 	return 250, "You have an eerie feeling..."

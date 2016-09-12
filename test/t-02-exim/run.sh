@@ -37,6 +37,7 @@ generate_certs_for srv-chasquid
 # Launch chasquid at port 1025 (in config).
 # Use outgoing port 2025 which is where exim will be at.
 # Bypass MX lookup, so it can find srv-exim (via our host alias).
+mkdir -p .logs
 chasquid -v=2 --log_dir=.logs --config_dir=config \
 	--testing__outgoing_smtp_port=2025 \
 	--testing__bypass_mx_lookup &

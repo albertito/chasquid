@@ -25,10 +25,15 @@ for h, val in expected.items():
 
 if expected.get_payload() != msg.get_payload():
 	diff = True
-	exp = expected.get_payload().splitlines()
-	got = msg.get_payload().splitlines()
-	print("Payload differs:")
-	for l in difflib.ndiff(exp, got):
-		print(l)
+
+	if expected.is_multipart() != msg.is_multipart():
+		print("Multipart differs, expected %s, got %s" % (
+			expected.is_multipart(), msg.is_multipart()))
+	elif not msg.is_multipart():
+		exp = expected.get_payload().splitlines()
+		got = msg.get_payload().splitlines()
+		print("Payload differs:")
+		for l in difflib.ndiff(exp, got):
+			print(l)
 
 sys.exit(0 if not diff else 1)
