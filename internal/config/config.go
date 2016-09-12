@@ -43,8 +43,11 @@ func Load(path string) (*Config, error) {
 		c.MaxDataSizeMb = 50
 	}
 
-	if len(c.Address) == 0 {
-		c.Address = append(c.Address, "systemd")
+	if len(c.SmtpAddress) == 0 {
+		c.SmtpAddress = append(c.SmtpAddress, "systemd")
+	}
+	if len(c.SubmissionAddress) == 0 {
+		c.SubmissionAddress = append(c.SubmissionAddress, "systemd")
 	}
 
 	if c.MailDeliveryAgentBin == "" {
@@ -63,7 +66,8 @@ func logConfig(c *Config) {
 	glog.Infof("Configuration:")
 	glog.Infof("  Hostname: %q", c.Hostname)
 	glog.Infof("  Max data size (MB): %d", c.MaxDataSizeMb)
-	glog.Infof("  Addresses: %v", c.Address)
+	glog.Infof("  SMTP Addresses: %v", c.SmtpAddress)
+	glog.Infof("  Submission Addresses: %v", c.SubmissionAddress)
 	glog.Infof("  Monitoring address: %s", c.MonitoringAddress)
 	glog.Infof("  MDA: %s %v", c.MailDeliveryAgentBin, c.MailDeliveryAgentArgs)
 }

@@ -5,12 +5,14 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 )
 
-func setenv(pid, fds string) {
+func setenv(pid, fds string, names ...string) {
 	os.Setenv("LISTEN_PID", pid)
 	os.Setenv("LISTEN_FDS", fds)
+	os.Setenv("LISTEN_FDNAMES", strings.Join(names, ":"))
 }
 
 func TestEmptyEnvironment(t *testing.T) {
@@ -30,16 +32,26 @@ func TestEmptyEnvironment(t *testing.T) {
 }
 
 func TestBadEnvironment(t *testing.T) {
+	// Create a listener so we have something to reference.
+	l := newListener(t)
+	firstFD = listenerFd(t, l)
+
 	ourPID := strconv.Itoa(os.Getpid())
-	cases := []struct{ pid, fds string }{
-		{"a", "4"},
-		{ourPID, "a"},
+	cases := []struct {
+		pid, fds string
+		names    []string
+	}{
+		{"a", "1", []string{"name"}},              // Invalid PID.
+		{ourPID, "a", []string{"name"}},           // Invalid number of fds.
+		{"1", "1", []string{"name"}},              // PID != ourselves.
+		{ourPID, "1", []string{"name1", "name2"}}, // Too many names.
+		{ourPID, "1", []string{}},                 // Not enough names.
 	}
 	for _, c := range cases {
-		setenv(c.pid, c.fds)
+		setenv(c.pid, c.fds, c.names...)
 
 		if ls, err := Listeners(); err == nil {
-			t.Logf("Case: LISTEN_PID=%q  LISTEN_FDS=%q", c.pid, c.fds)
+			t.Logf("Case: LISTEN_PID=%q  LISTEN_FDS=%q LISTEN_FDNAMES=%q", c.pid, c.fds, c.names)
 			t.Errorf("Unexpected result: %v // %v", ls, err)
 		}
 	}
@@ -98,12 +110,14 @@ func TestOneSocket(t *testing.T) {
 	l := newListener(t)
 	firstFD = listenerFd(t, l)
 
-	setenv(strconv.Itoa(os.Getpid()), "1")
+	setenv(strconv.Itoa(os.Getpid()), "1", "name")
 
-	ls, err := Listeners()
-	if err != nil || len(ls) != 1 {
-		t.Fatalf("Got an invalid result: %v // %v", ls, err)
+	lsMap, err := Listeners()
+	if err != nil || len(lsMap) != 1 {
+		t.Fatalf("Got an invalid result: %v // %v", lsMap, err)
 	}
+
+	ls := lsMap["name"]
 
 	if !sameAddr(ls[0].Addr(), l.Addr()) {
 		t.Errorf("Listener 0 address mismatch, expected %#v, got %#v",
@@ -134,11 +148,16 @@ func TestManySockets(t *testing.T) {
 
 	firstFD = f0
 
-	setenv(strconv.Itoa(os.Getpid()), "2")
+	setenv(strconv.Itoa(os.Getpid()), "2", "name1", "name2")
 
-	ls, err := Listeners()
-	if err != nil || len(ls) != 2 {
-		t.Fatalf("Got an invalid result: %v // %v", ls, err)
+	lsMap, err := Listeners()
+	if err != nil || len(lsMap) != 2 {
+		t.Fatalf("Got an invalid result: %v // %v", lsMap, err)
+	}
+
+	ls := []net.Listener{
+		lsMap["name1"][0],
+		lsMap["name2"][0],
 	}
 
 	if !sameAddr(ls[0].Addr(), l0.Addr()) {
@@ -151,7 +170,9 @@ func TestManySockets(t *testing.T) {
 			l1.Addr(), ls[1].Addr())
 	}
 
-	if os.Getenv("LISTEN_PID") != "" || os.Getenv("LISTEN_FDS") != "" {
+	if os.Getenv("LISTEN_PID") != "" ||
+		os.Getenv("LISTEN_FDS") != "" ||
+		os.Getenv("LISTEN_FDNAMES") != "" {
 		t.Errorf("Failed to reset the environment")
 	}
 }

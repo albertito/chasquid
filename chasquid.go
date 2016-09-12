@@ -94,30 +94,37 @@ func main() {
 	// as a remote domain (for loops, alias resolutions, etc.).
 	s.AddDomain("localhost")
 
+	// Load the addresses and listeners.
+	systemdLs, err := systemd.Listeners()
+	if err != nil {
+		glog.Fatalf("Error getting systemd listeners: %v", err)
+	}
+
+	loadAddresses(s, conf.SmtpAddress, systemdLs["smtp"], ModeSMTP)
+	loadAddresses(s, conf.SubmissionAddress, systemdLs["submission"], ModeSubmission)
+
+	s.ListenAndServe()
+}
+
+func loadAddresses(srv *Server, addrs []string, ls []net.Listener, mode SocketMode) {
 	// Load addresses.
 	acount := 0
-	for _, addr := range conf.Address {
+	for _, addr := range addrs {
 		// The "systemd" address indicates we get listeners via systemd.
 		if addr == "systemd" {
-			ls, err := systemd.Listeners()
-			if err != nil {
-				glog.Fatalf("Error getting listeners via systemd: %v", err)
-			}
-			s.AddListeners(ls)
+			srv.AddListeners(ls, mode)
 			acount += len(ls)
 		} else {
-			s.AddAddr(addr)
+			srv.AddAddr(addr, mode)
 			acount++
 		}
 	}
 
 	if acount == 0 {
-		glog.Errorf("No addresses/listeners configured")
-		glog.Errorf("If using systemd, check that you started chasquid.socket")
+		glog.Errorf("No %v addresses/listeners", mode)
+		glog.Errorf("If using systemd, check that you named the sockets")
 		glog.Fatalf("Exiting")
 	}
-
-	s.ListenAndServe()
 }
 
 // Helper to load a single domain configuration into the server.
@@ -160,6 +167,15 @@ func setupSignalHandling() {
 	}()
 }
 
+// Mode for a socket (listening or connection).
+// We keep them distinct, as policies can differ between them.
+type SocketMode string
+
+const (
+	ModeSMTP       SocketMode = "SMTP"
+	ModeSubmission SocketMode = "Submission"
+)
+
 type Server struct {
 	// Main hostname, used for display only.
 	Hostname string
@@ -171,10 +187,10 @@ type Server struct {
 	certs, keys []string
 
 	// Addresses.
-	addrs []string
+	addrs map[SocketMode][]string
 
 	// Listeners (that came via systemd).
-	listeners []net.Listener
+	listeners map[SocketMode][]net.Listener
 
 	// TLS config.
 	tlsConfig *tls.Config
@@ -197,6 +213,8 @@ type Server struct {
 
 func NewServer() *Server {
 	return &Server{
+		addrs:          map[SocketMode][]string{},
+		listeners:      map[SocketMode][]net.Listener{},
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
 		localDomains:   &set.String{},
@@ -209,12 +227,12 @@ func (s *Server) AddCerts(cert, key string) {
 	s.keys = append(s.keys, key)
 }
 
-func (s *Server) AddAddr(a string) {
-	s.addrs = append(s.addrs, a)
+func (s *Server) AddAddr(a string, m SocketMode) {
+	s.addrs[m] = append(s.addrs[m], a)
 }
 
-func (s *Server) AddListeners(ls []net.Listener) {
-	s.listeners = append(s.listeners, ls...)
+func (s *Server) AddListeners(ls []net.Listener, m SocketMode) {
+	s.listeners[m] = append(s.listeners[m], ls...)
 }
 
 func (s *Server) AddDomain(d string) {
@@ -256,26 +274,28 @@ func (s *Server) ListenAndServe() {
 	s.queue = queue.New(
 		&courier.Procmail{}, &courier.SMTP{}, s.localDomains)
 
-	for _, addr := range s.addrs {
-		// Listen.
-		l, err := net.Listen("tcp", addr)
-		if err != nil {
-			glog.Fatalf("Error listening: %v", err)
+	for m, addrs := range s.addrs {
+		for _, addr := range addrs {
+			// Listen.
+			l, err := net.Listen("tcp", addr)
+			if err != nil {
+				glog.Fatalf("Error listening: %v", err)
+			}
+
+			glog.Infof("Server listening on %s (%v)", addr, m)
+
+			// Serve.
+			go s.serve(l, m)
 		}
-		defer l.Close()
-
-		glog.Infof("Server listening on %s", addr)
-
-		// Serve.
-		go s.serve(l)
 	}
 
-	for _, l := range s.listeners {
-		defer l.Close()
-		glog.Infof("Server listening on %s (via systemd)", l.Addr())
+	for m, ls := range s.listeners {
+		for _, l := range ls {
+			glog.Infof("Server listening on %s (%v, via systemd)", l.Addr(), m)
 
-		// Serve.
-		go s.serve(l)
+			// Serve.
+			go s.serve(l, m)
+		}
 	}
 
 	// Never return. If the serve goroutines have problems, they will abort
@@ -285,7 +305,7 @@ func (s *Server) ListenAndServe() {
 	}
 }
 
-func (s *Server) serve(l net.Listener) {
+func (s *Server) serve(l net.Listener, mode SocketMode) {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -297,6 +317,7 @@ func (s *Server) serve(l net.Listener) {
 			maxDataSize:    s.MaxDataSize,
 			netconn:        conn,
 			tc:             textproto.NewConn(conn),
+			mode:           mode,
 			tlsConfig:      s.tlsConfig,
 			userDBs:        s.userDBs,
 			deadline:       time.Now().Add(s.connTimeout),
@@ -305,6 +326,8 @@ func (s *Server) serve(l net.Listener) {
 		}
 		go sc.Handle()
 	}
+
+	l.Close()
 }
 
 type Conn struct {
@@ -317,6 +340,7 @@ type Conn struct {
 	// Connection information.
 	netconn net.Conn
 	tc      *textproto.Conn
+	mode    SocketMode
 
 	// System configuration.
 	config *config.Config

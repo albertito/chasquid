@@ -379,7 +379,7 @@ func realMain(m *testing.M) int {
 		s.Hostname = "localhost"
 		s.MaxDataSize = 50 * 1024 * 1025
 		s.AddCerts(tmpDir+"/cert.pem", tmpDir+"/key.pem")
-		s.AddAddr(srvAddr)
+		s.AddAddr(srvAddr, ModeSMTP)
 
 		udb := userdb.New("/dev/null")
 		udb.AddUser("testuser", "testpasswd")

@@ -11,26 +11,32 @@ message Config {
 	// Default: 50.
 	int64 max_data_size_mb = 2;
 
-	// Addresses to listen on.
+	// Addresses to listen on for SMTP (usually port 25).
 	// Default: "systemd", which means systemd passes sockets to us.
-	repeated string address = 3;
+	// systemd sockets must be named with "FileDescriptorName=smtp".
+	repeated string smtp_address = 3;
+
+	// Addresses to listen on for submission (usually port 587).
+	// Default: "systemd", which means systemd passes sockets to us.
+	// systemd sockets must be named with "FileDescriptorName=submission".
+	repeated string submission_address = 4;
 
 	// Address for the monitoring http server.
 	// Default: no monitoring http server.
-	string monitoring_address = 4;
+	string monitoring_address = 5;
 
 	// Mail delivery agent (MDA, also known as LDA) to use.
 	// This should point to the binary to use to deliver email to local users.
 	// The content of the email will be passed via stdin.
 	// If it exits unsuccessfully, we assume the mail was not delivered.
 	// Default: "procmail".
-	string mail_delivery_agent_bin = 5;
+	string mail_delivery_agent_bin = 6;
 
 	// Command line arguments for the mail delivery agent. One per argument.
 	// Some replacements will be done:
 	//  - "%user%"   -> local user (anything before the @)
 	//  - "%domain%" -> domain (anything after the @)
 	// Default: "-d", "%user"  (adequate for procmail)
-	repeated string mail_delivery_agent_args = 6;
+	repeated string mail_delivery_agent_args = 7;
 }
 

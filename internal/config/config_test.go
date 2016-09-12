@@ -40,8 +40,12 @@ func TestEmptyConfig(t *testing.T) {
 		t.Errorf("max data size != 50: %d", c.MaxDataSizeMb)
 	}
 
-	if len(c.Address) != 1 || c.Address[0] != "systemd" {
-		t.Errorf("unexpected address default: %v", c.Address)
+	if len(c.SmtpAddress) != 1 || c.SmtpAddress[0] != "systemd" {
+		t.Errorf("unexpected address default: %v", c.SmtpAddress)
+	}
+
+	if len(c.SubmissionAddress) != 1 || c.SubmissionAddress[0] != "systemd" {
+		t.Errorf("unexpected address default: %v", c.SubmissionAddress)
 	}
 
 	if c.MonitoringAddress != "" {
@@ -53,8 +57,8 @@ func TestEmptyConfig(t *testing.T) {
 func TestFullConfig(t *testing.T) {
 	confStr := `
 		hostname: "joust"
-		address: ":1234"
-		address: ":5678"
+		smtp_address: ":1234"
+		smtp_address: ":5678"
 		monitoring_address: ":1111"
 		max_data_size_mb: 26
 	`
@@ -75,9 +79,9 @@ func TestFullConfig(t *testing.T) {
 		t.Errorf("max data size != 26: %d", c.MaxDataSizeMb)
 	}
 
-	if len(c.Address) != 2 ||
-		c.Address[0] != ":1234" || c.Address[1] != ":5678" {
-		t.Errorf("different address: %v", c.Address)
+	if len(c.SmtpAddress) != 2 ||
+		c.SmtpAddress[0] != ":1234" || c.SmtpAddress[1] != ":5678" {
+		t.Errorf("different address: %v", c.SmtpAddress)
 	}
 
 	if c.MonitoringAddress != ":1111" {
