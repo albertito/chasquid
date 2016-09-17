@@ -1,0 +1,8 @@
+
+syntax = "proto3";
+
+package testpb;
+
+message M {
+	string content = 1;
+}
