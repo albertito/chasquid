@@ -2,6 +2,7 @@ package queue
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -57,7 +58,9 @@ func newTestCourier() *TestCourier {
 func TestBasic(t *testing.T) {
 	localC := newTestCourier()
 	remoteC := newTestCourier()
-	q := New(localC, remoteC, set.NewString("loco"))
+	q := New("/tmp/queue_test", set.NewString("loco"))
+	q.localC = localC
+	q.remoteC = remoteC
 
 	localC.wg.Add(2)
 	remoteC.wg.Add(1)
@@ -96,35 +99,39 @@ func TestBasic(t *testing.T) {
 }
 
 func TestFullQueue(t *testing.T) {
-	localC := newChanCourier()
-	remoteC := newChanCourier()
-	q := New(localC, remoteC, set.NewString())
+	q := New("/tmp/queue_test", set.NewString())
 
 	// Force-insert maxQueueSize items in the queue.
 	oneID := ""
 	for i := 0; i < maxQueueSize; i++ {
 		item := &Item{
-			ID:      <-newID,
-			From:    "from",
-			To:      []string{"to"},
-			Data:    []byte("data"),
-			Created: time.Now(),
-			Results: map[string]error{},
+			Message: Message{
+				ID:   <-newID,
+				From: fmt.Sprintf("from-%d", i),
+				Rcpt: []*Recipient{{"to", Recipient_EMAIL, Recipient_PENDING}},
+				Data: []byte("data"),
+			},
+			CreatedAt: time.Now(),
 		}
 		q.q[item.ID] = item
 		oneID = item.ID
 	}
 
 	// This one should fail due to the queue being too big.
-	id, err := q.Put("from", []string{"to"}, []byte("data"))
+	id, err := q.Put("from", []string{"to"}, []byte("data-qf"))
 	if err != errQueueFull {
 		t.Errorf("Not failed as expected: %v - %v", id, err)
 	}
 
 	// Remove one, and try again: it should succeed.
+	// Write it first so we don't get complaints about the file not existing
+	// (as we did not all the items properly).
+	q.q[oneID].WriteTo(q.path)
 	q.Remove(oneID)
-	_, err = q.Put("from", []string{"to"}, []byte("data"))
+
+	id, err = q.Put("from", []string{"to"}, []byte("data"))
 	if err != nil {
 		t.Errorf("Put: %v", err)
 	}
+	q.Remove(id)
 }

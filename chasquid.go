@@ -103,6 +103,8 @@ func main() {
 	// as a remote domain (for loops, alias resolutions, etc.).
 	s.AddDomain("localhost")
 
+	s.LoadQueue(conf.DataDir + "/queue")
+
 	// Load the addresses and listeners.
 	systemdLs, err := systemd.Listeners()
 	if err != nil {
@@ -249,6 +251,15 @@ func (s *Server) AddUserDB(domain string, db *userdb.DB) {
 	s.userDBs[domain] = db
 }
 
+func (s *Server) LoadQueue(path string) {
+	q := queue.New(path, s.localDomains)
+	err := q.Load()
+	if err != nil {
+		glog.Fatalf("Error loading queue: %v", err)
+	}
+	s.queue = q
+}
+
 func (s *Server) getTLSConfig() (*tls.Config, error) {
 	var err error
 	conf := &tls.Config{}
@@ -274,11 +285,6 @@ func (s *Server) ListenAndServe() {
 	if err != nil {
 		glog.Fatalf("Error loading TLS config: %v", err)
 	}
-
-	// TODO: Create the queue when creating the server?
-	// Or even before, and just give it to the server?
-	s.queue = queue.New(
-		&courier.Procmail{}, &courier.SMTP{}, s.localDomains)
 
 	for m, addrs := range s.addrs {
 		for _, addr := range addrs {

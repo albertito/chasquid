@@ -1,0 +1,38 @@
+
+syntax = "proto3";
+
+package queue;
+
+import "github.com/golang/protobuf/ptypes/timestamp/timestamp.proto";
+
+
+message Message {
+	// Message ID. Uniquely identifies this message, it is used for
+	// auditing and troubleshooting.
+	string ID = 1;
+
+	// The envelope for this message.
+	string from = 2;
+	repeated Recipient rcpt = 3;
+	bytes data = 4;
+
+	// Creation timestamp.
+	google.protobuf.Timestamp created_at_ts = 5;
+}
+
+message Recipient {
+	string address = 1;
+
+	enum Type {
+		EMAIL = 0;
+	}
+	Type type = 2;
+
+	enum Status {
+		PENDING = 0;
+		SENT = 1;
+		FAILED = 2;
+	}
+	Status status = 3;
+}
+

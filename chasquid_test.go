@@ -428,6 +428,7 @@ func realMain(m *testing.M) int {
 		s.AddCerts(tmpDir+"/cert.pem", tmpDir+"/key.pem")
 		s.AddAddr(smtpAddr, ModeSMTP)
 		s.AddAddr(submissionAddr, ModeSubmission)
+		s.LoadQueue(tmpDir + "/queue")
 
 		udb := userdb.New("/dev/null")
 		udb.AddUser("testuser", "testpasswd")
