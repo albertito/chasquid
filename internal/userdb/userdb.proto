@@ -1,0 +1,28 @@
+
+syntax = "proto3";
+
+package userdb;
+
+message ProtoDB {
+	map<string, Password> users = 1;
+}
+
+message Password {
+	oneof scheme {
+		Scrypt scrypt = 2;
+		Plain plain = 3;
+	}
+}
+
+message Scrypt {
+	uint64 logN = 1;
+	int32 r = 2;
+	int32 p = 3;
+	int32 keyLen = 4;
+	bytes salt = 5;
+	bytes encrypted = 6;
+}
+
+message Plain {
+	bytes password = 1;
+}

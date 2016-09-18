@@ -29,23 +29,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, ws, err := userdb.Load(*dbFname)
+	db, err := userdb.Load(*dbFname)
 	if err != nil {
-		fmt.Printf("error loading database: %v\n", err)
-		os.Exit(1)
-	}
-
-	for _, w := range ws {
-		fmt.Printf("warning: %v\n", w)
+		if *adduser != "" && os.IsNotExist(err) {
+			fmt.Printf("creating database\n")
+		} else {
+			fmt.Printf("error loading database: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	if *adduser == "" {
 		fmt.Printf("database loaded\n")
-		if len(ws) == 0 {
-			os.Exit(0)
-		} else {
-			os.Exit(1)
-		}
+		return
 	}
 
 	if *password == "" {

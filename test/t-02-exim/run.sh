@@ -33,6 +33,7 @@ mkdir -p .exim4
 EXIMDIR="$PWD/.exim4" envsubst < config/exim4.in > .exim4/config
 
 generate_certs_for srv-chasquid
+add_user srv-chasquid user secretpassword
 
 # Launch chasquid at port 1025 (in config).
 # Use outgoing port 2025 which is where exim will be at.

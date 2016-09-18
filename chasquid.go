@@ -136,13 +136,10 @@ func loadDomain(s *Server, name, dir string) {
 
 	if _, err := os.Stat(dir + "/users"); err == nil {
 		glog.Infof("    adding users")
-		udb, warnings, err := userdb.Load(dir + "/users")
+		udb, err := userdb.Load(dir + "/users")
 		if err != nil {
 			glog.Errorf("      error: %v", err)
 		} else {
-			for _, w := range warnings {
-				glog.Warningf("     %v", w)
-			}
 			s.AddUserDB(name, udb)
 			// TODO: periodically reload the database.
 		}

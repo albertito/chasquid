@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -32,17 +33,17 @@ func mustCreateDB(t *testing.T, content string) string {
 }
 
 func dbEquals(a, b *DB) bool {
-	if a.users == nil || b.users == nil {
-		return a.users == nil && b.users == nil
+	if a.db == nil || b.db == nil {
+		return a.db == nil && b.db == nil
 	}
 
-	if len(a.users) != len(b.users) {
+	if len(a.db.Users) != len(b.db.Users) {
 		return false
 	}
 
-	for k, av := range a.users {
-		bv, ok := b.users[k]
-		if !ok || av.name != bv.name || av.password != bv.password {
+	for k, av := range a.db.Users {
+		bv, ok := b.db.Users[k]
+		if !ok || !reflect.DeepEqual(av, bv) {
 			return false
 		}
 	}
@@ -51,66 +52,30 @@ func dbEquals(a, b *DB) bool {
 }
 
 var emptyDB = &DB{
-	users: map[string]user{},
+	db: &ProtoDB{Users: map[string]*Password{}},
 }
 
-const (
-	scryptNoSalt = ("#chasquid-userdb-v1\n" +
-		"user1 SCRYPT@n:14,r:8,p:1,l:32, " +
-		"WyZPRd08NPAkWgBuqB5kwK4fEuB6FHu/X1pA1SxnXhc=")
-	scryptInvalidSalt = ("#chasquid-userdb-v1\n" +
-		"user1 SCRYPT@n:99,r:8,p:1,l:16,not-valid$base64!nono== " +
-		"WyZPRd08NPAkWgBuqB5kwK4fEuB6FHu/X1pA1SxnXhc=")
-	scryptMissingR = ("#chasquid-userdb-v1\n" +
-		"user1 SCRYPT@n:14,r:,p:1,l:32,gY3a3PIzehu7xu6KM9PeOQ== " +
-		"WyZPRd08NPAkWgBuqB5kwK4fEuB6FHu/X1pA1SxnXhc=")
-	scryptBadN = ("#chasquid-userdb-v1\n" +
-		"user1 SCRYPT@n:99,r:8,p:1,l:32,gY3a3PIzehu7xu6KM9PeOQ== " +
-		"WyZPRd08NPAkWgBuqB5kwK4fEuB6FHu/X1pA1SxnXhc=")
-	scryptShortKeyLen = ("#chasquid-userdb-v1\n" +
-		"user1 SCRYPT@n:99,r:8,p:1,l:16,gY3a3PIzehu7xu6KM9PeOQ== " +
-		"WyZPRd08NPAkWgBuqB5kwK4fEuB6FHu/X1pA1SxnXhc=")
-)
-
 // Test various cases of loading an empty/broken database.
-func TestLoad(t *testing.T) {
+func TestEmptyLoad(t *testing.T) {
 	cases := []struct {
 		desc     string
 		content  string
 		fatal    bool
 		fatalErr error
-		warns    bool
 	}{
-		{"empty file", "", false, nil, false},
-		{"header \\n", "#chasquid-userdb-v1\n", false, nil, false},
-		{"header \\r\\n", "#chasquid-userdb-v1\r\n", false, nil, false},
-		{"header EOF", "#chasquid-userdb-v1", false, nil, false},
-		{"missing header", "this is not the header",
-			true, ErrMissingHeader, false},
-		{"invalid user", "#chasquid-userdb-v1\nnam\xa0e PLAIN pass\n",
-			false, nil, true},
-		{"too few fields", "#chasquid-userdb-v1\nfield1 field2\n",
-			false, nil, true},
-		{"too many fields", "#chasquid-userdb-v1\nf1 f2 f3 f4\n",
-			false, nil, true},
-		{"unknown scheme", "#chasquid-userdb-v1\nuser SCHEME pass\n",
-			false, nil, true},
-		{"scrypt no salt", scryptNoSalt, false, nil, true},
-		{"scrypt invalid salt", scryptInvalidSalt, false, nil, true},
-		{"scrypt missing R", scryptMissingR, false, nil, true},
-		{"scrypt bad N", scryptBadN, false, nil, true},
-		{"scrypt short key len", scryptShortKeyLen, false, nil, true},
+		{"empty file", "", false, nil},
+		{"invalid ", "users: < invalid >", true, nil},
 	}
 
 	for _, c := range cases {
-		testOneLoad(t, c.desc, c.content, c.fatal, c.fatalErr, c.warns)
+		testOneLoad(t, c.desc, c.content, c.fatal, c.fatalErr)
 	}
 }
 
-func testOneLoad(t *testing.T, desc, content string, fatal bool, fatalErr error, warns bool) {
+func testOneLoad(t *testing.T, desc, content string, fatal bool, fatalErr error) {
 	fname := mustCreateDB(t, content)
 	defer removeIfSuccessful(t, fname)
-	db, warnings, err := Load(fname)
+	db, err := Load(fname)
 	if fatal {
 		if err == nil {
 			t.Errorf("case %q: expected error loading, got nil", desc)
@@ -122,24 +87,13 @@ func testOneLoad(t *testing.T, desc, content string, fatal bool, fatalErr error,
 		t.Fatalf("case %q: error loading database: %v", desc, err)
 	}
 
-	if warns && warnings == nil {
-		t.Errorf("case %q: expected warnings, got nil", desc)
-	} else if !warns {
-		for _, w := range warnings {
-			t.Errorf("case %q: warning loading database: %v", desc, w)
-		}
-	}
-
 	if db != nil && !dbEquals(db, emptyDB) {
-		t.Errorf("case %q: DB not empty: %#v", desc, db)
+		t.Errorf("case %q: DB not empty: %#v", desc, db.db.Users)
 	}
 }
 
 func mustLoad(t *testing.T, fname string) *DB {
-	db, warnings, err := Load(fname)
-	for _, w := range warnings {
-		t.Errorf("warning loading database: %v", w)
-	}
+	db, err := Load(fname)
 	if err != nil {
 		t.Fatalf("error loading database: %v", err)
 	}
@@ -178,8 +132,8 @@ func TestWrite(t *testing.T) {
 		if !db.Exists(name) {
 			t.Errorf("user %q not in database", name)
 		}
-		if _, ok := db.users[name].scheme.(scryptScheme); !ok {
-			t.Errorf("user %q not using scrypt: %#v", name, db.users[name])
+		if db.db.Users[name].GetScheme() == nil {
+			t.Errorf("user %q not using scrypt: %#v", name, db.db.Users[name])
 		}
 	}
 
@@ -210,12 +164,9 @@ func TestNew(t *testing.T) {
 	db1.AddUser("user", "passwd")
 	db1.Write()
 
-	db2, ws, err := Load(fname)
+	db2, err := Load(fname)
 	if err != nil {
 		t.Fatalf("error loading: %v", err)
-	}
-	if len(ws) != 0 {
-		t.Errorf("warnings loading: %v", ws)
 	}
 
 	if !dbEquals(db1, db2) {
@@ -236,12 +187,11 @@ func TestInvalidUsername(t *testing.T) {
 			t.Errorf("AddUser(%q) worked, expected it to fail", name)
 		}
 	}
+}
 
-	// Add an invalid user from behind, and check that Write fails.
-	db.users["in valid"] = user{"in valid", plainScheme{}, "password"}
-	err := db.Write()
-	if err == nil {
-		t.Errorf("Write worked, expected it to fail")
+func plainPassword(p string) *Password {
+	return &Password{
+		Scheme: &Password_Plain{&Plain{[]byte(p)}},
 	}
 }
 
@@ -252,7 +202,7 @@ func TestPlainScheme(t *testing.T) {
 	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
-	db.users["user"] = user{"user", plainScheme{}, "pass word"}
+	db.db.Users["user"] = plainPassword("pass word")
 	err := db.Write()
 	if err != nil {
 		t.Errorf("Write failed: %v", err)
@@ -268,35 +218,43 @@ func TestPlainScheme(t *testing.T) {
 }
 
 func TestReload(t *testing.T) {
-	content := "#chasquid-userdb-v1\nu1 PLAIN pass\n"
+	content := "users:< key: 'u1' value:< plain:< password: 'pass' >>>"
 	fname := mustCreateDB(t, content)
 	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
-	// Add some things to the file, including a broken line.
-	content += "u2 UNKNOWN pass\n"
-	content += "u3 PLAIN pass\n"
-	ioutil.WriteFile(fname, []byte(content), db.finfo.Mode())
+	// Add a valid line to the file.
+	content += "users:< key: 'u2' value:< plain:< password: 'pass' >>>"
+	ioutil.WriteFile(fname, []byte(content), 0660)
 
-	warnings, err := db.Reload()
+	err := db.Reload()
 	if err != nil {
 		t.Errorf("Reload failed: %v", err)
 	}
-	if len(warnings) != 1 {
-		t.Errorf("expected 1 warning, got %v", warnings)
-	}
-	if len(db.users) != 2 {
-		t.Errorf("expected 2 users, got %d", len(db.users))
+	if len(db.db.Users) != 2 {
+		t.Errorf("expected 2 users, got %d", len(db.db.Users))
 	}
 
-	// Cause an error loading, check the database is not changed.
-	db.fname = "/does/not/exist"
-	warnings, err = db.Reload()
+	// And now a broken one.
+	content += "users:< invalid >"
+	ioutil.WriteFile(fname, []byte(content), 0660)
+
+	err = db.Reload()
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
-	if len(db.users) != 2 {
-		t.Errorf("expected 2 users, got %d", len(db.users))
+	if len(db.db.Users) != 2 {
+		t.Errorf("expected 2 users, got %d", len(db.db.Users))
+	}
+
+	// Cause an even bigger error loading, check the database is not changed.
+	db.fname = "/does/not/exist"
+	err = db.Reload()
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+	if len(db.db.Users) != 2 {
+		t.Errorf("expected 2 users, got %d", len(db.db.Users))
 	}
 
 }

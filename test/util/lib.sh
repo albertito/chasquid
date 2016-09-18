@@ -32,6 +32,14 @@ function chasquid() {
 		go run ${TBASE}/../../chasquid.go "$@"
 }
 
+function add_user() {
+	go run ${TBASE}/../../cmd/chasquid-userdb/chasquid-userdb.go \
+		--database "config/domains/${1}/users" \
+		--add_user "${2}" \
+		--password "${3}" \
+		>> .add_user_logs
+}
+
 function run_msmtp() {
 	# msmtp will check that the rc file is only user readable.
 	chmod 600 msmtprc

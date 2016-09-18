@@ -3,25 +3,15 @@
 //
 // Format
 //
-// The user database is a single text file, with one line per user.
-// All contents must be UTF-8.
+// The user database is a file containing a list of users and their passwords,
+// encrypted with some scheme.
+// We use a text-encoded protobuf, the structure can be found in userdb.proto.
 //
-// For extensibility, the first line MUST be:
+// We write text instead of binary to make it easier for administrators to
+// troubleshoot, and since performance is not an issue for our expected usage.
 //
-//   #chasquid-userdb-v1
-//
-// Then, each line is structured as follows:
-//
-//   user SP scheme SP password
-//
-// Where user is the username in question (usually without the domain,
-// although this package is agnostic to it); scheme is the encryption scheme
-// used for the password; and finally the password, encrypted with the
-// referenced scheme and base64-encoded.
-//
-// Lines with parsing errors, including unknown schemes, will be ignored.
 // Users must be UTF-8 and NOT contain whitespace; the library will enforce
-// this as well.
+// this.
 //
 //
 // Schemes
@@ -40,178 +30,87 @@
 //
 package userdb
 
+//go:generate protoc --go_out=. userdb.proto
+
 import (
-	"bufio"
 	"bytes"
 	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"unicode/utf8"
 
 	"golang.org/x/crypto/scrypt"
 
-	"blitiri.com.ar/go/chasquid/internal/safeio"
+	"blitiri.com.ar/go/chasquid/internal/protoio"
 )
-
-type user struct {
-	name     string
-	scheme   scheme
-	password string
-}
 
 type DB struct {
 	fname string
-	finfo os.FileInfo
+	db    *ProtoDB
 
-	// Map of username -> user structure
-	users map[string]user
-
-	// Lock protecting the users map.
+	// Lock protecting db.
 	mu sync.RWMutex
 }
 
 var (
-	ErrMissingHeader   = errors.New("missing '#chasquid-userdb-v1' header")
 	ErrInvalidUsername = errors.New("username contains invalid characters")
 )
 
 func New(fname string) *DB {
 	return &DB{
 		fname: fname,
-		users: map[string]user{},
+		db:    &ProtoDB{Users: map[string]*Password{}},
 	}
 }
 
 // Load the database from the given file.
-// Return the database, a list of warnings (if any), and a fatal error if the
-// database could not be loaded.
-func Load(fname string) (*DB, []error, error) {
-	f, err := os.Open(fname)
-	if err != nil {
-		return nil, nil, err
+// Return the database, and a fatal error if the database could not be
+// loaded.
+func Load(fname string) (*DB, error) {
+	db := New(fname)
+	err := protoio.ReadTextMessage(fname, db.db)
+
+	// Reading may result in an empty protobuf or dictionary; make sure we
+	// return an empty but usable structure.
+	// This simplifies many of our uses, as we can assume the map is not nil.
+	if db.db == nil || db.db.Users == nil {
+		db.db = &ProtoDB{Users: map[string]*Password{}}
 	}
 
-	db := &DB{
-		fname: fname,
-		users: map[string]user{},
-	}
-
-	db.finfo, err = f.Stat()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Special case: an empty file is a valid, empty database.
-	// This simplifies clients.
-	if db.finfo.Size() == 0 {
-		return db, nil, nil
-	}
-
-	scanner := bufio.NewScanner(f)
-	scanner.Scan()
-	if scanner.Text() != "#chasquid-userdb-v1" {
-		return nil, nil, ErrMissingHeader
-	}
-
-	var warnings []error
-
-	// Now the users, one per line. Skip invalid ones.
-	for i := 2; scanner.Scan(); i++ {
-		var name, schemeStr, b64passwd string
-		n, err := fmt.Sscanf(scanner.Text(), "%s %s %s",
-			&name, &schemeStr, &b64passwd)
-		if err != nil || n != 3 {
-			warnings = append(warnings, fmt.Errorf(
-				"line %d: error parsing - %d elements - %v", i, n, err))
-			break
-		}
-
-		if !ValidUsername(name) {
-			warnings = append(warnings, fmt.Errorf(
-				"line %d: invalid username", i))
-			continue
-		}
-
-		password, err := base64.StdEncoding.DecodeString(b64passwd)
-		if err != nil {
-			warnings = append(warnings, fmt.Errorf(
-				"line %d: error decoding password: %v", i, err))
-			continue
-		}
-
-		sc, err := schemeFromString(schemeStr)
-		if err != nil {
-			warnings = append(warnings, fmt.Errorf(
-				"line %d: error in scheme: %v", i, err))
-			continue
-		}
-
-		u := user{
-			name:     name,
-			scheme:   sc,
-			password: string(password),
-		}
-		db.users[name] = u
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, warnings, err
-	}
-
-	return db, warnings, nil
+	return db, err
 }
 
 // Reload the database, refreshing its contents from the current file on disk.
 // If there are errors reading from the file, they are returned and the
-// database is not changed. Warnings are returned regardless.
-func (db *DB) Reload() ([]error, error) {
-	newdb, warnings, err := Load(db.fname)
+// database is not changed.
+func (db *DB) Reload() error {
+	newdb, err := Load(db.fname)
 	if err != nil {
-		return warnings, err
+		return err
 	}
 
 	db.mu.Lock()
-	db.users = newdb.users
-	db.finfo = newdb.finfo
+	db.db = newdb.db
 	db.mu.Unlock()
 
-	return warnings, nil
+	return nil
 }
 
 // Write the database to disk. It will do a complete rewrite each time, and is
 // not safe to call it from different processes in parallel.
 func (db *DB) Write() error {
-	buf := new(bytes.Buffer)
-	buf.WriteString("#chasquid-userdb-v1\n")
-
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	// TODO: Sort the usernames, just to be friendlier.
-	for _, user := range db.users {
-		if strings.ContainsAny(user.name, illegalUsernameChars) {
-			return ErrInvalidUsername
-		}
-		fmt.Fprintf(buf, "%s %s %s\n",
-			user.name, user.scheme.String(),
-			base64.StdEncoding.EncodeToString([]byte(user.password)))
-	}
-
-	mode := os.FileMode(0660)
-	if db.finfo != nil {
-		mode = db.finfo.Mode()
-	}
-	return safeio.WriteFile(db.fname, buf.Bytes(), mode)
+	return protoio.WriteTextMessage(db.fname, db.db, 0660)
 }
 
 // Does this user exist in the database?
 func (db *DB) Exists(user string) bool {
 	db.mu.RLock()
-	_, ok := db.users[user]
+	_, ok := db.db.Users[user]
 	db.mu.RUnlock()
 
 	return ok
@@ -220,14 +119,27 @@ func (db *DB) Exists(user string) bool {
 // Is this password valid for the user?
 func (db *DB) Authenticate(name, plainPassword string) bool {
 	db.mu.RLock()
-	u, ok := db.users[name]
+	passwd, ok := db.db.Users[name]
 	db.mu.RUnlock()
 
 	if !ok {
 		return false
 	}
 
-	return u.scheme.PasswordMatches(plainPassword, u.password)
+	return passwd.PasswordMatches(plainPassword)
+}
+
+func (p *Password) PasswordMatches(plain string) bool {
+	switch s := p.Scheme.(type) {
+	case nil:
+		return false
+	case *Password_Scrypt:
+		return s.Scrypt.PasswordMatches(plain)
+	case *Password_Plain:
+		return s.Plain.PasswordMatches(plain)
+	default:
+		return false
+	}
 }
 
 // Check if the given user name is valid.
@@ -250,31 +162,29 @@ func (db *DB) AddUser(name, plainPassword string) error {
 		return ErrInvalidUsername
 	}
 
-	s := scryptScheme{
+	s := &Scrypt{
 		// Use hard-coded standard parameters for now.
 		// Follow the recommendations from the scrypt paper.
-		logN: 14, r: 8, p: 1, keyLen: 32,
+		LogN: 14, R: 8, P: 1, KeyLen: 32,
 
 		// 16 bytes of salt (will be filled later).
-		salt: make([]byte, 16),
+		Salt: make([]byte, 16),
 	}
 
-	n, err := rand.Read(s.salt)
+	n, err := rand.Read(s.Salt)
 	if n != 16 || err != nil {
 		return fmt.Errorf("failed to get salt - %d - %v", n, err)
 	}
 
-	encrypted, err := scrypt.Key([]byte(plainPassword), s.salt,
-		1<<s.logN, s.r, s.p, s.keyLen)
+	s.Encrypted, err = scrypt.Key([]byte(plainPassword), s.Salt,
+		1<<s.LogN, int(s.R), int(s.P), int(s.KeyLen))
 	if err != nil {
 		return fmt.Errorf("scrypt failed: %v", err)
 	}
 
 	db.mu.Lock()
-	db.users[name] = user{
-		name:     name,
-		scheme:   s,
-		password: string(encrypted),
+	db.db.Users[name] = &Password{
+		Scheme: &Password_Scrypt{s},
 	}
 	db.mu.Unlock()
 
@@ -285,46 +195,18 @@ func (db *DB) AddUser(name, plainPassword string) error {
 // Encryption schemes
 //
 
-type scheme interface {
-	String() string
-	PasswordMatches(plain, encrypted string) bool
-}
-
 // Plain text scheme. Useful mostly for testing and debugging.
 // TODO: Do we really need this? Removing it would make accidents less likely
 // to happen. Consider doing so when we add another scheme, so we a least have
 // two and multi-scheme support does not bit-rot.
-type plainScheme struct{}
-
-func (s plainScheme) String() string {
-	return "PLAIN"
-}
-
-func (s plainScheme) PasswordMatches(plain, encrypted string) bool {
-	return plain == encrypted
+func (p *Plain) PasswordMatches(plain string) bool {
+	return plain == string(p.Password)
 }
 
 // scrypt scheme, which we use by default.
-type scryptScheme struct {
-	logN   uint // 1<<logN requires this to be uint
-	r, p   int
-	keyLen int
-	salt   []byte
-}
-
-func (s scryptScheme) String() string {
-	// We're encoding the salt in base64, which uses "/+=", and the URL
-	// variant uses "-_=". We use standard encoding, but shouldn't use any of
-	// those as separators, just to be safe.
-	// It's important that the salt be last, as we can only scan
-	// space-delimited strings.
-	return fmt.Sprintf("SCRYPT@n:%d,r:%d,p:%d,l:%d,%s",
-		s.logN, s.r, s.p, s.keyLen,
-		base64.StdEncoding.EncodeToString(s.salt))
-}
-
-func (s scryptScheme) PasswordMatches(plain, encrypted string) bool {
-	dk, err := scrypt.Key([]byte(plain), s.salt, 1<<s.logN, s.r, s.p, s.keyLen)
+func (s *Scrypt) PasswordMatches(plain string) bool {
+	dk, err := scrypt.Key([]byte(plain), s.Salt,
+		1<<s.LogN, int(s.R), int(s.P), int(s.KeyLen))
 
 	if err != nil {
 		// The encryption failed, this is due to the parameters being invalid.
@@ -333,32 +215,5 @@ func (s scryptScheme) PasswordMatches(plain, encrypted string) bool {
 		panic(fmt.Sprintf("scrypt failed: %v", err))
 	}
 
-	return bytes.Equal(dk, []byte(encrypted))
-}
-
-func schemeFromString(s string) (scheme, error) {
-	if s == "PLAIN" {
-		return plainScheme{}, nil
-	} else if strings.HasPrefix(s, "SCRYPT@") {
-		sc := scryptScheme{}
-		var b64salt string
-		n, err := fmt.Sscanf(s, "SCRYPT@n:%d,r:%d,p:%d,l:%d,%s",
-			&sc.logN, &sc.r, &sc.p, &sc.keyLen, &b64salt)
-		if n != 5 || err != nil {
-			return nil, fmt.Errorf("error scanning scrypt: %d %v", n, err)
-		}
-		sc.salt, err = base64.StdEncoding.DecodeString(b64salt)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding salt: %v", err)
-		}
-
-		// Perform some sanity checks on the parameters, just in case.
-		if (sc.logN >= 32) || (sc.r*sc.p >= 1<<30) || (sc.keyLen < 24) {
-			return nil, fmt.Errorf("invalid scrypt parameters")
-		}
-
-		return sc, nil
-	}
-
-	return nil, fmt.Errorf("unknown scheme")
+	return bytes.Equal(dk, []byte(s.Encrypted))
 }
