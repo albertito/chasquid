@@ -17,7 +17,9 @@ import (
 func WriteFile(filename string, data []byte, perm os.FileMode) error {
 	// Note we create the temporary file in the same directory, otherwise we
 	// would have no expectation of Rename being atomic.
-	tmpf, err := ioutil.TempFile(path.Dir(filename), path.Base(filename))
+	// We make the file names start with "." so there's no confusion with the
+	// originals.
+	tmpf, err := ioutil.TempFile(path.Dir(filename), "."+path.Base(filename))
 	if err != nil {
 		return err
 	}
