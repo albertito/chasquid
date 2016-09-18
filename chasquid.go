@@ -60,6 +60,13 @@ func main() {
 		glog.Fatalf("Error reading config")
 	}
 
+	// Change to the config dir.
+	// This allow us to use relative paths for configuration directories.
+	// It also can be useful in unusual environments and for testing purposes,
+	// where paths inside the configuration itself could be relative, and this
+	// fixes the point of reference.
+	os.Chdir(*configDir)
+
 	if conf.MonitoringAddress != "" {
 		glog.Infof("Monitoring HTTP server listening on %s",
 			conf.MonitoringAddress)
@@ -74,7 +81,8 @@ func main() {
 	s.MaxDataSize = conf.MaxDataSizeMb * 1024 * 1024
 
 	// Load domains.
-	domainDirs, err := ioutil.ReadDir(*configDir + "/domains/")
+	// They live inside the config directory, so the relative path works.
+	domainDirs, err := ioutil.ReadDir("domains/")
 	if err != nil {
 		glog.Fatalf("Error in glob: %v", err)
 	}
@@ -85,7 +93,7 @@ func main() {
 		glog.Infof("Domain config paths:")
 		for _, info := range domainDirs {
 			name := info.Name()
-			dir := filepath.Join(*configDir, "domains", name)
+			dir := filepath.Join("domains", name)
 			loadDomain(s, name, dir)
 		}
 	}

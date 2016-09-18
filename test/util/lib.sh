@@ -27,8 +27,10 @@ function generate_cert() {
 function chasquid() {
 	# HOSTALIASES: so we "fake" hostnames.
 	# PATH: so chasquid can call test-mda without path issues.
+	# MDA_DIR: so our test-mda knows where to deliver emails.
 	HOSTALIASES=${TBASE}/hosts \
 	PATH=${UTILDIR}:${PATH} \
+	MDA_DIR=${TBASE}/.mail \
 		go run ${TBASE}/../../chasquid.go "$@"
 }
 
