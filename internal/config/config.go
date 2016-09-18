@@ -58,6 +58,10 @@ func Load(path string) (*Config, error) {
 			"-d", "%user%")
 	}
 
+	if c.DataDir == "" {
+		c.DataDir = "/var/lib/chasquid"
+	}
+
 	logConfig(c)
 	return c, nil
 }
@@ -70,4 +74,5 @@ func logConfig(c *Config) {
 	glog.Infof("  Submission Addresses: %v", c.SubmissionAddress)
 	glog.Infof("  Monitoring address: %s", c.MonitoringAddress)
 	glog.Infof("  MDA: %s %v", c.MailDeliveryAgentBin, c.MailDeliveryAgentArgs)
+	glog.Infof("  Data directory: %s", c.DataDir)
 }

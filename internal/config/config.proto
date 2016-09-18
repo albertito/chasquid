@@ -38,5 +38,9 @@ message Config {
 	//  - "%domain%" -> domain (anything after the @)
 	// Default: "-d", "%user"  (adequate for procmail)
 	repeated string mail_delivery_agent_args = 7;
+
+	// Directory where we store our persistent data.
+	// Default: "/var/lib/chasquid"
+	string data_dir = 8;
 }
 
