@@ -3,10 +3,12 @@ package queue
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
 
+	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/set"
 )
 
@@ -58,7 +60,7 @@ func newTestCourier() *TestCourier {
 func TestBasic(t *testing.T) {
 	localC := newTestCourier()
 	remoteC := newTestCourier()
-	q := New("/tmp/queue_test", set.NewString("loco"))
+	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver())
 	q.localC = localC
 	q.remoteC = remoteC
 
@@ -99,7 +101,7 @@ func TestBasic(t *testing.T) {
 }
 
 func TestFullQueue(t *testing.T) {
-	q := New("/tmp/queue_test", set.NewString())
+	q := New("/tmp/queue_test", set.NewString(), aliases.NewResolver())
 
 	// Force-insert maxQueueSize items in the queue.
 	oneID := ""
@@ -136,8 +138,53 @@ func TestFullQueue(t *testing.T) {
 	q.Remove(id)
 }
 
+// Dumb courier, for when we don't care for the results.
+type DumbCourier struct{}
+
+func (c DumbCourier) Deliver(from string, to string, data []byte) error {
+	return nil
+}
+
+func TestAliases(t *testing.T) {
+	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver())
+	q.localC = DumbCourier{}
+	q.remoteC = DumbCourier{}
+
+	q.aliases.AddDomain("loco")
+	q.aliases.AddAliasForTesting("ab@loco", "pq@loco", aliases.EMAIL)
+	q.aliases.AddAliasForTesting("ab@loco", "rs@loco", aliases.EMAIL)
+	q.aliases.AddAliasForTesting("ab@loco", "command", aliases.PIPE)
+	q.aliases.AddAliasForTesting("cd@loco", "ata@hualpa", aliases.EMAIL)
+
+	cases := []struct {
+		to       []string
+		expected []*Recipient
+	}{
+		{[]string{"ab@loco"}, []*Recipient{
+			{"pq@loco", Recipient_EMAIL, Recipient_PENDING},
+			{"rs@loco", Recipient_EMAIL, Recipient_PENDING},
+			{"command", Recipient_PIPE, Recipient_PENDING}}},
+		{[]string{"ab@loco", "cd@loco"}, []*Recipient{
+			{"pq@loco", Recipient_EMAIL, Recipient_PENDING},
+			{"rs@loco", Recipient_EMAIL, Recipient_PENDING},
+			{"command", Recipient_PIPE, Recipient_PENDING},
+			{"ata@hualpa", Recipient_EMAIL, Recipient_PENDING}}},
+	}
+	for _, c := range cases {
+		id, err := q.Put("from", c.to, []byte("data"))
+		if err != nil {
+			t.Errorf("Put: %v", err)
+		}
+		item := q.q[id]
+		if !reflect.DeepEqual(item.Rcpt, c.expected) {
+			t.Errorf("case %q, expected %v, got %v", c.to, item.Rcpt, c.expected)
+		}
+		q.Remove(id)
+	}
+}
+
 func TestPipes(t *testing.T) {
-	q := New("/tmp/queue_test", set.NewString("loco"))
+	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver())
 	item := &Item{
 		Message: Message{
 			ID:   <-newID,

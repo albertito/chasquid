@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 
 	"github.com/golang/glog"
@@ -428,7 +429,9 @@ func realMain(m *testing.M) int {
 		s.AddCerts(tmpDir+"/cert.pem", tmpDir+"/key.pem")
 		s.AddAddr(smtpAddr, ModeSMTP)
 		s.AddAddr(submissionAddr, ModeSubmission)
-		s.LoadQueue(tmpDir + "/queue")
+
+		ars := aliases.NewResolver()
+		s.InitQueue(tmpDir+"/queue", ars)
 
 		udb := userdb.New("/dev/null")
 		udb.AddUser("testuser", "testpasswd")

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+echo "From writemailto" > "$1"
+exec cat >> "$1"

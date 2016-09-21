@@ -75,4 +75,6 @@ func logConfig(c *Config) {
 	glog.Infof("  Monitoring address: %s", c.MonitoringAddress)
 	glog.Infof("  MDA: %s %v", c.MailDeliveryAgentBin, c.MailDeliveryAgentArgs)
 	glog.Infof("  Data directory: %s", c.DataDir)
+	glog.Infof("  Suffix separators: %s", c.SuffixSeparators)
+	glog.Infof("  Drop characters: %s", c.DropCharacters)
 }

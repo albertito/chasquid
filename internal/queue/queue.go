@@ -19,6 +19,7 @@ import (
 
 	"bytes"
 
+	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/protoio"
@@ -91,10 +92,13 @@ type Queue struct {
 
 	// Path where we store the queue.
 	path string
+
+	// Aliases resolver.
+	aliases *aliases.Resolver
 }
 
 // Load the queue and launch the sending loops on startup.
-func New(path string, localDomains *set.String) *Queue {
+func New(path string, localDomains *set.String, aliases *aliases.Resolver) *Queue {
 	os.MkdirAll(path, 0700)
 
 	return &Queue{
@@ -103,6 +107,7 @@ func New(path string, localDomains *set.String) *Queue {
 		remoteC:      &courier.SMTP{},
 		localDomains: localDomains,
 		path:         path,
+		aliases:      aliases,
 	}
 }
 
@@ -151,11 +156,30 @@ func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
 	}
 
 	for _, t := range to {
-		item.Rcpt = append(item.Rcpt, &Recipient{
-			Address: t,
-			Type:    Recipient_EMAIL,
-			Status:  Recipient_PENDING,
-		})
+		rcpts, err := q.aliases.Resolve(t)
+		if err != nil {
+			return "", fmt.Errorf("error resolving aliases for %q: %v", t, err)
+		}
+
+		// Add the recipients (after resolving aliases); this conversion is
+		// not very pretty but at least it's self contained.
+		for _, aliasRcpt := range rcpts {
+			r := &Recipient{
+				Address: aliasRcpt.Addr,
+				Status:  Recipient_PENDING,
+			}
+			switch aliasRcpt.Type {
+			case aliases.EMAIL:
+				r.Type = Recipient_EMAIL
+			case aliases.PIPE:
+				r.Type = Recipient_PIPE
+			default:
+				glog.Errorf("unknown alias type %v when resolving %q",
+					aliasRcpt.Type, t)
+				return "", fmt.Errorf("internal error - unknown alias type")
+			}
+			item.Rcpt = append(item.Rcpt, r)
+		}
 	}
 
 	err := item.WriteTo(q.path)

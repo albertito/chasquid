@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/auth"
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
@@ -80,6 +81,10 @@ func main() {
 	s.Hostname = conf.Hostname
 	s.MaxDataSize = conf.MaxDataSizeMb * 1024 * 1024
 
+	aliasesR := aliases.NewResolver()
+	aliasesR.SuffixSep = conf.SuffixSeparators
+	aliasesR.DropChars = conf.DropCharacters
+
 	// Load domains.
 	// They live inside the config directory, so the relative path works.
 	domainDirs, err := ioutil.ReadDir("domains/")
@@ -94,7 +99,7 @@ func main() {
 		for _, info := range domainDirs {
 			name := info.Name()
 			dir := filepath.Join("domains", name)
-			loadDomain(s, name, dir)
+			loadDomain(name, dir, s, aliasesR)
 		}
 	}
 
@@ -103,7 +108,7 @@ func main() {
 	// as a remote domain (for loops, alias resolutions, etc.).
 	s.AddDomain("localhost")
 
-	s.LoadQueue(conf.DataDir + "/queue")
+	s.InitQueue(conf.DataDir+"/queue", aliasesR)
 
 	// Load the addresses and listeners.
 	systemdLs, err := systemd.Listeners()
@@ -139,9 +144,10 @@ func loadAddresses(srv *Server, addrs []string, ls []net.Listener, mode SocketMo
 }
 
 // Helper to load a single domain configuration into the server.
-func loadDomain(s *Server, name, dir string) {
+func loadDomain(name, dir string, s *Server, aliasesR *aliases.Resolver) {
 	glog.Infof("  %s", name)
 	s.AddDomain(name)
+	aliasesR.AddDomain(name)
 	s.AddCerts(dir+"/cert.pem", dir+"/key.pem")
 
 	if _, err := os.Stat(dir + "/users"); err == nil {
@@ -152,6 +158,14 @@ func loadDomain(s *Server, name, dir string) {
 		} else {
 			s.AddUserDB(name, udb)
 			// TODO: periodically reload the database.
+		}
+	}
+
+	if _, err := os.Stat(dir + "/aliases"); err == nil {
+		glog.Infof("    adding aliases")
+		err := aliasesR.AddAliasesFile(name, dir+"/aliases")
+		if err != nil {
+			glog.Errorf("      error: %v", err)
 		}
 	}
 }
@@ -251,13 +265,24 @@ func (s *Server) AddUserDB(domain string, db *userdb.DB) {
 	s.userDBs[domain] = db
 }
 
-func (s *Server) LoadQueue(path string) {
-	q := queue.New(path, s.localDomains)
+func (s *Server) InitQueue(path string, aliasesR *aliases.Resolver) {
+	q := queue.New(path, s.localDomains, aliasesR)
 	err := q.Load()
 	if err != nil {
 		glog.Fatalf("Error loading queue: %v", err)
 	}
 	s.queue = q
+
+	// Launch the periodic reload of aliases, now that the queue may care
+	// about them.
+	go func() {
+		for range time.Tick(1 * time.Minute) {
+			err := aliasesR.Reload()
+			if err != nil {
+				glog.Errorf("Error reloading aliases: %v")
+			}
+		}
+	}()
 }
 
 func (s *Server) getTLSConfig() (*tls.Config, error) {

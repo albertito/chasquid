@@ -191,6 +191,10 @@ func (v *Resolver) AddAliasesFile(domain, path string) error {
 	return nil
 }
 
+func (v *Resolver) AddAliasForTesting(addr, rcpt string, rType RType) {
+	v.aliases[addr] = append(v.aliases[addr], Recipient{rcpt, rType})
+}
+
 func (v *Resolver) Reload() error {
 	newAliases := map[string][]Recipient{}
 
