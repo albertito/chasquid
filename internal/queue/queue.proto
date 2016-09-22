@@ -25,6 +25,7 @@ message Recipient {
 
 	enum Type {
 		EMAIL = 0;
+		PIPE = 1;
 	}
 	Type type = 2;
 

@@ -6,13 +6,18 @@ package queue
 //go:generate protoc --go_out=. -I=${GOPATH}/src -I. queue.proto
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	"bytes"
 
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
@@ -248,20 +253,10 @@ func (item *Item) SendLoop(q *Queue) {
 			wg.Add(1)
 			go func(rcpt *Recipient, oldStatus Recipient_Status) {
 				defer wg.Done()
-				// TODO: Different types of recipients.
 				to := rcpt.Address
-
 				tr.LazyPrintf("%s sending", to)
 
-				var err error
-				// TODO: If this is all the difference we end up having
-				// between the two couriers, consider going back to using a
-				// routing courier.
-				if envelope.DomainIn(to, q.localDomains) {
-					err = q.localC.Deliver(item.From, to, item.Data)
-				} else {
-					err = q.remoteC.Deliver(item.From, to, item.Data)
-				}
+				err := item.deliver(q, rcpt)
 
 				if err != nil {
 					// TODO: Local deliveries should not be retried, if they
@@ -320,6 +315,26 @@ func (item *Item) SendLoop(q *Queue) {
 
 	// TODO: Send a notification message for the recipients we failed to send,
 	// remove item from the queue, and remove from disk.
+}
+
+func (item *Item) deliver(q *Queue, rcpt *Recipient) error {
+	if rcpt.Type == Recipient_PIPE {
+		c := strings.Fields(rcpt.Address)
+		if len(c) == 0 {
+			return fmt.Errorf("empty pipe")
+		}
+		ctx, _ := context.WithDeadline(context.Background(),
+			time.Now().Add(30*time.Second))
+		cmd := exec.CommandContext(ctx, c[0], c[1:]...)
+		cmd.Stdin = bytes.NewReader(item.Data)
+		return cmd.Run()
+	} else {
+		if envelope.DomainIn(rcpt.Address, q.localDomains) {
+			return q.localC.Deliver(item.From, rcpt.Address, item.Data)
+		} else {
+			return q.remoteC.Deliver(item.From, rcpt.Address, item.Data)
+		}
+	}
 }
 
 func nextDelay(last time.Duration) time.Duration {

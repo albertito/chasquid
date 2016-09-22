@@ -135,3 +135,27 @@ func TestFullQueue(t *testing.T) {
 	}
 	q.Remove(id)
 }
+
+func TestPipes(t *testing.T) {
+	q := New("/tmp/queue_test", set.NewString("loco"))
+	item := &Item{
+		Message: Message{
+			ID:   <-newID,
+			From: "from",
+			Rcpt: []*Recipient{
+				{"true", Recipient_PIPE, Recipient_PENDING}},
+			Data: []byte("data"),
+		},
+		CreatedAt: time.Now(),
+	}
+
+	if err := item.deliver(q, item.Rcpt[0]); err != nil {
+		t.Errorf("pipe delivery failed: %v", err)
+	}
+
+	// Make the command "false", should fail.
+	item.Rcpt[0].Address = "false"
+	if err := item.deliver(q, item.Rcpt[0]); err == nil {
+		t.Errorf("pipe delivery worked, expected failure")
+	}
+}
