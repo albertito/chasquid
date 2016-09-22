@@ -3,6 +3,7 @@
 package envelope
 
 import (
+	"fmt"
 	"strings"
 
 	"blitiri.com.ar/go/chasquid/internal/set"
@@ -35,4 +36,15 @@ func DomainIn(addr string, locals *set.String) bool {
 	}
 
 	return locals.Has(domain)
+}
+
+func AddHeader(data []byte, k, v string) []byte {
+	// If the value contains newlines, indent them properly.
+	if v[len(v)-1] == '\n' {
+		v = v[:len(v)-1]
+	}
+	v = strings.Replace(v, "\n", "\n\t", -1)
+
+	header := []byte(fmt.Sprintf("%s: %s\n", k, v))
+	return append(header, data...)
 }

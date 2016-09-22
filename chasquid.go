@@ -376,9 +376,10 @@ type Conn struct {
 	maxDataSize int64
 
 	// Connection information.
-	netconn net.Conn
-	tc      *textproto.Conn
-	mode    SocketMode
+	netconn      net.Conn
+	tc           *textproto.Conn
+	mode         SocketMode
+	tlsConnState *tls.ConnectionState
 
 	// System configuration.
 	config *config.Config
@@ -675,6 +676,8 @@ func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
 
 	tr.LazyPrintf("-> ... %d bytes of data", len(c.data))
 
+	c.addReceivedHeader()
+
 	// There are no partial failures here: we put it in the queue, and then if
 	// individual deliveries fail, we report via email.
 	msgID, err := c.queue.Put(c.mailFrom, c.rcptTo, c.data)
@@ -700,6 +703,34 @@ func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
 	return 250, msgs[rand.Int()%len(msgs)]
 }
 
+func (c *Conn) addReceivedHeader() {
+	var v string
+
+	if c.completedAuth {
+		v += fmt.Sprintf("from user %s@%s\n", c.authUser, c.authDomain)
+	} else {
+		v += fmt.Sprintf("from %s\n", c.netconn.RemoteAddr().String())
+	}
+
+	v += fmt.Sprintf("by %s (chasquid SMTP) over ", c.hostname)
+	if c.tlsConnState != nil {
+		v += fmt.Sprintf("TLS (%#x-%#x)\n",
+			c.tlsConnState.Version, c.tlsConnState.CipherSuite)
+	} else {
+		v += "plain text!\n"
+	}
+
+	// Note we must NOT include c.rcptTo, that would leak BCCs.
+	v += fmt.Sprintf("(envelope from %q)\n", c.mailFrom)
+
+	// This should be the last part in the Received header, by RFC.
+	// The ";" is a mandatory separator. The date format is not standard but
+	// this one seems to be widely used.
+	// https://tools.ietf.org/html/rfc5322#section-3.6.7
+	v += fmt.Sprintf("on ; %s\n", time.Now().Format(time.RFC1123Z))
+	c.data = envelope.AddHeader(c.data, "Received", v)
+}
+
 func (c *Conn) STARTTLS(params string, tr *trace.Trace) (code int, msg string) {
 	if c.onTLS {
 		return 503, "You are already wearing that!"
@@ -712,22 +743,33 @@ func (c *Conn) STARTTLS(params string, tr *trace.Trace) (code int, msg string) {
 
 	tr.LazyPrintf("<- 220  You experience a strange sense of peace")
 
-	client := tls.Server(c.netconn, c.tlsConfig)
-	err = client.Handshake()
+	server := tls.Server(c.netconn, c.tlsConfig)
+	err = server.Handshake()
 	if err != nil {
-		return 554, fmt.Sprintf("error in client handshake: %v", err)
+		return 554, fmt.Sprintf("error in TLS handshake: %v", err)
 	}
 
 	tr.LazyPrintf("<> ...  jump to TLS was successful")
 
 	// Override the connections. We don't need the older ones anymore.
-	c.netconn = client
-	c.tc = textproto.NewConn(client)
+	c.netconn = server
+	c.tc = textproto.NewConn(server)
+
+	// Take the connection state, so we can use it later for logging and
+	// tracing purposes.
+	cstate := server.ConnectionState()
+	c.tlsConnState = &cstate
 
 	// Reset the envelope; clients must start over after switching to TLS.
 	c.resetEnvelope()
 
 	c.onTLS = true
+
+	// If the client requested a specific server and we complied, that's our
+	// identity from now on.
+	if name := c.tlsConnState.ServerName; name != "" {
+		c.hostname = name
+	}
 
 	// 0 indicates not to send back a reply.
 	return 0, ""
