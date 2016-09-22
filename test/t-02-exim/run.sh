@@ -27,6 +27,11 @@ set -e
 
 init
 
+if ! .exim4/exim4 --version > /dev/null; then
+	skip "(exim4 binary at .exim4/exim4 is not functional)"
+	exit 0
+fi
+
 # Create a temporary directory for exim4 to use, and generate the exim4
 # config based on the template.
 mkdir -p .exim4

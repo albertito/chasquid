@@ -58,6 +58,10 @@ function success() {
 	echo "SUCCESS"
 }
 
+function skip() {
+	echo "SKIPPED" $*
+}
+
 # Wait until there's something listening on the given port.
 function wait_until_ready() {
 	PORT=$1
