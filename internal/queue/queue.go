@@ -98,13 +98,15 @@ type Queue struct {
 }
 
 // Load the queue and launch the sending loops on startup.
-func New(path string, localDomains *set.String, aliases *aliases.Resolver) *Queue {
+func New(path string, localDomains *set.String, aliases *aliases.Resolver,
+	localC, remoteC courier.Courier) *Queue {
+
 	os.MkdirAll(path, 0700)
 
 	return &Queue{
 		q:            map[string]*Item{},
-		localC:       &courier.Procmail{},
-		remoteC:      &courier.SMTP{},
+		localC:       localC,
+		remoteC:      remoteC,
 		localDomains: localDomains,
 		path:         path,
 		aliases:      aliases,

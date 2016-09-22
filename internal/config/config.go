@@ -55,7 +55,7 @@ func Load(path string) (*Config, error) {
 	}
 	if len(c.MailDeliveryAgentArgs) == 0 {
 		c.MailDeliveryAgentArgs = append(c.MailDeliveryAgentArgs,
-			"-d", "%user%")
+			"-f", "%from%", "-d", "%to_user%")
 	}
 
 	if c.DataDir == "" {

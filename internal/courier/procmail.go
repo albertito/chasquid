@@ -2,6 +2,7 @@ package courier
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -13,43 +14,45 @@ import (
 )
 
 var (
-	// Location of the procmail binary, and arguments to use.
-	// The string "%user%" will be replaced with the local user.
-	// TODO: Make these a part of the courier instance itself? Why do they
-	// have to be global?
-	MailDeliveryAgentBin  = "procmail"
-	MailDeliveryAgentArgs = []string{"-d", "%user%"}
-
-	// Give procmail 1m to deliver mail.
-	procmailTimeout = 1 * time.Minute
-)
-
-var (
 	errTimeout = fmt.Errorf("Operation timed out")
 )
 
 // Procmail delivers local mail via procmail.
 type Procmail struct {
+	Binary  string        // Path to the binary.
+	Args    []string      // Arguments to pass.
+	Timeout time.Duration // Timeout for each invocation.
 }
 
 func (p *Procmail) Deliver(from string, to string, data []byte) error {
 	tr := trace.New("Procmail", "Deliver")
 	defer tr.Finish()
 
-	// Get the user, and sanitize to be extra paranoid.
-	user := sanitizeForProcmail(envelope.UserOf(to))
-	domain := sanitizeForProcmail(envelope.DomainOf(to))
-	tr.LazyPrintf("%s  ->  %s (%s @ %s)", from, user, to, domain)
+	// Sanitize, just in case.
+	from = sanitizeForProcmail(from)
+	to = sanitizeForProcmail(to)
+
+	tr.LazyPrintf("%s -> %s", from, to)
 
 	// Prepare the command, replacing the necessary arguments.
 	replacer := strings.NewReplacer(
-		"%user%", user,
-		"%domain%", domain)
+		"%from%", from,
+		"%from_user%", envelope.UserOf(from),
+		"%from_domain%", envelope.DomainOf(from),
+
+		"%to%", to,
+		"%to_user%", envelope.UserOf(to),
+		"%to_domain%", envelope.DomainOf(to),
+	)
+
 	args := []string{}
-	for _, a := range MailDeliveryAgentArgs {
+	for _, a := range p.Args {
 		args = append(args, replacer.Replace(a))
 	}
-	cmd := exec.Command(MailDeliveryAgentBin, args...)
+
+	ctx, _ := context.WithDeadline(context.Background(),
+		time.Now().Add(p.Timeout))
+	cmd := exec.CommandContext(ctx, p.Binary, args...)
 
 	cmdStdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -72,13 +75,9 @@ func (p *Procmail) Deliver(from string, to string, data []byte) error {
 
 	cmdStdin.Close()
 
-	timer := time.AfterFunc(procmailTimeout, func() {
-		cmd.Process.Kill()
-	})
 	err = cmd.Wait()
-	timedOut := !timer.Stop()
 
-	if timedOut {
+	if ctx.Err() == context.DeadlineExceeded {
 		return tr.Error(errTimeout)
 	}
 	if err != nil {

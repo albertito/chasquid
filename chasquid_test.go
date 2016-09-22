@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
+	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 
 	"github.com/golang/glog"
@@ -431,7 +432,9 @@ func realMain(m *testing.M) int {
 		s.AddAddr(submissionAddr, ModeSubmission)
 
 		ars := aliases.NewResolver()
-		s.InitQueue(tmpDir+"/queue", ars)
+		localC := &courier.Procmail{}
+		remoteC := &courier.SMTP{}
+		s.InitQueue(tmpDir+"/queue", ars, localC, remoteC)
 
 		udb := userdb.New("/dev/null")
 		udb.AddUser("testuser", "testpasswd")

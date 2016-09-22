@@ -74,9 +74,6 @@ func main() {
 		go http.ListenAndServe(conf.MonitoringAddress, nil)
 	}
 
-	courier.MailDeliveryAgentBin = conf.MailDeliveryAgentBin
-	courier.MailDeliveryAgentArgs = conf.MailDeliveryAgentArgs
-
 	s := NewServer()
 	s.Hostname = conf.Hostname
 	s.MaxDataSize = conf.MaxDataSizeMb * 1024 * 1024
@@ -108,7 +105,13 @@ func main() {
 	// as a remote domain (for loops, alias resolutions, etc.).
 	s.AddDomain("localhost")
 
-	s.InitQueue(conf.DataDir+"/queue", aliasesR)
+	localC := &courier.Procmail{
+		Binary:  conf.MailDeliveryAgentBin,
+		Args:    conf.MailDeliveryAgentArgs,
+		Timeout: 30 * time.Second,
+	}
+	remoteC := &courier.SMTP{}
+	s.InitQueue(conf.DataDir+"/queue", aliasesR, localC, remoteC)
 
 	// Load the addresses and listeners.
 	systemdLs, err := systemd.Listeners()
@@ -265,8 +268,10 @@ func (s *Server) AddUserDB(domain string, db *userdb.DB) {
 	s.userDBs[domain] = db
 }
 
-func (s *Server) InitQueue(path string, aliasesR *aliases.Resolver) {
-	q := queue.New(path, s.localDomains, aliasesR)
+func (s *Server) InitQueue(path string, aliasesR *aliases.Resolver,
+	localC, remoteC courier.Courier) {
+
+	q := queue.New(path, s.localDomains, aliasesR, localC, remoteC)
 	err := q.Load()
 	if err != nil {
 		glog.Fatalf("Error loading queue: %v", err)

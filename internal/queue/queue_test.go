@@ -60,9 +60,8 @@ func newTestCourier() *TestCourier {
 func TestBasic(t *testing.T) {
 	localC := newTestCourier()
 	remoteC := newTestCourier()
-	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver())
-	q.localC = localC
-	q.remoteC = remoteC
+	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
+		localC, remoteC)
 
 	localC.wg.Add(2)
 	remoteC.wg.Add(1)
@@ -101,7 +100,8 @@ func TestBasic(t *testing.T) {
 }
 
 func TestFullQueue(t *testing.T) {
-	q := New("/tmp/queue_test", set.NewString(), aliases.NewResolver())
+	q := New("/tmp/queue_test", set.NewString(), aliases.NewResolver(),
+		dumbCourier, dumbCourier)
 
 	// Force-insert maxQueueSize items in the queue.
 	oneID := ""
@@ -145,10 +145,11 @@ func (c DumbCourier) Deliver(from string, to string, data []byte) error {
 	return nil
 }
 
+var dumbCourier DumbCourier
+
 func TestAliases(t *testing.T) {
-	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver())
-	q.localC = DumbCourier{}
-	q.remoteC = DumbCourier{}
+	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
+		dumbCourier, dumbCourier)
 
 	q.aliases.AddDomain("loco")
 	q.aliases.AddAliasForTesting("ab@loco", "pq@loco", aliases.EMAIL)
@@ -184,7 +185,8 @@ func TestAliases(t *testing.T) {
 }
 
 func TestPipes(t *testing.T) {
-	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver())
+	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
+		dumbCourier, dumbCourier)
 	item := &Item{
 		Message: Message{
 			ID:   <-newID,
