@@ -38,11 +38,6 @@ import (
 var (
 	configDir = flag.String("config_dir", "/etc/chasquid",
 		"configuration directory")
-
-	testCert = flag.String("test_cert", ".cert.pem",
-		"Certificate file, for testing purposes")
-	testKey = flag.String("test_key", ".key.pem",
-		"Key file, for testing purposes")
 )
 
 func main() {
@@ -87,18 +82,17 @@ func main() {
 	// They live inside the config directory, so the relative path works.
 	domainDirs, err := ioutil.ReadDir("domains/")
 	if err != nil {
-		glog.Fatalf("Error in glob: %v", err)
+		glog.Fatalf("Error reading domains/ directory: %v", err)
 	}
 	if len(domainDirs) == 0 {
-		glog.Warningf("No domains found in config, using test certs")
-		s.AddCerts(*testCert, *testKey)
-	} else {
-		glog.Infof("Domain config paths:")
-		for _, info := range domainDirs {
-			name := info.Name()
-			dir := filepath.Join("domains", name)
-			loadDomain(name, dir, s, aliasesR)
-		}
+		glog.Fatalf("No domains found in config")
+	}
+
+	glog.Infof("Domain config paths:")
+	for _, info := range domainDirs {
+		name := info.Name()
+		dir := filepath.Join("domains", name)
+		loadDomain(name, dir, s, aliasesR)
 	}
 
 	// Always include localhost as local domain.
