@@ -256,5 +256,30 @@ func TestReload(t *testing.T) {
 	if len(db.db.Users) != 2 {
 		t.Errorf("expected 2 users, got %d", len(db.db.Users))
 	}
+}
 
+func TestRemoveUser(t *testing.T) {
+	fname := mustCreateDB(t, "")
+	defer removeIfSuccessful(t, fname)
+	db := mustLoad(t, fname)
+
+	if ok := db.RemoveUser("unknown"); ok {
+		t.Errorf("removal of unknown user succeeded")
+	}
+
+	if err := db.AddUser("user", "passwd"); err != nil {
+		t.Fatalf("error adding user: %v", err)
+	}
+
+	if ok := db.RemoveUser("unknown"); ok {
+		t.Errorf("removal of unknown user succeeded")
+	}
+
+	if ok := db.RemoveUser("user"); !ok {
+		t.Errorf("removal of existing user failed")
+	}
+
+	if ok := db.RemoveUser("user"); ok {
+		t.Errorf("removal of unknown user succeeded")
+	}
 }

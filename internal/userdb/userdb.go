@@ -191,6 +191,17 @@ func (db *DB) AddUser(name, plainPassword string) error {
 	return nil
 }
 
+// RemoveUser from the database. Returns True if the user was there, False
+// otherwise.
+func (db *DB) RemoveUser(name string) bool {
+	db.mu.Lock()
+
+	_, present := db.db.Users[name]
+	delete(db.db.Users, name)
+	db.mu.Unlock()
+	return present
+}
+
 ///////////////////////////////////////////////////////////
 // Encryption schemes
 //
