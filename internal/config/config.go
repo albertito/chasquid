@@ -62,11 +62,10 @@ func Load(path string) (*Config, error) {
 		c.DataDir = "/var/lib/chasquid"
 	}
 
-	logConfig(c)
 	return c, nil
 }
 
-func logConfig(c *Config) {
+func LogConfig(c *Config) {
 	glog.Infof("Configuration:")
 	glog.Infof("  Hostname: %q", c.Hostname)
 	glog.Infof("  Max data size (MB): %d", c.MaxDataSizeMb)

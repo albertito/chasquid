@@ -35,10 +35,8 @@ function chasquid() {
 }
 
 function add_user() {
-	go run ${TBASE}/../../cmd/chasquid-userdb/chasquid-userdb.go \
-		--database "config/domains/${1}/users" \
-		--add_user "${2}" \
-		--password "${3}" \
+	go run ${TBASE}/../../cmd/chasquid-util/chasquid-util.go \
+		adduser "config/domains/${1}/users" "${2}" --password "${3}" \
 		>> .add_user_logs
 }
 

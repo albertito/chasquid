@@ -60,6 +60,7 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Error reading config")
 	}
+	config.LogConfig(conf)
 
 	// Change to the config dir.
 	// This allow us to use relative paths for configuration directories.

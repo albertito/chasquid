@@ -69,11 +69,11 @@ type Recipient struct {
 	Type RType
 }
 
-type RType int
+type RType string
 
 const (
-	EMAIL RType = iota
-	PIPE
+	EMAIL RType = "(email)"
+	PIPE  RType = "(pipe)"
 )
 
 var (
