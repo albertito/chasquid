@@ -73,7 +73,7 @@ func TestSMTP(t *testing.T) {
 	*smtpPort = port
 
 	s := &SMTP{}
-	err := s.Deliver("me@me", "to@to", []byte("data"))
+	err, _ := s.Deliver("me@me", "to@to", []byte("data"))
 	if err != nil {
 		t.Errorf("deliver failed: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestSMTPErrors(t *testing.T) {
 		*smtpPort = port
 
 		s := &SMTP{}
-		err := s.Deliver("me@me", "to@to", []byte("data"))
+		err, _ := s.Deliver("me@me", "to@to", []byte("data"))
 		if err == nil {
 			t.Errorf("deliver not failed in case %q: %v", rs["_welcome"], err)
 		}

@@ -21,7 +21,7 @@ func TestProcmail(t *testing.T) {
 		Timeout: 1 * time.Minute,
 	}
 
-	err = p.Deliver("from@x", "to@local", []byte("data"))
+	err, _ = p.Deliver("from@x", "to@local", []byte("data"))
 	if err != nil {
 		t.Fatalf("Deliver: %v", err)
 	}
@@ -35,25 +35,56 @@ func TestProcmail(t *testing.T) {
 func TestProcmailTimeout(t *testing.T) {
 	p := Procmail{"/bin/sleep", []string{"1"}, 100 * time.Millisecond}
 
-	err := p.Deliver("from", "to@local", []byte("data"))
+	err, permanent := p.Deliver("from", "to@local", []byte("data"))
 	if err != errTimeout {
 		t.Errorf("Unexpected error: %v", err)
+	}
+	if permanent {
+		t.Errorf("expected transient, got permanent")
 	}
 }
 
 func TestProcmailBadCommandLine(t *testing.T) {
 	// Non-existent binary.
 	p := Procmail{"thisdoesnotexist", nil, 1 * time.Minute}
-	err := p.Deliver("from", "to", []byte("data"))
+	err, permanent := p.Deliver("from", "to", []byte("data"))
 	if err == nil {
 		t.Errorf("unexpected success for non-existent binary")
+	}
+	if !permanent {
+		t.Errorf("expected permanent, got transient")
 	}
 
 	// Incorrect arguments.
 	p = Procmail{"cat", []string{"--fail_unknown_option"}, 1 * time.Minute}
-	err = p.Deliver("from", "to", []byte("data"))
+	err, _ = p.Deliver("from", "to", []byte("data"))
 	if err == nil {
 		t.Errorf("unexpected success for incorrect arguments")
+	}
+}
+
+// Test that local delivery failures are considered permanent or not
+// according to the exit code.
+func TestExitCode(t *testing.T) {
+	cases := []struct {
+		cmd             string
+		args            []string
+		expectPermanent bool
+	}{
+		{"does/not/exist", nil, true},
+		{"../../test/util/exitcode", []string{"1"}, true},
+		{"../../test/util/exitcode", []string{"75"}, false},
+	}
+	for _, c := range cases {
+		p := &Procmail{c.cmd, c.args, 5 * time.Second}
+		err, permanent := p.Deliver("from", "to", []byte("data"))
+		if err == nil {
+			t.Errorf("%q: pipe delivery worked, expected failure", c.cmd)
+		}
+		if c.expectPermanent != permanent {
+			t.Errorf("%q: permanent expected=%v, got=%v",
+				c.cmd, c.expectPermanent, permanent)
+		}
 	}
 }
 

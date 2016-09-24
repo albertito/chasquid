@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 	"unicode"
 
@@ -24,7 +25,7 @@ type Procmail struct {
 	Timeout time.Duration // Timeout for each invocation.
 }
 
-func (p *Procmail) Deliver(from string, to string, data []byte) error {
+func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 	tr := trace.New("Procmail", "Deliver")
 	defer tr.Finish()
 
@@ -56,7 +57,7 @@ func (p *Procmail) Deliver(from string, to string, data []byte) error {
 
 	cmdStdin, err := cmd.StdinPipe()
 	if err != nil {
-		return tr.Errorf("StdinPipe: %v", err)
+		return tr.Errorf("StdinPipe: %v", err), true
 	}
 
 	output := &bytes.Buffer{}
@@ -65,12 +66,12 @@ func (p *Procmail) Deliver(from string, to string, data []byte) error {
 
 	err = cmd.Start()
 	if err != nil {
-		return tr.Errorf("Error starting procmail: %v", err)
+		return tr.Errorf("Error starting procmail: %v", err), true
 	}
 
 	_, err = bytes.NewBuffer(data).WriteTo(cmdStdin)
 	if err != nil {
-		return tr.Errorf("Error sending data to procmail: %v", err)
+		return tr.Errorf("Error sending data to procmail: %v", err), true
 	}
 
 	cmdStdin.Close()
@@ -78,12 +79,24 @@ func (p *Procmail) Deliver(from string, to string, data []byte) error {
 	err = cmd.Wait()
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return tr.Error(errTimeout)
+		return tr.Error(errTimeout), false
 	}
+
 	if err != nil {
-		return tr.Errorf("Procmail failed: %v - %q", err, output.String())
+		// Determine if the error is permanent or not.
+		// Default to permanent, but error code 75 is transient by general
+		// convention (/usr/include/sysexits.h), and commonly relied upon.
+		permanent := true
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				permanent = status.ExitStatus() != 75
+			}
+		}
+		err = tr.Errorf("Procmail failed: %v - %q", err, output.String())
+		return err, permanent
 	}
-	return nil
+
+	return nil, false
 }
 
 // sanitizeForProcmail cleans the string, removing characters that could be

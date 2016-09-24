@@ -35,14 +35,19 @@ var (
 type SMTP struct {
 }
 
-func (s *SMTP) Deliver(from string, to string, data []byte) error {
+func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	tr := trace.New("goingSMTP", "Deliver")
 	defer tr.Finish()
 	tr.LazyPrintf("%s  ->  %s", from, to)
 
+	// TODO: Fall back to A if MX is not available.
 	mx, err := lookupMX(envelope.DomainOf(to))
 	if err != nil {
-		return tr.Errorf("Could not find mail server: %v", err)
+		// Note this is considered a permanent error.
+		// This is in line with what other servers (Exim) do. However, the
+		// downside is that temporary DNS issues can affect delivery, so we
+		// have to make sure we try hard enough on the lookup above.
+		return tr.Errorf("Could not find mail server: %v", err), true
 	}
 	tr.LazyPrintf("MX: %s", mx)
 
@@ -53,13 +58,13 @@ func (s *SMTP) Deliver(from string, to string, data []byte) error {
 retry:
 	conn, err := net.DialTimeout("tcp", mx+":"+*smtpPort, smtpDialTimeout)
 	if err != nil {
-		return tr.Errorf("Could not dial: %v", err)
+		return tr.Errorf("Could not dial: %v", err), false
 	}
 	conn.SetDeadline(time.Now().Add(smtpTotalTimeout))
 
 	c, err := smtp.NewClient(conn, mx)
 	if err != nil {
-		return tr.Errorf("Error creating client: %v", err)
+		return tr.Errorf("Error creating client: %v", err), false
 	}
 
 	// TODO: Keep track of hosts and MXs that we've successfully done TLS
@@ -74,7 +79,7 @@ retry:
 			// Unfortunately, many servers use self-signed certs, so if we
 			// fail verification we just try again without validating.
 			if insecure {
-				return tr.Errorf("TLS error: %v", err)
+				return tr.Errorf("TLS error: %v", err), false
 			}
 
 			insecure = true
@@ -91,31 +96,35 @@ retry:
 		tr.LazyPrintf("Insecure - not using TLS")
 	}
 
+	// TODO: check if the errors we get back are transient or not.
+	// Go's smtp does not allow us to do this, so leave for when we do it
+	// ourselves.
+
 	if err = c.Mail(from); err != nil {
-		return tr.Errorf("MAIL %v", err)
+		return tr.Errorf("MAIL %v", err), false
 	}
 
 	if err = c.Rcpt(to); err != nil {
-		return tr.Errorf("RCPT TO %v", err)
+		return tr.Errorf("RCPT TO %v", err), false
 	}
 
 	w, err := c.Data()
 	if err != nil {
-		return tr.Errorf("DATA %v", err)
+		return tr.Errorf("DATA %v", err), false
 	}
 	_, err = w.Write(data)
 	if err != nil {
-		return tr.Errorf("DATA writing: %v", err)
+		return tr.Errorf("DATA writing: %v", err), false
 	}
 
 	err = w.Close()
 	if err != nil {
-		return tr.Errorf("DATA closing %v", err)
+		return tr.Errorf("DATA closing %v", err), false
 	}
 
 	c.Quit()
 
-	return nil
+	return nil, false
 }
 
 func lookupMX(domain string) (string, error) {

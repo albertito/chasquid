@@ -282,15 +282,17 @@ func (item *Item) SendLoop(q *Queue) {
 				to := rcpt.Address
 				tr.LazyPrintf("%s sending", to)
 
-				err := item.deliver(q, rcpt)
+				err, permanent := item.deliver(q, rcpt)
 
 				if err != nil {
-					// TODO: Local deliveries should not be retried, if they
-					// fail due to the user not existing.
-					// -> we need to know the users.
-					// Or maybe we can just not care?
-					tr.LazyPrintf("error: %v", err)
-					glog.Infof("%s  -> %q fail: %v", item.ID, to, err)
+					if permanent {
+						tr.LazyPrintf("permanent error: %v", err)
+						glog.Infof("%s  -> %q permanent fail: %v", item.ID, to, err)
+						status = Recipient_FAILED
+					} else {
+						tr.LazyPrintf("error: %v", err)
+						glog.Infof("%s  -> %q fail: %v", item.ID, to, err)
+					}
 				} else {
 					tr.LazyPrintf("%s successful", to)
 					glog.Infof("%s  -> %q sent", item.ID, to)
@@ -322,9 +324,9 @@ func (item *Item) SendLoop(q *Queue) {
 		}
 
 		if pending == 0 {
-			// Successfully sent to all recipients.
-			tr.LazyPrintf("all successful")
-			glog.Infof("%s all successful", item.ID)
+			// Completed to all recipients (some may not have succeeded).
+			tr.LazyPrintf("all done")
+			glog.Infof("%s all done", item.ID)
 
 			q.Remove(item.ID)
 			return
@@ -343,17 +345,20 @@ func (item *Item) SendLoop(q *Queue) {
 	// remove item from the queue, and remove from disk.
 }
 
-func (item *Item) deliver(q *Queue, rcpt *Recipient) error {
+// deliver the item to the given recipient, using the couriers from the queue.
+// Return an error (if any), and whether it is permanent or not.
+func (item *Item) deliver(q *Queue, rcpt *Recipient) (err error, permanent bool) {
 	if rcpt.Type == Recipient_PIPE {
 		c := strings.Fields(rcpt.Address)
 		if len(c) == 0 {
-			return fmt.Errorf("empty pipe")
+			return fmt.Errorf("empty pipe"), true
 		}
 		ctx, _ := context.WithDeadline(context.Background(),
 			time.Now().Add(30*time.Second))
 		cmd := exec.CommandContext(ctx, c[0], c[1:]...)
 		cmd.Stdin = bytes.NewReader(item.Data)
-		return cmd.Run()
+		return cmd.Run(), true
+
 	} else {
 		if envelope.DomainIn(rcpt.Address, q.localDomains) {
 			return q.localC.Deliver(item.From, rcpt.Address, item.Data)

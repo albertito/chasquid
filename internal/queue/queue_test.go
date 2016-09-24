@@ -25,9 +25,9 @@ type deliverRequest struct {
 	data []byte
 }
 
-func (cc *ChanCourier) Deliver(from string, to string, data []byte) error {
+func (cc *ChanCourier) Deliver(from string, to string, data []byte) (error, bool) {
 	cc.requests <- deliverRequest{from, to, data}
-	return <-cc.results
+	return <-cc.results, false
 }
 func newChanCourier() *ChanCourier {
 	return &ChanCourier{
@@ -43,12 +43,12 @@ type TestCourier struct {
 	reqFor   map[string]*deliverRequest
 }
 
-func (tc *TestCourier) Deliver(from string, to string, data []byte) error {
+func (tc *TestCourier) Deliver(from string, to string, data []byte) (error, bool) {
 	defer tc.wg.Done()
 	dr := &deliverRequest{from, to, data}
 	tc.requests = append(tc.requests, dr)
 	tc.reqFor[to] = dr
-	return nil
+	return nil, false
 }
 
 func newTestCourier() *TestCourier {
@@ -138,14 +138,14 @@ func TestFullQueue(t *testing.T) {
 	q.Remove(id)
 }
 
-// Dumb courier, for when we don't care for the results.
+// Dumb courier, for when we just want to return directly.
 type DumbCourier struct{}
 
-func (c DumbCourier) Deliver(from string, to string, data []byte) error {
-	return nil
+func (c DumbCourier) Deliver(from string, to string, data []byte) (error, bool) {
+	return nil, false
 }
 
-var dumbCourier DumbCourier
+var dumbCourier = DumbCourier{}
 
 func TestAliases(t *testing.T) {
 	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
@@ -198,13 +198,7 @@ func TestPipes(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 
-	if err := item.deliver(q, item.Rcpt[0]); err != nil {
+	if err, _ := item.deliver(q, item.Rcpt[0]); err != nil {
 		t.Errorf("pipe delivery failed: %v", err)
-	}
-
-	// Make the command "false", should fail.
-	item.Rcpt[0].Address = "false"
-	if err := item.deliver(q, item.Rcpt[0]); err == nil {
-		t.Errorf("pipe delivery worked, expected failure")
 	}
 }
