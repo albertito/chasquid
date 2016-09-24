@@ -293,7 +293,7 @@ func (s *Server) getTLSConfig() (*tls.Config, error) {
 	for i := 0; i < len(s.certs); i++ {
 		conf.Certificates[i], err = tls.LoadX509KeyPair(s.certs[i], s.keys[i])
 		if err != nil {
-			return nil, fmt.Errorf("Error loading client certificate: %v", err)
+			return nil, err
 		}
 	}
 
