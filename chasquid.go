@@ -108,6 +108,8 @@ func main() {
 	remoteC := &courier.SMTP{}
 	s.InitQueue(conf.DataDir+"/queue", aliasesR, localC, remoteC)
 
+	go s.periodicallyReload(aliasesR)
+
 	// Load the addresses and listeners.
 	systemdLs, err := systemd.Listeners()
 	if err != nil {
@@ -155,7 +157,6 @@ func loadDomain(name, dir string, s *Server, aliasesR *aliases.Resolver) {
 			glog.Errorf("      error: %v", err)
 		} else {
 			s.AddUserDB(name, udb)
-			// TODO: periodically reload the database.
 		}
 	}
 
@@ -270,17 +271,24 @@ func (s *Server) InitQueue(path string, aliasesR *aliases.Resolver,
 		glog.Fatalf("Error loading queue: %v", err)
 	}
 	s.queue = q
+}
 
-	// Launch the periodic reload of aliases, now that the queue may care
-	// about them.
-	go func() {
-		for range time.Tick(30 * time.Second) {
-			err := aliasesR.Reload()
+// periodicallyReload some of the server's information, such as aliases and
+// the user databases.
+func (s *Server) periodicallyReload(aliasesR *aliases.Resolver) {
+	for range time.Tick(30 * time.Second) {
+		err := aliasesR.Reload()
+		if err != nil {
+			glog.Errorf("Error reloading aliases: %v", err)
+		}
+
+		for domain, udb := range s.userDBs {
+			err = udb.Reload()
 			if err != nil {
-				glog.Errorf("Error reloading aliases: %v")
+				glog.Errorf("Error reloading %q user db: %v", domain, err)
 			}
 		}
-	}()
+	}
 }
 
 func (s *Server) getTLSConfig() (*tls.Config, error) {
