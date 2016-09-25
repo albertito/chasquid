@@ -1,0 +1,33 @@
+From user@testserver
+From: Mail Delivery System <postmaster-dsn@testserver>
+To: <user@testserver>
+Subject: Mail delivery failed: returning message to sender
+Message-ID: *
+Date: *
+X-Failed-Recipients: fail@testserver, 
+Auto-Submitted: auto-replied
+
+Delivery to the following recipient(s) failed permanently:
+
+  - fail@testserver
+  
+
+----- Technical details -----
+
+- "false" (PIPE) failed with error:
+    exit status 1
+
+
+----- Original message -----
+
+Received: from user user@testserver
+	by *
+	(envelope from "user@testserver")
+	on ; *
+Date: *
+From: Mailer daemon <somewhere@horns.com>
+Subject: I've come to haunt you
+
+Muahahahaha
+
+

@@ -19,11 +19,49 @@ for h, val in expected.items():
 		print("Header missing: %r" % h)
 		diff = True
 		continue
+
+	if expected[h] == '*':
+		continue
+
 	if msg[h] != val:
 		print("Header %r differs: %r != %r" % (h, val, msg[h]))
 		diff = True
 
-if expected.get_payload() != msg.get_payload():
+
+def flexible_eq(expected, got):
+    """Compare two strings, supporting wildcards.
+
+    This functions compares two strings, but supports wildcards on the
+    expected string. The following characters have special meaning:
+
+     - ?  matches any character.
+     - *  matches anything until the end of the line.
+
+    Returns True if equal (considering wildcards), False otherwise.
+    """
+    posG = 0
+    for c in expected:
+        if posG >= len(got):
+            return False
+
+        if c == '?':
+            posG += 1
+            continue
+        if c == '*':
+            while got[posG] != '\n':
+                posG += 1
+                continue
+            continue
+
+        if c != got[posG]:
+            return False
+
+        posG += 1
+
+    return True
+
+
+if not flexible_eq(expected.get_payload(), msg.get_payload()):
 	diff = True
 
 	if expected.is_multipart() != msg.is_multipart():
