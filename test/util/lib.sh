@@ -10,6 +10,10 @@ function init() {
 
 	export UTILDIR="$(realpath ${TBASE}/../util/)"
 
+	if [ "${RACE}" == "1" ]; then
+		RACE="-race"
+	fi
+
 	# Remove the directory where test-mda will deliver mail, so previous
 	# runs don't interfere with this one.
 	rm -rf .mail
@@ -31,7 +35,7 @@ function chasquid() {
 	HOSTALIASES=${TBASE}/hosts \
 	PATH=${UTILDIR}:${PATH} \
 	MDA_DIR=${TBASE}/.mail \
-		go run ${TBASE}/../../chasquid.go "$@"
+		go run ${RACE} ${TBASE}/../../chasquid.go "$@"
 }
 
 function add_user() {
