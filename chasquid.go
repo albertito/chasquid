@@ -680,7 +680,7 @@ func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
 
 	// There are no partial failures here: we put it in the queue, and then if
 	// individual deliveries fail, we report via email.
-	msgID, err := c.queue.Put(c.mailFrom, c.rcptTo, c.data)
+	msgID, err := c.queue.Put(c.hostname, c.mailFrom, c.rcptTo, c.data)
 	if err != nil {
 		tr.LazyPrintf("   error queueing: %v", err)
 		tr.SetError()

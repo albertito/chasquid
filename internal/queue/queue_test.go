@@ -65,7 +65,7 @@ func TestBasic(t *testing.T) {
 
 	localC.wg.Add(2)
 	remoteC.wg.Add(1)
-	id, err := q.Put("from", []string{"am@loco", "x@remote", "nodomain"}, []byte("data"))
+	id, err := q.Put("host", "from", []string{"am@loco", "x@remote", "nodomain"}, []byte("data"))
 	if err != nil {
 		t.Fatalf("Put: %v", err)
 	}
@@ -110,7 +110,8 @@ func TestFullQueue(t *testing.T) {
 			Message: Message{
 				ID:   <-newID,
 				From: fmt.Sprintf("from-%d", i),
-				Rcpt: []*Recipient{{"to", Recipient_EMAIL, Recipient_PENDING}},
+				Rcpt: []*Recipient{
+					{"to", Recipient_EMAIL, Recipient_PENDING, ""}},
 				Data: []byte("data"),
 			},
 			CreatedAt: time.Now(),
@@ -120,7 +121,7 @@ func TestFullQueue(t *testing.T) {
 	}
 
 	// This one should fail due to the queue being too big.
-	id, err := q.Put("from", []string{"to"}, []byte("data-qf"))
+	id, err := q.Put("host", "from", []string{"to"}, []byte("data-qf"))
 	if err != errQueueFull {
 		t.Errorf("Not failed as expected: %v - %v", id, err)
 	}
@@ -131,7 +132,7 @@ func TestFullQueue(t *testing.T) {
 	q.q[oneID].WriteTo(q.path)
 	q.Remove(oneID)
 
-	id, err = q.Put("from", []string{"to"}, []byte("data"))
+	id, err = q.Put("host", "from", []string{"to"}, []byte("data"))
 	if err != nil {
 		t.Errorf("Put: %v", err)
 	}
@@ -162,17 +163,17 @@ func TestAliases(t *testing.T) {
 		expected []*Recipient
 	}{
 		{[]string{"ab@loco"}, []*Recipient{
-			{"pq@loco", Recipient_EMAIL, Recipient_PENDING},
-			{"rs@loco", Recipient_EMAIL, Recipient_PENDING},
-			{"command", Recipient_PIPE, Recipient_PENDING}}},
+			{"pq@loco", Recipient_EMAIL, Recipient_PENDING, ""},
+			{"rs@loco", Recipient_EMAIL, Recipient_PENDING, ""},
+			{"command", Recipient_PIPE, Recipient_PENDING, ""}}},
 		{[]string{"ab@loco", "cd@loco"}, []*Recipient{
-			{"pq@loco", Recipient_EMAIL, Recipient_PENDING},
-			{"rs@loco", Recipient_EMAIL, Recipient_PENDING},
-			{"command", Recipient_PIPE, Recipient_PENDING},
-			{"ata@hualpa", Recipient_EMAIL, Recipient_PENDING}}},
+			{"pq@loco", Recipient_EMAIL, Recipient_PENDING, ""},
+			{"rs@loco", Recipient_EMAIL, Recipient_PENDING, ""},
+			{"command", Recipient_PIPE, Recipient_PENDING, ""},
+			{"ata@hualpa", Recipient_EMAIL, Recipient_PENDING, ""}}},
 	}
 	for _, c := range cases {
-		id, err := q.Put("from", c.to, []byte("data"))
+		id, err := q.Put("host", "from", c.to, []byte("data"))
 		if err != nil {
 			t.Errorf("Put: %v", err)
 		}
@@ -192,7 +193,7 @@ func TestPipes(t *testing.T) {
 			ID:   <-newID,
 			From: "from",
 			Rcpt: []*Recipient{
-				{"true", Recipient_PIPE, Recipient_PENDING}},
+				{"true", Recipient_PIPE, Recipient_PENDING, ""}},
 			Data: []byte("data"),
 		},
 		CreatedAt: time.Now(),

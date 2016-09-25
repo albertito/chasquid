@@ -143,21 +143,24 @@ func (q *Queue) Len() int {
 }
 
 // Put an envelope in the queue.
-func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
+func (q *Queue) Put(hostname, from string, to []string, data []byte) (string, error) {
 	if q.Len() >= maxQueueSize {
 		return "", errQueueFull
 	}
 
 	item := &Item{
 		Message: Message{
-			ID:   <-newID,
-			From: from,
-			Data: data,
+			ID:       <-newID,
+			From:     from,
+			Data:     data,
+			Hostname: hostname,
 		},
 		CreatedAt: time.Now(),
 	}
 
 	for _, t := range to {
+		item.To = append(item.To, t)
+
 		rcpts, err := q.aliases.Resolve(t)
 		if err != nil {
 			return "", fmt.Errorf("error resolving aliases for %q: %v", t, err)
@@ -193,7 +196,7 @@ func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
 	q.q[item.ID] = item
 	q.mu.Unlock()
 
-	glog.Infof("%s accepted from %q", item.ID, from)
+	glog.Infof("%s accepted from %q  to  %v", item.ID, from, to)
 
 	// Begin to send it right away.
 	go item.SendLoop(q)
@@ -258,7 +261,6 @@ func (item *Item) WriteTo(dir string) error {
 }
 
 func (item *Item) SendLoop(q *Queue) {
-
 	tr := trace.New("Queue", item.ID)
 	defer tr.Finish()
 	tr.LazyPrintf("from: %s", item.From)
@@ -304,6 +306,9 @@ func (item *Item) SendLoop(q *Queue) {
 				if oldStatus != status {
 					item.Lock()
 					rcpt.Status = status
+					if err != nil {
+						rcpt.LastFailureMessage = err.Error()
+					}
 					item.Unlock()
 
 					err = item.WriteTo(q.path)
@@ -316,20 +321,15 @@ func (item *Item) SendLoop(q *Queue) {
 		}
 		wg.Wait()
 
+		// If they're all done, no need to wait.
 		pending := 0
 		for _, rcpt := range item.Rcpt {
 			if rcpt.Status == Recipient_PENDING {
 				pending++
 			}
 		}
-
 		if pending == 0 {
-			// Completed to all recipients (some may not have succeeded).
-			tr.LazyPrintf("all done")
-			glog.Infof("%s all done", item.ID)
-
-			q.Remove(item.ID)
-			return
+			break
 		}
 
 		// TODO: Consider sending a non-final notification after 30m or so,
@@ -341,8 +341,41 @@ func (item *Item) SendLoop(q *Queue) {
 		time.Sleep(delay)
 	}
 
-	// TODO: Send a notification message for the recipients we failed to send,
-	// remove item from the queue, and remove from disk.
+	// Completed to all recipients (some may not have succeeded).
+	tr.LazyPrintf("all done")
+	glog.Infof("%s all done", item.ID)
+
+	failed := 0
+	for _, rcpt := range item.Rcpt {
+		if rcpt.Status == Recipient_FAILED {
+			failed++
+		}
+	}
+
+	if failed > 0 && item.From != "<>" {
+		sendDSN(tr, q, item)
+	}
+
+	q.Remove(item.ID)
+
+	return
+}
+
+func sendDSN(tr trace.Trace, q *Queue, item *Item) {
+	tr.LazyPrintf("sending DSN")
+
+	msg, err := deliveryStatusNotification(item)
+	if err != nil {
+		tr.LazyPrintf("failed to build DSN: %v", err)
+		glog.Infof("%s: failed to build DSN: %v", item.ID, err)
+		return
+	}
+
+	_, err = q.Put(item.Hostname, "<>", []string{item.From}, msg)
+	if err != nil {
+		tr.LazyPrintf("failed to queue DSN: %v", err)
+		glog.Infof("%s: failed to queue DSN: %v", item.ID, err)
+	}
 }
 
 // deliver the item to the given recipient, using the couriers from the queue.

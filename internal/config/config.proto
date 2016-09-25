@@ -2,8 +2,11 @@
 syntax = "proto3";
 
 message Config {
-	// Hostname to use when we say hello.
-	// For aesthetic purposes, but may help if our ip address resolves to it.
+	// Main/default hostname to use.
+	// This is used to say hello to clients, and by default as the domain
+	// we send delivery notifications errors from.
+	// It should be a domain we can send email from.
+	// It usually helps if our IP address resolves to it.
 	// Default: machine hostname.
 	string hostname = 1;
 

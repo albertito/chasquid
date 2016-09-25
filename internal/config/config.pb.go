@@ -29,8 +29,11 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type Config struct {
-	// Hostname to use when we say hello.
-	// For aesthetic purposes, but may help if our ip address resolves to it.
+	// Main/default hostname to use.
+	// This is used to say hello to clients, and by default as the domain
+	// we send delivery notifications errors from.
+	// It should be a domain we can send email from.
+	// It usually helps if our IP address resolves to it.
 	// Default: machine hostname.
 	Hostname string `protobuf:"bytes,1,opt,name=hostname" json:"hostname,omitempty"`
 	// Maximum email size, in megabytes.

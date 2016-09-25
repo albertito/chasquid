@@ -13,11 +13,15 @@ message Message {
 
 	// The envelope for this message.
 	string from = 2;
-	repeated Recipient rcpt = 3;
-	bytes data = 4;
+	repeated string To = 3;
+	repeated Recipient rcpt = 4;
+	bytes data = 5;
 
 	// Creation timestamp.
-	google.protobuf.Timestamp created_at_ts = 5;
+	google.protobuf.Timestamp created_at_ts = 6;
+
+	// Hostname of the server receiving this message.
+	string hostname = 7;
 }
 
 message Recipient {
@@ -35,5 +39,7 @@ message Recipient {
 		FAILED = 2;
 	}
 	Status status = 3;
+
+	string last_failure_message = 4;
 }
 
