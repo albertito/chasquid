@@ -100,6 +100,10 @@ retry:
 	// Go's smtp does not allow us to do this, so leave for when we do it
 	// ourselves.
 
+	// c.Mail will add the <> for us when the address is empty.
+	if from == "<>" {
+		from = ""
+	}
 	if err = c.Mail(from); err != nil {
 		return tr.Errorf("MAIL %v", err), false
 	}
