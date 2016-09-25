@@ -283,3 +283,29 @@ func TestRemoveUser(t *testing.T) {
 		t.Errorf("removal of unknown user succeeded")
 	}
 }
+
+func TestHasUser(t *testing.T) {
+	fname := mustCreateDB(t, "")
+	defer removeIfSuccessful(t, fname)
+	db := mustLoad(t, fname)
+
+	if ok := db.HasUser("unknown"); ok {
+		t.Errorf("unknown user exists")
+	}
+
+	if err := db.AddUser("user", "passwd"); err != nil {
+		t.Fatalf("error adding user: %v", err)
+	}
+
+	if ok := db.HasUser("unknown"); ok {
+		t.Errorf("unknown user exists")
+	}
+
+	if ok := db.HasUser("user"); !ok {
+		t.Errorf("known user does not exist")
+	}
+
+	if ok := db.HasUser("user"); !ok {
+		t.Errorf("known user does not exist")
+	}
+}

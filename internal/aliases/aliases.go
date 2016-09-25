@@ -120,6 +120,19 @@ func (v *Resolver) Resolve(addr string) ([]Recipient, error) {
 	return v.resolve(0, addr)
 }
 
+// Exists check that the address exists in the database.
+// It returns the cleaned address, and a boolean indicating the result.
+// The clean address can be used to look it up in other databases, even if it
+// doesn't exist.
+func (v *Resolver) Exists(addr string) (string, bool) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	addr = v.cleanIfLocal(addr)
+	_, ok := v.aliases[addr]
+	return addr, ok
+}
+
 func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
 	if rcount >= recursionLimit {
 		return nil, ErrRecursionLimitExceeded

@@ -431,13 +431,14 @@ func realMain(m *testing.M) int {
 		s.AddAddr(smtpAddr, ModeSMTP)
 		s.AddAddr(submissionAddr, ModeSubmission)
 
-		ars := aliases.NewResolver()
 		localC := &courier.Procmail{}
 		remoteC := &courier.SMTP{}
-		s.InitQueue(tmpDir+"/queue", ars, localC, remoteC)
+		s.InitQueue(tmpDir+"/queue", localC, remoteC)
 
 		udb := userdb.New("/dev/null")
 		udb.AddUser("testuser", "testpasswd")
+		s.aliasesR.AddAliasForTesting(
+			"to@localhost", "testuser@localhost", aliases.EMAIL)
 		s.AddDomain("localhost")
 		s.AddUserDB("localhost", udb)
 

@@ -74,9 +74,8 @@ func main() {
 	s.Hostname = conf.Hostname
 	s.MaxDataSize = conf.MaxDataSizeMb * 1024 * 1024
 
-	aliasesR := aliases.NewResolver()
-	aliasesR.SuffixSep = conf.SuffixSeparators
-	aliasesR.DropChars = conf.DropCharacters
+	s.aliasesR.SuffixSep = conf.SuffixSeparators
+	s.aliasesR.DropChars = conf.DropCharacters
 
 	// Load domains.
 	// They live inside the config directory, so the relative path works.
@@ -92,7 +91,7 @@ func main() {
 	for _, info := range domainDirs {
 		name := info.Name()
 		dir := filepath.Join("domains", name)
-		loadDomain(name, dir, s, aliasesR)
+		loadDomain(name, dir, s)
 	}
 
 	// Always include localhost as local domain.
@@ -106,9 +105,9 @@ func main() {
 		Timeout: 30 * time.Second,
 	}
 	remoteC := &courier.SMTP{}
-	s.InitQueue(conf.DataDir+"/queue", aliasesR, localC, remoteC)
+	s.InitQueue(conf.DataDir+"/queue", localC, remoteC)
 
-	go s.periodicallyReload(aliasesR)
+	go s.periodicallyReload()
 
 	// Load the addresses and listeners.
 	systemdLs, err := systemd.Listeners()
@@ -144,10 +143,10 @@ func loadAddresses(srv *Server, addrs []string, ls []net.Listener, mode SocketMo
 }
 
 // Helper to load a single domain configuration into the server.
-func loadDomain(name, dir string, s *Server, aliasesR *aliases.Resolver) {
+func loadDomain(name, dir string, s *Server) {
 	glog.Infof("  %s", name)
 	s.AddDomain(name)
-	aliasesR.AddDomain(name)
+	s.aliasesR.AddDomain(name)
 	s.AddCerts(dir+"/cert.pem", dir+"/key.pem")
 
 	if _, err := os.Stat(dir + "/users"); err == nil {
@@ -161,7 +160,7 @@ func loadDomain(name, dir string, s *Server, aliasesR *aliases.Resolver) {
 	}
 
 	glog.Infof("    adding aliases")
-	err := aliasesR.AddAliasesFile(name, dir+"/aliases")
+	err := s.aliasesR.AddAliasesFile(name, dir+"/aliases")
 	if err != nil {
 		glog.Errorf("      error: %v", err)
 	}
@@ -220,6 +219,9 @@ type Server struct {
 	// User databases (per domain).
 	userDBs map[string]*userdb.DB
 
+	// Aliases resolver.
+	aliasesR *aliases.Resolver
+
 	// Time before we give up on a connection, even if it's sending data.
 	connTimeout time.Duration
 
@@ -238,6 +240,7 @@ func NewServer() *Server {
 		commandTimeout: 1 * time.Minute,
 		localDomains:   &set.String{},
 		userDBs:        map[string]*userdb.DB{},
+		aliasesR:       aliases.NewResolver(),
 	}
 }
 
@@ -262,10 +265,8 @@ func (s *Server) AddUserDB(domain string, db *userdb.DB) {
 	s.userDBs[domain] = db
 }
 
-func (s *Server) InitQueue(path string, aliasesR *aliases.Resolver,
-	localC, remoteC courier.Courier) {
-
-	q := queue.New(path, s.localDomains, aliasesR, localC, remoteC)
+func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
+	q := queue.New(path, s.localDomains, s.aliasesR, localC, remoteC)
 	err := q.Load()
 	if err != nil {
 		glog.Fatalf("Error loading queue: %v", err)
@@ -275,9 +276,9 @@ func (s *Server) InitQueue(path string, aliasesR *aliases.Resolver,
 
 // periodicallyReload some of the server's information, such as aliases and
 // the user databases.
-func (s *Server) periodicallyReload(aliasesR *aliases.Resolver) {
+func (s *Server) periodicallyReload() {
 	for range time.Tick(30 * time.Second) {
-		err := aliasesR.Reload()
+		err := s.aliasesR.Reload()
 		if err != nil {
 			glog.Errorf("Error reloading aliases: %v", err)
 		}
@@ -363,6 +364,7 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 			mode:           mode,
 			tlsConfig:      s.tlsConfig,
 			userDBs:        s.userDBs,
+			aliasesR:       s.aliasesR,
 			localDomains:   s.localDomains,
 			deadline:       time.Now().Add(s.connTimeout),
 			commandTimeout: s.commandTimeout,
@@ -401,9 +403,11 @@ type Conn struct {
 	// Are we using TLS?
 	onTLS bool
 
-	// User databases and local domains, taken from the server at creation time.
+	// User databases, aliases and local domains, taken from the server at
+	// creation time.
 	userDBs      map[string]*userdb.DB
 	localDomains *set.String
+	aliasesR     *aliases.Resolver
 
 	// Have we successfully completed AUTH?
 	completedAuth bool
@@ -644,9 +648,13 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 		return 503, "sender not yet given"
 	}
 
-	remoteDst := !envelope.DomainIn(e.Address, c.localDomains)
-	if remoteDst && !c.completedAuth {
+	localDst := envelope.DomainIn(e.Address, c.localDomains)
+	if !localDst && !c.completedAuth {
 		return 503, "relay not allowed"
+	}
+
+	if localDst && !c.userExists(e.Address) {
+		return 550, "recipient unknown, please check the address for typos"
 	}
 
 	c.rcptTo = append(c.rcptTo, e.Address)
@@ -852,6 +860,25 @@ func (c *Conn) resetEnvelope() {
 	c.mailFrom = ""
 	c.rcptTo = nil
 	c.data = nil
+}
+
+func (c *Conn) userExists(addr string) bool {
+	var ok bool
+	addr, ok = c.aliasesR.Exists(addr)
+	if ok {
+		return true
+	}
+
+	// Note we used the address returned by the aliases resolver, which has
+	// cleaned it up. This means that a check for "us.er@domain" will have us
+	// look up "user" in our databases if the domain is local, which is what
+	// we want.
+	user, domain := envelope.Split(addr)
+	udb := c.userDBs[domain]
+	if udb == nil {
+		return false
+	}
+	return udb.HasUser(user)
 }
 
 func (c *Conn) readCommand() (cmd, params string, err error) {

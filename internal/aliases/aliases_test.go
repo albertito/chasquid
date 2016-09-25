@@ -25,6 +25,22 @@ func (cases Cases) check(t *testing.T, r *Resolver) {
 	}
 }
 
+func mustExist(t *testing.T, r *Resolver, addrs ...string) {
+	for _, addr := range addrs {
+		if _, ok := r.Exists(addr); !ok {
+			t.Errorf("address %q does not exist, it should", addr)
+		}
+	}
+}
+
+func mustNotExist(t *testing.T, r *Resolver, addrs ...string) {
+	for _, addr := range addrs {
+		if _, ok := r.Exists(addr); ok {
+			t.Errorf("address %q exists, it should not", addr)
+		}
+	}
+}
+
 func TestBasic(t *testing.T) {
 	resolver := NewResolver()
 	resolver.aliases = map[string][]Recipient{
@@ -39,6 +55,9 @@ func TestBasic(t *testing.T) {
 		{"x@y", []Recipient{{"x@y", EMAIL}}},
 	}
 	cases.check(t, resolver)
+
+	mustExist(t, resolver, "a@b", "e@f", "cmd")
+	mustNotExist(t, resolver, "x@y")
 }
 
 func TestAddrRewrite(t *testing.T) {
@@ -79,6 +98,48 @@ func TestAddrRewrite(t *testing.T) {
 		{"x+blah@y", []Recipient{{"x+blah@y", EMAIL}}},
 	}
 	cases.check(t, resolver)
+}
+
+func TestExistsRewrite(t *testing.T) {
+	resolver := NewResolver()
+	resolver.AddDomain("def")
+	resolver.AddDomain("p-q.com")
+	resolver.aliases = map[string][]Recipient{
+		"abc@def":  {{"x@y", EMAIL}},
+		"ñoño@def": {{"x@y", EMAIL}},
+		"recu@def": {{"ab+cd@p-q.com", EMAIL}},
+	}
+	resolver.DropChars = ".~"
+	resolver.SuffixSep = "-+"
+
+	mustExist(t, resolver, "abc@def", "a.bc+blah@def", "ño.ño@def")
+	mustNotExist(t, resolver, "abc@d.ef", "nothere@def")
+
+	cases := []struct {
+		addr         string
+		expectAddr   string
+		expectExists bool
+	}{
+		{"abc@def", "abc@def", true},
+		{"abc+blah@def", "abc@def", true},
+		{"a.b~c@def", "abc@def", true},
+		{"a.bc+blah@def", "abc@def", true},
+
+		{"a.bc@unknown", "a.bc@unknown", false},
+		{"x.yz@def", "xyz@def", false},
+		{"x.yz@d.ef", "x.yz@d.ef", false},
+	}
+	for _, c := range cases {
+		addr, exists := resolver.Exists(c.addr)
+		if addr != c.expectAddr {
+			t.Errorf("%q: expected addr %q, got %q",
+				c.addr, c.expectAddr, addr)
+		}
+		if exists != c.expectExists {
+			t.Errorf("%q: expected exists %v, got %v",
+				c.addr, c.expectExists, exists)
+		}
+	}
 }
 
 func TestTooMuchRecursion(t *testing.T) {

@@ -7,6 +7,7 @@ init
 
 generate_certs_for testserver
 add_user testserver user secretpassword
+add_user testserver someone secretpassword
 
 mkdir -p .logs
 chasquid -v=2 --log_dir=.logs --config_dir=config &
@@ -22,6 +23,11 @@ mail_diff content .mail/someone@testserver
 # complexity, so we expect it to work.
 if ! run_msmtp -a smtpport someone@testserver < content 2> /dev/null; then
 	echo "ERROR: failed auth on the SMTP port"
+	exit 1
+fi
+
+if run_msmtp nobody@testserver < content 2> /dev/null; then
+	echo "ERROR: successfuly sent an email to a non-existent user"
 	exit 1
 fi
 
