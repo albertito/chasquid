@@ -372,8 +372,6 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 		}
 		go sc.Handle()
 	}
-
-	l.Close()
 }
 
 type Conn struct {

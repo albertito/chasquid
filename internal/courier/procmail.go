@@ -51,8 +51,9 @@ func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 		args = append(args, replacer.Replace(a))
 	}
 
-	ctx, _ := context.WithDeadline(context.Background(),
+	ctx, cancel := context.WithDeadline(context.Background(),
 		time.Now().Add(p.Timeout))
+	defer cancel()
 	cmd := exec.CommandContext(ctx, p.Binary, args...)
 
 	cmdStdin, err := cmd.StdinPipe()
