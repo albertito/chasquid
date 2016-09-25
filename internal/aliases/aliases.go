@@ -173,16 +173,26 @@ func (v *Resolver) AddDomain(domain string) {
 }
 
 func (v *Resolver) AddAliasesFile(domain, path string) error {
+	// We inconditionally add the domain and file on our list.
+	// Even if the file does not exist now, it may later. This makes it be
+	// consider when doing Reload.
+	// Adding it to the domains mean that we will do drop character and suffix
+	// manipulation even if there are no aliases for it.
+	v.mu.Lock()
+	v.files[domain] = append(v.files[domain], path)
+	v.domains[domain] = true
+	v.mu.Unlock()
+
 	aliases, err := parseFile(domain, path)
+	if os.IsNotExist(err) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
 
-	v.mu.Lock()
-	v.files[domain] = append(v.files[domain], path)
-	v.domains[domain] = true
-
 	// Add the aliases to the resolver, overriding any previous values.
+	v.mu.Lock()
 	for addr, rs := range aliases {
 		v.aliases[addr] = rs
 	}
@@ -201,6 +211,9 @@ func (v *Resolver) Reload() error {
 	for domain, paths := range v.files {
 		for _, path := range paths {
 			aliases, err := parseFile(domain, path)
+			if os.IsNotExist(err) {
+				continue
+			}
 			if err != nil {
 				return fmt.Errorf("Error parsing %q: %v", path, err)
 			}

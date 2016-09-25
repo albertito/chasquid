@@ -159,12 +159,10 @@ func loadDomain(name, dir string, s *Server, aliasesR *aliases.Resolver) {
 		}
 	}
 
-	if _, err := os.Stat(dir + "/aliases"); err == nil {
-		glog.Infof("    adding aliases")
-		err := aliasesR.AddAliasesFile(name, dir+"/aliases")
-		if err != nil {
-			glog.Errorf("      error: %v", err)
-		}
+	glog.Infof("    adding aliases")
+	err := aliasesR.AddAliasesFile(name, dir+"/aliases")
+	if err != nil {
+		glog.Errorf("      error: %v", err)
 	}
 }
 
@@ -276,7 +274,7 @@ func (s *Server) InitQueue(path string, aliasesR *aliases.Resolver,
 	// Launch the periodic reload of aliases, now that the queue may care
 	// about them.
 	go func() {
-		for range time.Tick(1 * time.Minute) {
+		for range time.Tick(30 * time.Second) {
 			err := aliasesR.Reload()
 			if err != nil {
 				glog.Errorf("Error reloading aliases: %v")
