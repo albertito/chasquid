@@ -14,6 +14,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 
 	"github.com/docopt/docopt-go"
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -25,6 +26,7 @@ Usage:
   chasquid-util authenticate <db> <username> [--password=<password>]
   chasquid-util check-userdb <db>
   chasquid-util aliases-resolve <configdir> <address>
+  chasquid-util print-config <configdir>
 `
 
 // Command-line arguments.
@@ -39,6 +41,7 @@ func main() {
 		"authenticate":    Authenticate,
 		"check-userdb":    CheckUserDB,
 		"aliases-resolve": AliasesResolve,
+		"print-config":    PrintConfig,
 	}
 
 	for cmd, f := range commands {
@@ -195,4 +198,15 @@ func AliasesResolve() {
 		fmt.Printf("%v  %s\n", rcpt.Type, rcpt.Addr)
 	}
 
+}
+
+// chasquid-util print-config <configdir>
+func PrintConfig() {
+	configDir := args["<configdir>"].(string)
+	conf, err := config.Load(configDir + "/chasquid.conf")
+	if err != nil {
+		Fatalf("Error reading config")
+	}
+
+	fmt.Println(proto.MarshalTextString(conf))
 }
