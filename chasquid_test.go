@@ -201,15 +201,6 @@ func TestRcptBeforeMail(t *testing.T) {
 	}
 }
 
-func TestLocalHasAuthenticated(t *testing.T) {
-	c := mustDial(t, ModeSubmission, false)
-	defer c.Close()
-
-	if err := c.Mail("from@localhost"); err == nil {
-		t.Errorf("Accepted non-authenticated local mail")
-	}
-}
-
 func TestRelayForbidden(t *testing.T) {
 	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()

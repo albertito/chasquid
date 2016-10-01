@@ -615,14 +615,6 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 	// but that's not according to the RFC. We reset the envelope instead.
 	c.resetEnvelope()
 
-	// If the source is local, check that it completed auth for that user.
-	if e.Address != "<>" && envelope.DomainIn(e.Address, c.localDomains) {
-		user, domain := envelope.Split(e.Address)
-		if user != c.authUser || domain != c.authDomain {
-			return 503, "user not authorized"
-		}
-	}
-
 	c.mailFrom = e.Address
 	return 250, "You feel like you are being watched"
 }
