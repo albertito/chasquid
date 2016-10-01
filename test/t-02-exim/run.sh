@@ -46,8 +46,7 @@ add_user srv-chasquid someone secretpassword
 # Bypass MX lookup, so it can find srv-exim (via our host alias).
 mkdir -p .logs
 chasquid -v=2 --log_dir=.logs --config_dir=config \
-	--testing__outgoing_smtp_port=2025 \
-	--testing__bypass_mx_lookup &
+	--testing__outgoing_smtp_port=2025 &
 
 wait_until_ready 1025
 

@@ -23,10 +23,6 @@ var (
 	smtpPort = flag.String("testing__outgoing_smtp_port", "25",
 		"port to use for outgoing SMTP connections, ONLY FOR TESTING")
 
-	// Bypass the MX lookup, for testing purposes.
-	bypassMX = flag.Bool("testing__bypass_mx_lookup", false,
-		"bypass MX lookup, ONLY FOR TESTING")
-
 	// Fake MX records, used for testing only.
 	fakeMX = map[string]string{}
 )
@@ -40,7 +36,6 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	defer tr.Finish()
 	tr.LazyPrintf("%s  ->  %s", from, to)
 
-	// TODO: Fall back to A if MX is not available.
 	mx, err := lookupMX(envelope.DomainOf(to))
 	if err != nil {
 		// Note this is considered a permanent error.
@@ -142,17 +137,29 @@ func lookupMX(domain string) (string, error) {
 		return v, nil
 	}
 
-	if *bypassMX {
-		return domain, nil
-	}
-
 	mxs, err := net.LookupMX(domain)
-	if err != nil {
-		return "", err
-	} else if len(mxs) == 0 {
-		glog.Infof("domain %q has no MX, falling back to A", domain)
-		return domain, nil
+	if err == nil {
+		if len(mxs) == 0 {
+			glog.Infof("domain %q has no MX, falling back to A", domain)
+			return domain, nil
+		}
+
+		return mxs[0].Host, nil
 	}
 
-	return mxs[0].Host, nil
+	// There was an error. It could be that the domain has no MX, in which
+	// case we have to fall back to A, or a bigger problem.
+	// Unfortunately, go's API doesn't let us easily distinguish between them.
+	// For now, if the error is permanent, we assume it's because there was no
+	// MX and fall back, otherwise we return.
+	// TODO: Find a better way to do this.
+	dnsErr, ok := err.(*net.DNSError)
+	if !ok {
+		return "", err
+	} else if dnsErr.Temporary() {
+		return "", err
+	}
+
+	// Permanent error, we assume MX does not exist and fall back to A.
+	return domain, nil
 }
