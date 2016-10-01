@@ -534,6 +534,7 @@ func (c *Conn) EHLO(params string) (code int, msg string) {
 	fmt.Fprintf(buf, c.hostname+" - Your hour of destiny has come.\n")
 	fmt.Fprintf(buf, "8BITMIME\n")
 	fmt.Fprintf(buf, "PIPELINING\n")
+	fmt.Fprintf(buf, "SMTPUTF8\n")
 	fmt.Fprintf(buf, "SIZE %d\n", c.maxDataSize)
 	if c.onTLS {
 		fmt.Fprintf(buf, "AUTH PLAIN\n")
