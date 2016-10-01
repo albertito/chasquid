@@ -67,6 +67,12 @@ retry:
 		return tr.Errorf("Error creating client: %v", err), false
 	}
 
+	// Issue an EHLO with a valid domain; otherwise, some servers like postfix
+	// will complain.
+	if err = c.Hello(envelope.DomainOf(from)); err != nil {
+		return tr.Errorf("Error saying hello: %v", err), false
+	}
+
 	// TODO: Keep track of hosts and MXs that we've successfully done TLS
 	// against, and enforce it.
 	if ok, _ := c.Extension("STARTTLS"); ok {

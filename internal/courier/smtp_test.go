@@ -59,7 +59,7 @@ func TestSMTP(t *testing.T) {
 
 	responses := map[string]string{
 		"_welcome":          "220 welcome\n",
-		"EHLO localhost":    "250 ehlo ok\n",
+		"EHLO me":           "250 ehlo ok\n",
 		"MAIL FROM:<me@me>": "250 mail ok\n",
 		"RCPT TO:<to@to>":   "250 rcpt ok\n",
 		"DATA":              "354 send data\n",
@@ -93,14 +93,14 @@ func TestSMTPErrors(t *testing.T) {
 		// MAIL FROM not allowed.
 		{
 			"_welcome":          "220 mail from not allowed\n",
-			"EHLO localhost":    "250 ehlo ok\n",
+			"EHLO me":           "250 ehlo ok\n",
 			"MAIL FROM:<me@me>": "501 mail error\n",
 		},
 
 		// RCPT TO not allowed.
 		{
 			"_welcome":          "220 rcpt to not allowed\n",
-			"EHLO localhost":    "250 ehlo ok\n",
+			"EHLO me":           "250 ehlo ok\n",
 			"MAIL FROM:<me@me>": "250 mail ok\n",
 			"RCPT TO:<to@to>":   "501 rcpt error\n",
 		},
@@ -108,7 +108,7 @@ func TestSMTPErrors(t *testing.T) {
 		// DATA error.
 		{
 			"_welcome":          "220 data error\n",
-			"EHLO localhost":    "250 ehlo ok\n",
+			"EHLO me":           "250 ehlo ok\n",
 			"MAIL FROM:<me@me>": "250 mail ok\n",
 			"RCPT TO:<to@to>":   "250 rcpt ok\n",
 			"DATA":              "554 data error\n",
@@ -117,7 +117,7 @@ func TestSMTPErrors(t *testing.T) {
 		// DATA response error.
 		{
 			"_welcome":          "220 data response error\n",
-			"EHLO localhost":    "250 ehlo ok\n",
+			"EHLO me":           "250 ehlo ok\n",
 			"MAIL FROM:<me@me>": "250 mail ok\n",
 			"RCPT TO:<to@to>":   "250 rcpt ok\n",
 			"DATA":              "354 send data\n",
