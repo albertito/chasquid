@@ -27,6 +27,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/systemd"
+	"blitiri.com.ar/go/chasquid/internal/tlsconst"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 
@@ -732,8 +733,9 @@ func (c *Conn) addReceivedHeader() {
 
 	v += fmt.Sprintf("by %s (chasquid SMTP) over ", c.hostname)
 	if c.tlsConnState != nil {
-		v += fmt.Sprintf("TLS (%#x-%#x)\n",
-			c.tlsConnState.Version, c.tlsConnState.CipherSuite)
+		v += fmt.Sprintf("%s (%s)\n",
+			tlsconst.VersionName(c.tlsConnState.Version),
+			tlsconst.CipherSuiteName(c.tlsConnState.CipherSuite))
 	} else {
 		v += "plain text!\n"
 	}
