@@ -36,7 +36,7 @@ type SMTP struct {
 }
 
 func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
-	tr := trace.New("goingSMTP", "Deliver")
+	tr := trace.New("SMTP", "Deliver")
 	defer tr.Finish()
 	tr.LazyPrintf("%s  ->  %s", from, to)
 
