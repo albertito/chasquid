@@ -80,11 +80,11 @@ function wait_for_file() {
 	done
 }
 
-# Generate certs for the given domain.
+# Generate certs for the given hostname.
 function generate_certs_for() {
-	mkdir -p config/domains/${1}
+	mkdir -p config/certs/${1}/
 	(
-		cd config/domains/${1}
+		cd config/certs/${1}
 		generate_cert -ca -duration=1h -host=${1}
 	)
 }

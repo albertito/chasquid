@@ -77,18 +77,31 @@ func main() {
 	s.aliasesR.SuffixSep = conf.SuffixSeparators
 	s.aliasesR.DropChars = conf.DropCharacters
 
-	// Load domains.
-	// They live inside the config directory, so the relative path works.
-	domainDirs, err := ioutil.ReadDir("domains/")
-	if err != nil {
-		glog.Fatalf("Error reading domains/ directory: %v", err)
-	}
-	if len(domainDirs) == 0 {
-		glog.Fatalf("No domains found in config")
+	// Load certificates from "certs/<directory>/{fullchain,privkey}.pem".
+	// The structure matches letsencrypt's, to make it easier for that case.
+	glog.Infof("Loading certificates")
+	for _, info := range mustReadDir("certs/") {
+		name := info.Name()
+		glog.Infof("  %s", name)
+
+		certPath := filepath.Join("certs/", name, "fullchain.pem")
+		if _, err := os.Stat(certPath); os.IsNotExist(err) {
+			continue
+		}
+		keyPath := filepath.Join("certs/", name, "privkey.pem")
+		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+			continue
+		}
+
+		err := s.AddCerts(certPath, keyPath)
+		if err != nil {
+			glog.Fatalf("    %v", err)
+		}
 	}
 
+	// Load domains from "domains/".
 	glog.Infof("Domain config paths:")
-	for _, info := range domainDirs {
+	for _, info := range mustReadDir("domains/") {
 		name := info.Name()
 		dir := filepath.Join("domains", name)
 		loadDomain(name, dir, s)
@@ -147,7 +160,6 @@ func loadDomain(name, dir string, s *Server) {
 	glog.Infof("  %s", name)
 	s.AddDomain(name)
 	s.aliasesR.AddDomain(name)
-	s.AddCerts(dir+"/cert.pem", dir+"/key.pem")
 
 	if _, err := os.Stat(dir + "/users"); err == nil {
 		glog.Infof("    adding users")
@@ -185,6 +197,19 @@ func setupSignalHandling() {
 	}()
 }
 
+// Read a directory, which must have at least some entries.
+func mustReadDir(path string) []os.FileInfo {
+	dirs, err := ioutil.ReadDir(path)
+	if err != nil {
+		glog.Fatalf("Error reading %q directory: %v", path, err)
+	}
+	if len(dirs) == 0 {
+		glog.Fatalf("No entries found in %q", path)
+	}
+
+	return dirs
+}
+
 // Mode for a socket (listening or connection).
 // We keep them distinct, as policies can differ between them.
 type SocketMode string
@@ -201,16 +226,13 @@ type Server struct {
 	// Maximum data size.
 	MaxDataSize int64
 
-	// Certificate and key pairs.
-	certs, keys []string
-
 	// Addresses.
 	addrs map[SocketMode][]string
 
 	// Listeners (that came via systemd).
 	listeners map[SocketMode][]net.Listener
 
-	// TLS config.
+	// TLS config (including loaded certificates).
 	tlsConfig *tls.Config
 
 	// Local domains.
@@ -236,6 +258,7 @@ func NewServer() *Server {
 	return &Server{
 		addrs:          map[SocketMode][]string{},
 		listeners:      map[SocketMode][]net.Listener{},
+		tlsConfig:      &tls.Config{},
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
 		localDomains:   &set.String{},
@@ -244,9 +267,13 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) AddCerts(cert, key string) {
-	s.certs = append(s.certs, cert)
-	s.keys = append(s.keys, key)
+func (s *Server) AddCerts(certPath, keyPath string) error {
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		return err
+	}
+	s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, cert)
+	return nil
 }
 
 func (s *Server) AddAddr(a string, m SocketMode) {
@@ -292,31 +319,10 @@ func (s *Server) periodicallyReload() {
 	}
 }
 
-func (s *Server) getTLSConfig() (*tls.Config, error) {
-	var err error
-	conf := &tls.Config{}
-
-	conf.Certificates = make([]tls.Certificate, len(s.certs))
-	for i := 0; i < len(s.certs); i++ {
-		conf.Certificates[i], err = tls.LoadX509KeyPair(s.certs[i], s.keys[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	conf.BuildNameToCertificate()
-
-	return conf, nil
-}
-
 func (s *Server) ListenAndServe() {
-	var err error
-
-	// Configure TLS.
-	s.tlsConfig, err = s.getTLSConfig()
-	if err != nil {
-		glog.Fatalf("Error loading TLS config: %v", err)
-	}
+	// At this point the TLS config should be done, build the
+	// name->certificate map (used by the TLS library for SNI).
+	s.tlsConfig.BuildNameToCertificate()
 
 	for m, addrs := range s.addrs {
 		for _, addr := range addrs {

@@ -142,16 +142,16 @@ func main() {
 		log.Fatalf("Failed to create certificate: %s", err)
 	}
 
-	certOut, err := os.Create("cert.pem")
+	certOut, err := os.Create("fullchain.pem")
 	if err != nil {
-		log.Fatalf("failed to open cert.pem for writing: %s", err)
+		log.Fatalf("failed to open fullchain.pem for writing: %s", err)
 	}
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	certOut.Close()
 
-	keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile("privkey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Fatalf("failed to open key.pem for writing:", err)
+		log.Fatalf("failed to open privkey.pem for writing:", err)
 		return
 	}
 	pem.Encode(keyOut, pemBlockForKey(priv))
