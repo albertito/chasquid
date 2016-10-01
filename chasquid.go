@@ -609,6 +609,11 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 		if !strings.Contains(e.Address, "@") {
 			return 501, "sender address must contain a domain"
 		}
+
+		e.Address, err = envelope.IDNAToUnicode(e.Address)
+		if err != nil {
+			return 501, "malformed address (IDNA conversion failed)"
+		}
 	}
 
 	// Note some servers check (and fail) if we had a previous MAIL command,
@@ -639,6 +644,11 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 	e, err := mail.ParseAddress(sp[1])
 	if err != nil || e.Address == "" {
 		return 501, "malformed address"
+	}
+
+	e.Address, err = envelope.IDNAToUnicode(e.Address)
+	if err != nil {
+		return 501, "malformed address (IDNA conversion failed)"
 	}
 
 	if c.mailFrom == "" {

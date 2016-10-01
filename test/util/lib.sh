@@ -39,8 +39,11 @@ function chasquid() {
 }
 
 function add_user() {
+	CONFDIR="${CONFDIR:-config}"
+	mkdir -p "${CONFDIR}/domains/${1}/"
 	go run ${TBASE}/../../cmd/chasquid-util/chasquid-util.go \
-		adduser "config/domains/${1}/users" "${2}" --password "${3}" \
+		adduser "${CONFDIR}/domains/${1}/users" "${2}" \
+		--password "${3}" \
 		>> .add_user_logs
 }
 
@@ -50,6 +53,10 @@ function run_msmtp() {
 
 	HOSTALIASES=${TBASE}/hosts \
 		msmtp -C msmtprc "$@"
+}
+
+function smtpc.py() {
+	${UTILDIR}/smtpc.py "$@"
 }
 
 function mail_diff() {
@@ -82,9 +89,21 @@ function wait_for_file() {
 
 # Generate certs for the given hostname.
 function generate_certs_for() {
-	mkdir -p config/certs/${1}/
+	CONFDIR="${CONFDIR:-config}"
+	mkdir -p ${CONFDIR}/certs/${1}/
 	(
-		cd config/certs/${1}
+		cd ${CONFDIR}/certs/${1}
 		generate_cert -ca -duration=1h -host=${1}
 	)
+}
+
+# Check the Python version, and skip if it's too old.
+# This will check against the version required for smtpc.py.
+function skip_if_python_is_too_old() {
+	# We need Python >= 3.5 to be able to use SMTPUTF8.
+	check='import sys; sys.exit(0 if sys.version_info >= (3, 5) else 1)'
+	if ! python3 -c "${check}"; then
+		skip "python3 >= 3.5 not available"
+		exit 0
+	fi
 }

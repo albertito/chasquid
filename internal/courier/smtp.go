@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"golang.org/x/net/idna"
 
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/trace"
@@ -135,6 +136,11 @@ retry:
 func lookupMX(domain string) (string, error) {
 	if v, ok := fakeMX[domain]; ok {
 		return v, nil
+	}
+
+	domain, err := idna.ToASCII(domain)
+	if err != nil {
+		return "", err
 	}
 
 	mxs, err := net.LookupMX(domain)
