@@ -4,13 +4,13 @@ import (
 	"crypto/tls"
 	"flag"
 	"net"
-	"net/smtp"
 	"time"
 
 	"github.com/golang/glog"
 	"golang.org/x/net/idna"
 
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/smtp"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
@@ -65,7 +65,11 @@ retry:
 
 	// Issue an EHLO with a valid domain; otherwise, some servers like postfix
 	// will complain.
-	if err = c.Hello(envelope.DomainOf(from)); err != nil {
+	fromDomain, err := idna.ToASCII(envelope.DomainOf(from))
+	if err != nil {
+		return tr.Errorf("Sender domain not IDNA compliant: %v", err), true
+	}
+	if err = c.Hello(fromDomain); err != nil {
 		return tr.Errorf("Error saying hello: %v", err), false
 	}
 
@@ -98,20 +102,12 @@ retry:
 		tr.LazyPrintf("Insecure - not using TLS")
 	}
 
-	// TODO: check if the errors we get back are transient or not.
-	// Go's smtp does not allow us to do this, so leave for when we do it
-	// ourselves.
-
 	// c.Mail will add the <> for us when the address is empty.
 	if from == "<>" {
 		from = ""
 	}
-	if err = c.Mail(from); err != nil {
-		return tr.Errorf("MAIL %v", err), false
-	}
-
-	if err = c.Rcpt(to); err != nil {
-		return tr.Errorf("RCPT TO %v", err), false
+	if err = c.MailAndRcpt(from, to); err != nil {
+		return tr.Errorf("MAIL+RCPT %v", err), false
 	}
 
 	w, err := c.Data()
