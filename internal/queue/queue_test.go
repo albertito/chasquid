@@ -111,7 +111,7 @@ func TestFullQueue(t *testing.T) {
 				ID:   <-newID,
 				From: fmt.Sprintf("from-%d", i),
 				Rcpt: []*Recipient{
-					{"to", Recipient_EMAIL, Recipient_PENDING, ""}},
+					{"to", Recipient_EMAIL, Recipient_PENDING, "", ""}},
 				Data: []byte("data"),
 			},
 			CreatedAt: time.Now(),
@@ -163,14 +163,14 @@ func TestAliases(t *testing.T) {
 		expected []*Recipient
 	}{
 		{[]string{"ab@loco"}, []*Recipient{
-			{"pq@loco", Recipient_EMAIL, Recipient_PENDING, ""},
-			{"rs@loco", Recipient_EMAIL, Recipient_PENDING, ""},
-			{"command", Recipient_PIPE, Recipient_PENDING, ""}}},
+			{"pq@loco", Recipient_EMAIL, Recipient_PENDING, "", "ab@loco"},
+			{"rs@loco", Recipient_EMAIL, Recipient_PENDING, "", "ab@loco"},
+			{"command", Recipient_PIPE, Recipient_PENDING, "", "ab@loco"}}},
 		{[]string{"ab@loco", "cd@loco"}, []*Recipient{
-			{"pq@loco", Recipient_EMAIL, Recipient_PENDING, ""},
-			{"rs@loco", Recipient_EMAIL, Recipient_PENDING, ""},
-			{"command", Recipient_PIPE, Recipient_PENDING, ""},
-			{"ata@hualpa", Recipient_EMAIL, Recipient_PENDING, ""}}},
+			{"pq@loco", Recipient_EMAIL, Recipient_PENDING, "", "ab@loco"},
+			{"rs@loco", Recipient_EMAIL, Recipient_PENDING, "", "ab@loco"},
+			{"command", Recipient_PIPE, Recipient_PENDING, "", "ab@loco"},
+			{"ata@hualpa", Recipient_EMAIL, Recipient_PENDING, "", "cd@loco"}}},
 	}
 	for _, c := range cases {
 		id, err := q.Put("host", "from", c.to, []byte("data"))
@@ -179,7 +179,7 @@ func TestAliases(t *testing.T) {
 		}
 		item := q.q[id]
 		if !reflect.DeepEqual(item.Rcpt, c.expected) {
-			t.Errorf("case %q, expected %v, got %v", c.to, item.Rcpt, c.expected)
+			t.Errorf("case %q, expected %v, got %v", c.to, c.expected, item.Rcpt)
 		}
 		q.Remove(id)
 	}
@@ -193,7 +193,7 @@ func TestPipes(t *testing.T) {
 			ID:   <-newID,
 			From: "from",
 			Rcpt: []*Recipient{
-				{"true", Recipient_PIPE, Recipient_PENDING, ""}},
+				{"true", Recipient_PIPE, Recipient_PENDING, "", ""}},
 			Data: []byte("data"),
 		},
 		CreatedAt: time.Now(),

@@ -25,6 +25,8 @@ message Message {
 }
 
 message Recipient {
+	// Address to send the message to.
+	// This is the final one, after expanding aliases.
 	string address = 1;
 
 	enum Type {
@@ -41,5 +43,10 @@ message Recipient {
 	Status status = 3;
 
 	string last_failure_message = 4;
+
+	// Address that this recipient was originally intended to.
+	// This is before expanding aliases and only used in very particular
+	// cases.
+	string original_address = 5;
 }
 

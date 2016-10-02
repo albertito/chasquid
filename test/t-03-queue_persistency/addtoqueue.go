@@ -37,7 +37,7 @@ func main() {
 			From: *from,
 			To:   []string{*rcpt},
 			Rcpt: []*queue.Recipient{
-				{*rcpt, queue.Recipient_EMAIL, queue.Recipient_PENDING, ""},
+				{*rcpt, queue.Recipient_EMAIL, queue.Recipient_PENDING, "", ""},
 			},
 			Data: data,
 		},

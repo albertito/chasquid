@@ -10,9 +10,9 @@ func TestDSN(t *testing.T) {
 			To:   []string{"toto@africa.org", "negra@sosa.org"},
 			Rcpt: []*Recipient{
 				{"poe@rcpt", Recipient_EMAIL, Recipient_FAILED,
-					"oh! horror!"},
+					"oh! horror!", ""},
 				{"newman@rcpt", Recipient_EMAIL, Recipient_FAILED,
-					"oh! the humanity!"}},
+					"oh! the humanity!", ""}},
 			Data:     []byte("data ñaca"),
 			Hostname: "from.org",
 		},

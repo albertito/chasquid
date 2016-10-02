@@ -28,6 +28,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"golang.org/x/net/idna"
 	"golang.org/x/net/trace"
 )
 
@@ -170,8 +171,9 @@ func (q *Queue) Put(hostname, from string, to []string, data []byte) (string, er
 		// not very pretty but at least it's self contained.
 		for _, aliasRcpt := range rcpts {
 			r := &Recipient{
-				Address: aliasRcpt.Addr,
-				Status:  Recipient_PENDING,
+				Address:         aliasRcpt.Addr,
+				Status:          Recipient_PENDING,
+				OriginalAddress: t,
 			}
 			switch aliasRcpt.Type {
 			case aliases.EMAIL:
@@ -397,7 +399,24 @@ func (item *Item) deliver(q *Queue, rcpt *Recipient) (err error, permanent bool)
 		if envelope.DomainIn(rcpt.Address, q.localDomains) {
 			return q.localC.Deliver(item.From, rcpt.Address, item.Data)
 		} else {
-			return q.remoteC.Deliver(item.From, rcpt.Address, item.Data)
+			from := item.From
+			if !envelope.DomainIn(item.From, q.localDomains) {
+				// We're sending from a non-local to a non-local. This should
+				// happen only when there's an alias to forward email to a
+				// non-local domain.  In this case, using the original From is
+				// problematic, as we may not be an authorized sender for this.
+				// Some MTAs (like Exim) will do it anyway, others (like
+				// gmail) will construct a special address based on the
+				// original address.  We go with the latter.
+				// Note this assumes "+" is an alias suffix separator.
+				// We use the IDNA version of the domain if possible, because
+				// we can't know if the other side will support SMTPUTF8.
+				from = fmt.Sprintf("%s+fwd_from=%s@%s",
+					envelope.UserOf(rcpt.OriginalAddress),
+					strings.Replace(from, "@", "=", -1),
+					mustIDNAToASCII(envelope.DomainOf(rcpt.OriginalAddress)))
+			}
+			return q.remoteC.Deliver(from, rcpt.Address, item.Data)
 		}
 	}
 }
@@ -419,4 +438,12 @@ func timestampNow() *timestamp.Timestamp {
 	now := time.Now()
 	ts, _ := ptypes.TimestampProto(now)
 	return ts
+}
+
+func mustIDNAToASCII(s string) string {
+	a, err := idna.ToASCII(s)
+	if err != nil {
+		return a
+	}
+	return s
 }
