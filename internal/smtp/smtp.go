@@ -2,6 +2,7 @@
 // 5321.  It extends net/smtp as follows:
 //
 //  - Supports SMTPUTF8, via MailAndRcpt.
+//  - Adds IsPermanent.
 //
 package smtp
 
@@ -126,4 +127,21 @@ func isASCII(s string) bool {
 		}
 	}
 	return true
+}
+
+// ErrIsPermanent returns true if the error is permanent, and false otherwise.
+// If it can't tell, it returns false.
+func IsPermanent(err error) bool {
+	terr, ok := err.(*textproto.Error)
+	if !ok {
+		return false
+	}
+
+	// Error codes 5yz are permanent.
+	// https://tools.ietf.org/html/rfc5321#section-4.2.1
+	if terr.Code >= 500 && terr.Code < 600 {
+		return true
+	}
+
+	return false
 }

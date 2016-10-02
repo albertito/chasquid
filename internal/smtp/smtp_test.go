@@ -3,6 +3,7 @@ package smtp
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"net"
 	"net/smtp"
 	"net/textproto"
@@ -10,6 +11,24 @@ import (
 	"testing"
 	"time"
 )
+
+func TestIsPermanent(t *testing.T) {
+	cases := []struct {
+		err       error
+		permanent bool
+	}{
+		{&textproto.Error{499, ""}, false},
+		{&textproto.Error{500, ""}, true},
+		{&textproto.Error{599, ""}, true},
+		{&textproto.Error{600, ""}, false},
+		{fmt.Errorf("something"), false},
+	}
+	for _, c := range cases {
+		if p := IsPermanent(c.err); p != c.permanent {
+			t.Errorf("%v: expected %v, got %v", c.err, c.permanent, p)
+		}
+	}
+}
 
 func TestIsASCII(t *testing.T) {
 	cases := []struct {

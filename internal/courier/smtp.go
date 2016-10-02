@@ -107,21 +107,21 @@ retry:
 		from = ""
 	}
 	if err = c.MailAndRcpt(from, to); err != nil {
-		return tr.Errorf("MAIL+RCPT %v", err), false
+		return tr.Errorf("MAIL+RCPT %v", err), smtp.IsPermanent(err)
 	}
 
 	w, err := c.Data()
 	if err != nil {
-		return tr.Errorf("DATA %v", err), false
+		return tr.Errorf("DATA %v", err), smtp.IsPermanent(err)
 	}
 	_, err = w.Write(data)
 	if err != nil {
-		return tr.Errorf("DATA writing: %v", err), false
+		return tr.Errorf("DATA writing: %v", err), smtp.IsPermanent(err)
 	}
 
 	err = w.Close()
 	if err != nil {
-		return tr.Errorf("DATA closing %v", err), false
+		return tr.Errorf("DATA closing %v", err), smtp.IsPermanent(err)
 	}
 
 	c.Quit()
