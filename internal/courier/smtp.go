@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"net"
+	"os"
 	"time"
 
 	"github.com/golang/glog"
@@ -68,6 +69,10 @@ retry:
 	fromDomain, err := idna.ToASCII(envelope.DomainOf(from))
 	if err != nil {
 		return tr.Errorf("Sender domain not IDNA compliant: %v", err), true
+	}
+	if fromDomain == "" {
+		// This can happen when sending bounces. Last resort.
+		fromDomain, _ = os.Hostname()
 	}
 	if err = c.Hello(fromDomain); err != nil {
 		return tr.Errorf("Error saying hello: %v", err), false
