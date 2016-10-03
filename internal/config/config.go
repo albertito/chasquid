@@ -62,6 +62,14 @@ func Load(path string) (*Config, error) {
 		c.DataDir = "/var/lib/chasquid"
 	}
 
+	if c.SuffixSeparators == "" {
+		c.SuffixSeparators = "+"
+	}
+
+	if c.DropCharacters == "" {
+		c.DropCharacters = "."
+	}
+
 	return c, nil
 }
 

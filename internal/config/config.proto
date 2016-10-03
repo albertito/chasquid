@@ -49,13 +49,15 @@ message Config {
 	// Suffix separator, to perform suffix removal of local users.
 	// For example, if you set this to "-+", email to local user
 	// "user-blah" and "user+blah" will be delivered to "user".
-	// Default: none.
+	// Including "+" is strongly encouraged, as it is assumed for email
+	// forwarding.
+	// Default: "+".
 	string suffix_separators = 9;
 
 	// Characters to drop from the user part on local emails.
 	// For example, if you set this to "._", email to local user
 	// "u.se_r" will be delivered to "user".
-	// Default: none.
+	// Default: ".".
 	string drop_characters = 10;
 }
 
