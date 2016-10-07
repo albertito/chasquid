@@ -26,6 +26,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
+	"blitiri.com.ar/go/chasquid/internal/spf"
 	"blitiri.com.ar/go/chasquid/internal/systemd"
 	"blitiri.com.ar/go/chasquid/internal/tlsconst"
 	"blitiri.com.ar/go/chasquid/internal/trace"
@@ -405,6 +406,10 @@ type Conn struct {
 	rcptTo   []string
 	data     []byte
 
+	// SPF results.
+	spfResult spf.Result
+	spfError  error
+
 	// Are we using TLS?
 	onTLS bool
 
@@ -593,6 +598,10 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 		return 500, "malformed command - " + err.Error()
 	}
 
+	// Note some servers check (and fail) if we had a previous MAIL command,
+	// but that's not according to the RFC. We reset the envelope instead.
+	c.resetEnvelope()
+
 	// Special case a null reverse-path, which is explicitly allowed and used
 	// for notification messages.
 	// It should be written "<>", we check for that and remove spaces just to
@@ -611,15 +620,25 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 			return 501, "sender address must contain a domain"
 		}
 
+		// SPF check - https://tools.ietf.org/html/rfc7208#section-2.4
+		if tcp, ok := c.netconn.RemoteAddr().(*net.TCPAddr); ok {
+			c.spfResult, c.spfError = spf.CheckHost(
+				tcp.IP, envelope.DomainOf(e.Address))
+			// https://tools.ietf.org/html/rfc7208#section-8
+			// We opt not to fail on errors, to avoid accidents to prevent
+			// delivery.
+			if c.spfResult == spf.Fail {
+				return 550, fmt.Sprintf(
+					"SPF check failed: %v", c.spfError)
+			}
+		}
+
 		e.Address, err = envelope.IDNAToUnicode(e.Address)
 		if err != nil {
 			return 501, "malformed address (IDNA conversion failed)"
 		}
-	}
 
-	// Note some servers check (and fail) if we had a previous MAIL command,
-	// but that's not according to the RFC. We reset the envelope instead.
-	c.resetEnvelope()
+	}
 
 	c.mailFrom = e.Address
 	return 250, "You feel like you are being watched"
@@ -752,6 +771,12 @@ func (c *Conn) addReceivedHeader() {
 	// https://tools.ietf.org/html/rfc5322#section-3.6.7
 	v += fmt.Sprintf("on ; %s\n", time.Now().Format(time.RFC1123Z))
 	c.data = envelope.AddHeader(c.data, "Received", v)
+
+	if c.spfResult != "" {
+		// https://tools.ietf.org/html/rfc7208#section-9.1
+		v = fmt.Sprintf("%s (%v)", c.spfResult, c.spfError)
+		c.data = envelope.AddHeader(c.data, "Received-SPF", v)
+	}
 }
 
 func (c *Conn) STARTTLS(params string, tr *trace.Trace) (code int, msg string) {
@@ -869,6 +894,8 @@ func (c *Conn) resetEnvelope() {
 	c.mailFrom = ""
 	c.rcptTo = nil
 	c.data = nil
+	c.spfResult = ""
+	c.spfError = nil
 }
 
 func (c *Conn) userExists(addr string) bool {
