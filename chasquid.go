@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net"
-	"net/http"
 	"net/mail"
 	"net/textproto"
 	"os"
@@ -32,6 +31,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 
+	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/golang/glog"
@@ -67,9 +67,7 @@ func main() {
 	os.Chdir(*configDir)
 
 	if conf.MonitoringAddress != "" {
-		glog.Infof("Monitoring HTTP server listening on %s",
-			conf.MonitoringAddress)
-		go http.ListenAndServe(conf.MonitoringAddress, nil)
+		launchMonitoringServer(conf.MonitoringAddress)
 	}
 
 	s := NewServer()
@@ -301,6 +299,11 @@ func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
 		glog.Fatalf("Error loading queue: %v", err)
 	}
 	s.queue = q
+
+	http.HandleFunc("/debug/queue",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(q.DumpString()))
+		})
 }
 
 // periodicallyReload some of the server's information, such as aliases and
@@ -395,6 +398,9 @@ type Conn struct {
 	mode         SocketMode
 	tlsConnState *tls.ConnectionState
 
+	// Tracer to use.
+	tr *trace.Trace
+
 	// System configuration.
 	config *config.Config
 
@@ -442,9 +448,8 @@ type Conn struct {
 func (c *Conn) Handle() {
 	defer c.netconn.Close()
 
-	tr := trace.New("SMTP", "Connection")
-	defer tr.Finish()
-	tr.LazyPrintf("RemoteAddr: %s", c.netconn.RemoteAddr())
+	c.tr = trace.New("SMTP.Conn", c.netconn.RemoteAddr().String())
+	defer c.tr.Finish()
 
 	c.tc.PrintfLine("220 %s ESMTP chasquid", c.hostname)
 
@@ -454,8 +459,8 @@ func (c *Conn) Handle() {
 loop:
 	for {
 		if time.Since(c.deadline) > 0 {
-			tr.LazyPrintf("connection deadline exceeded")
 			err = fmt.Errorf("connection deadline exceeded")
+			c.tr.Error(err)
 			break
 		}
 
@@ -467,7 +472,7 @@ loop:
 			break
 		}
 
-		tr.LazyPrintf("-> %s %s", cmd, params)
+		c.tr.Debugf("-> %s %s", cmd, params)
 
 		var code int
 		var msg string
@@ -493,11 +498,11 @@ loop:
 			code, msg = c.RCPT(params)
 		case "DATA":
 			// DATA handles the whole sequence.
-			code, msg = c.DATA(params, tr)
+			code, msg = c.DATA(params)
 		case "STARTTLS":
-			code, msg = c.STARTTLS(params, tr)
+			code, msg = c.STARTTLS(params)
 		case "AUTH":
-			code, msg = c.AUTH(params, tr)
+			code, msg = c.AUTH(params)
 		case "QUIT":
 			c.writeResponse(221, "Be seeing you...")
 			break loop
@@ -507,7 +512,12 @@ loop:
 		}
 
 		if code > 0 {
-			tr.LazyPrintf("<- %d  %s", code, msg)
+			c.tr.Debugf("<- %d  %s", code, msg)
+
+			// Be verbose about errors, to help troubleshooting.
+			if code >= 400 {
+				c.tr.Errorf("%s failed: %d  %s", cmd, code, msg)
+			}
 
 			err = c.writeResponse(code, msg)
 			if err != nil {
@@ -517,8 +527,7 @@ loop:
 	}
 
 	if err != nil {
-		tr.LazyPrintf("exiting with error: %v", err)
-		tr.SetError()
+		c.tr.Errorf("exiting with error: %v", err)
 	}
 }
 
@@ -624,6 +633,7 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 		if tcp, ok := c.netconn.RemoteAddr().(*net.TCPAddr); ok {
 			c.spfResult, c.spfError = spf.CheckHost(
 				tcp.IP, envelope.DomainOf(e.Address))
+			c.tr.Debugf("SPF %v (%v)", c.spfResult, c.spfError)
 			// https://tools.ietf.org/html/rfc7208#section-8
 			// We opt not to fail on errors, to avoid accidents to prevent
 			// delivery.
@@ -688,7 +698,7 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 	return 250, "You have an eerie feeling..."
 }
 
-func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
+func (c *Conn) DATA(params string) (code int, msg string) {
 	if c.mailFrom == "" {
 		return 503, "sender not yet given"
 	}
@@ -703,7 +713,7 @@ func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
 		return 554, fmt.Sprintf("error writing DATA response: %v", err)
 	}
 
-	tr.LazyPrintf("<- 354  You experience a strange sense of peace")
+	c.tr.Debugf("<- 354  You experience a strange sense of peace")
 
 	// Increase the deadline for the data transfer to the connection-level
 	// one, we don't want the command timeout to interfere.
@@ -715,7 +725,7 @@ func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
 		return 554, fmt.Sprintf("error reading DATA: %v", err)
 	}
 
-	tr.LazyPrintf("-> ... %d bytes of data", len(c.data))
+	c.tr.Debugf("-> ... %d bytes of data", len(c.data))
 
 	c.addReceivedHeader()
 
@@ -723,12 +733,10 @@ func (c *Conn) DATA(params string, tr *trace.Trace) (code int, msg string) {
 	// individual deliveries fail, we report via email.
 	msgID, err := c.queue.Put(c.hostname, c.mailFrom, c.rcptTo, c.data)
 	if err != nil {
-		tr.LazyPrintf("   error queueing: %v", err)
-		tr.SetError()
 		return 554, fmt.Sprintf("Failed to enqueue message: %v", err)
 	}
 
-	tr.LazyPrintf("   ... queued: %q", msgID)
+	c.tr.Printf("Queued from %s to %s - %s", c.mailFrom, c.rcptTo, msgID)
 
 	// It is very important that we reset the envelope before returning,
 	// so clients can send other emails right away without needing to RSET.
@@ -779,7 +787,7 @@ func (c *Conn) addReceivedHeader() {
 	}
 }
 
-func (c *Conn) STARTTLS(params string, tr *trace.Trace) (code int, msg string) {
+func (c *Conn) STARTTLS(params string) (code int, msg string) {
 	if c.onTLS {
 		return 503, "You are already wearing that!"
 	}
@@ -789,7 +797,7 @@ func (c *Conn) STARTTLS(params string, tr *trace.Trace) (code int, msg string) {
 		return 554, fmt.Sprintf("error writing STARTTLS response: %v", err)
 	}
 
-	tr.LazyPrintf("<- 220  You experience a strange sense of peace")
+	c.tr.Debugf("<- 220  You experience a strange sense of peace")
 
 	server := tls.Server(c.netconn, c.tlsConfig)
 	err = server.Handshake()
@@ -797,7 +805,7 @@ func (c *Conn) STARTTLS(params string, tr *trace.Trace) (code int, msg string) {
 		return 554, fmt.Sprintf("error in TLS handshake: %v", err)
 	}
 
-	tr.LazyPrintf("<> ...  jump to TLS was successful")
+	c.tr.Debugf("<> ...  jump to TLS was successful")
 
 	// Override the connections. We don't need the older ones anymore.
 	c.netconn = server
@@ -823,7 +831,7 @@ func (c *Conn) STARTTLS(params string, tr *trace.Trace) (code int, msg string) {
 	return 0, ""
 }
 
-func (c *Conn) AUTH(params string, tr *trace.Trace) (code int, msg string) {
+func (c *Conn) AUTH(params string) (code int, msg string) {
 	if !c.onTLS {
 		return 503, "You feel vulnerable"
 	}
@@ -965,4 +973,70 @@ func writeResponse(w io.Writer, code int, msg string) error {
 	}
 
 	return nil
+}
+
+func launchMonitoringServer(addr string) {
+	glog.Infof("Monitoring HTTP server listening on %s", addr)
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Write([]byte(monitoringHTMLIndex))
+	})
+
+	flags := dumpFlags()
+	http.HandleFunc("/debug/flags", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(flags))
+	})
+
+	go http.ListenAndServe(addr, nil)
+}
+
+// Static index for the monitoring website.
+const monitoringHTMLIndex = `<!DOCTYPE html>
+<html>
+  <head>
+    <title>chasquid monitoring</title>
+  </head>
+  <body>
+    <h1>chasquid monitoring</h1>
+    <ul>
+      <li><a href="/debug/queue">queue</a>
+      <li><a href="/debug/requests">requests</a>
+          <small><a href="https://godoc.org/golang.org/x/net/trace">
+            (ref)</a></small>
+      <li><a href="/debug/flags">flags</a>
+      <li><a href="/debug/vars">public variables</a>
+      <li><a href="/debug/pprof">pprof</a>
+          <small><a href="https://golang.org/pkg/net/http/pprof/">
+            (ref)</a></small>
+        <ul>
+          <li><a href="/debug/pprof/goroutine?debug=1">goroutines</a>
+        </ul>
+    </ul>
+  </body>
+</html>
+`
+
+// dumpFlags to a string, for troubleshooting purposes.
+func dumpFlags() string {
+	s := ""
+	visited := make(map[string]bool)
+
+	// Print set flags first, then the rest.
+	flag.Visit(func(f *flag.Flag) {
+		s += fmt.Sprintf("-%s=%s\n", f.Name, f.Value.String())
+		visited[f.Name] = true
+	})
+
+	s += "\n"
+	flag.VisitAll(func(f *flag.Flag) {
+		if !visited[f.Name] {
+			s += fmt.Sprintf("-%s=%s\n", f.Name, f.Value.String())
+		}
+	})
+
+	return s
 }

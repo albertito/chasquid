@@ -24,12 +24,12 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/protoio"
 	"blitiri.com.ar/go/chasquid/internal/set"
+	"blitiri.com.ar/go/chasquid/internal/trace"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/idna"
-	"golang.org/x/net/trace"
 )
 
 const (
@@ -198,8 +198,6 @@ func (q *Queue) Put(hostname, from string, to []string, data []byte) (string, er
 	q.q[item.ID] = item
 	q.mu.Unlock()
 
-	glog.Infof("%s accepted from %q  to  %v", item.ID, from, to)
-
 	// Begin to send it right away.
 	go item.SendLoop(q)
 
@@ -219,8 +217,32 @@ func (q *Queue) Remove(id string) {
 	q.mu.Unlock()
 }
 
-// TODO: http handler for dumping the queue.
-// Register it in main().
+// DumpString returns a human-readable string with the current queue.
+// Useful for debugging purposes.
+func (q *Queue) DumpString() string {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	s := fmt.Sprintf("# Queue status\n\n")
+	s += fmt.Sprintf("date: %v\n", time.Now())
+	s += fmt.Sprintf("length: %d\n\n", len(q.q))
+
+	for id, item := range q.q {
+		s += fmt.Sprintf("## Item %s\n", id)
+		item.Lock()
+		s += fmt.Sprintf("created at: %s\n", item.CreatedAt)
+		s += fmt.Sprintf("from: %s\n", item.From)
+		s += fmt.Sprintf("to: %s\n", item.To)
+		for _, rcpt := range item.Rcpt {
+			s += fmt.Sprintf("%s %s (%s)\n", rcpt.Status, rcpt.Address, rcpt.Type)
+			s += fmt.Sprintf("  original address: %s\n", rcpt.OriginalAddress)
+			s += fmt.Sprintf("  last failure: %q\n", rcpt.LastFailureMessage)
+		}
+		item.Unlock()
+		s += fmt.Sprintf("\n")
+	}
+
+	return s
+}
 
 // An item in the queue.
 type Item struct {
@@ -263,9 +285,9 @@ func (item *Item) WriteTo(dir string) error {
 }
 
 func (item *Item) SendLoop(q *Queue) {
-	tr := trace.New("Queue", item.ID)
+	tr := trace.New("Queue.SendLoop", item.ID)
 	defer tr.Finish()
-	tr.LazyPrintf("from: %s", item.From)
+	tr.Printf("from %s", item.From)
 
 	var delay time.Duration
 	for time.Since(item.CreatedAt) < giveUpAfter {
@@ -284,23 +306,19 @@ func (item *Item) SendLoop(q *Queue) {
 			go func(rcpt *Recipient, oldStatus Recipient_Status) {
 				defer wg.Done()
 				to := rcpt.Address
-				tr.LazyPrintf("%s sending", to)
+				tr.Debugf("%s sending", to)
 
 				err, permanent := item.deliver(q, rcpt)
 
 				if err != nil {
 					if permanent {
-						tr.LazyPrintf("permanent error: %v", err)
-						glog.Infof("%s  -> %q permanent fail: %v", item.ID, to, err)
+						tr.Errorf("%s permanent error: %v", to, err)
 						status = Recipient_FAILED
 					} else {
-						tr.LazyPrintf("error: %v", err)
-						glog.Infof("%s  -> %q fail: %v", item.ID, to, err)
+						tr.Printf("%s temporary error: %v", to, err)
 					}
 				} else {
-					tr.LazyPrintf("%s successful", to)
-					glog.Infof("%s  -> %q sent", item.ID, to)
-
+					tr.Printf("%s sent", to)
 					status = Recipient_SENT
 				}
 
@@ -315,8 +333,7 @@ func (item *Item) SendLoop(q *Queue) {
 
 					err = item.WriteTo(q.path)
 					if err != nil {
-						tr.LazyPrintf("failed to write: %v", err)
-						glog.Errorf("%s failed to write: %v", item.ID, err)
+						tr.Errorf("failed to write: %v", err)
 					}
 				}
 			}(rcpt, status)
@@ -338,14 +355,11 @@ func (item *Item) SendLoop(q *Queue) {
 		// that some of the messages have been delayed.
 
 		delay = nextDelay(delay)
-		tr.LazyPrintf("waiting for %v", delay)
-		glog.Infof("%s waiting for %v", item.ID, delay)
+		tr.Printf("waiting for %v", delay)
 		time.Sleep(delay)
 	}
 
 	// Completed to all recipients (some may not have succeeded).
-	tr.LazyPrintf("all done")
-	glog.Infof("%s all done", item.ID)
 
 	failed := 0
 	for _, rcpt := range item.Rcpt {
@@ -358,26 +372,28 @@ func (item *Item) SendLoop(q *Queue) {
 		sendDSN(tr, q, item)
 	}
 
+	tr.Printf("all done")
 	q.Remove(item.ID)
 
 	return
 }
 
-func sendDSN(tr trace.Trace, q *Queue, item *Item) {
-	tr.LazyPrintf("sending DSN")
+func sendDSN(tr *trace.Trace, q *Queue, item *Item) {
+	tr.Debugf("sending DSN")
 
 	msg, err := deliveryStatusNotification(item)
 	if err != nil {
-		tr.LazyPrintf("failed to build DSN: %v", err)
-		glog.Infof("%s: failed to build DSN: %v", item.ID, err)
+		tr.Errorf("failed to build DSN: %v", err)
 		return
 	}
 
-	_, err = q.Put(item.Hostname, "<>", []string{item.From}, msg)
+	id, err := q.Put(item.Hostname, "<>", []string{item.From}, msg)
 	if err != nil {
-		tr.LazyPrintf("failed to queue DSN: %v", err)
-		glog.Infof("%s: failed to queue DSN: %v", item.ID, err)
+		tr.Errorf("failed to queue DSN: %v", err)
+		return
 	}
+
+	tr.Printf("queued DSN: %s", id)
 }
 
 // deliver the item to the given recipient, using the couriers from the queue.

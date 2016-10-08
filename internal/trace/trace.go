@@ -3,6 +3,7 @@ package trace
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/golang/glog"
 	nettrace "golang.org/x/net/trace"
@@ -18,14 +19,28 @@ func New(family, title string) *Trace {
 	return &Trace{family, title, nettrace.New(family, title)}
 }
 
-func (t *Trace) LazyPrintf(format string, a ...interface{}) {
+func (t *Trace) Printf(format string, a ...interface{}) {
 	t.t.LazyPrintf(format, a...)
 
-	if glog.V(2) {
-		msg := fmt.Sprintf("%p %s %s: %+q", t, t.family, t.title,
-			fmt.Sprintf(format, a...))
-		glog.InfoDepth(1, msg)
+	if glog.V(0) {
+		msg := fmt.Sprintf("%s %s: %s", t.family, t.title,
+			quote(fmt.Sprintf(format, a...)))
+		glog.InfoDepth(2, msg)
 	}
+}
+
+func (t *Trace) Debugf(format string, a ...interface{}) {
+	if glog.V(2) {
+		t.t.LazyPrintf(format, a...)
+		msg := fmt.Sprintf("%s %s: %s", t.family, t.title,
+			quote(fmt.Sprintf(format, a...)))
+		glog.InfoDepth(2, msg)
+	}
+}
+
+func quote(s string) string {
+	qs := strconv.Quote(s)
+	return qs[1 : len(qs)-1]
 }
 
 func (t *Trace) SetError() {
@@ -37,8 +52,8 @@ func (t *Trace) Errorf(format string, a ...interface{}) error {
 	t.t.SetError()
 	t.t.LazyPrintf("error: %v", err)
 
-	if glog.V(2) {
-		msg := fmt.Sprintf("%p %s %s: error: %v", t, t.family, t.title, err)
+	if glog.V(0) {
+		msg := fmt.Sprintf("%s %s: error: %v", t.family, t.title, err)
 		glog.InfoDepth(1, msg)
 	}
 	return err
@@ -48,8 +63,8 @@ func (t *Trace) Error(err error) error {
 	t.t.SetError()
 	t.t.LazyPrintf("error: %v", err)
 
-	if glog.V(2) {
-		msg := fmt.Sprintf("%p %s %s: error: %v", t, t.family, t.title, err)
+	if glog.V(0) {
+		msg := fmt.Sprintf("%s %s: error: %v", t, t.family, t.title, err)
 		glog.InfoDepth(1, msg)
 	}
 	return err

@@ -34,9 +34,9 @@ type SMTP struct {
 }
 
 func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
-	tr := trace.New("SMTP", "Deliver")
+	tr := trace.New("SMTP.Courier", to)
 	defer tr.Finish()
-	tr.LazyPrintf("%s  ->  %s", from, to)
+	tr.Debugf("%s  ->  %s", from, to)
 
 	mx, err := lookupMX(envelope.DomainOf(to))
 	if err != nil {
@@ -46,7 +46,7 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 		// have to make sure we try hard enough on the lookup above.
 		return tr.Errorf("Could not find mail server: %v", err), true
 	}
-	tr.LazyPrintf("MX: %s", mx)
+	tr.Debugf("MX: %s", mx)
 
 	// Do we use insecure TLS?
 	// Set as fallback when retrying.
@@ -94,17 +94,17 @@ retry:
 			}
 
 			insecure = true
-			tr.LazyPrintf("TLS error, retrying insecurely")
+			tr.Debugf("TLS error, retrying insecurely")
 			goto retry
 		}
 
 		if config.InsecureSkipVerify {
-			tr.LazyPrintf("Insecure - self-signed certificate")
+			tr.Debugf("Insecure - using TLS, but cert does not match %s", mx)
 		} else {
-			tr.LazyPrintf("Secure - using TLS")
+			tr.Debugf("Secure - using TLS")
 		}
 	} else {
-		tr.LazyPrintf("Insecure - not using TLS")
+		tr.Debugf("Insecure - NOT using TLS")
 	}
 
 	// c.Mail will add the <> for us when the address is empty.
@@ -130,6 +130,7 @@ retry:
 	}
 
 	c.Quit()
+	tr.Debugf("done")
 
 	return nil, false
 }

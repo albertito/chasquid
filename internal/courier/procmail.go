@@ -26,14 +26,14 @@ type Procmail struct {
 }
 
 func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
-	tr := trace.New("Procmail", "Deliver")
+	tr := trace.New("Procmail.Courier", to)
 	defer tr.Finish()
 
 	// Sanitize, just in case.
 	from = sanitizeForProcmail(from)
 	to = sanitizeForProcmail(to)
 
-	tr.LazyPrintf("%s -> %s", from, to)
+	tr.Debugf("%s -> %s", from, to)
 
 	// Prepare the command, replacing the necessary arguments.
 	replacer := strings.NewReplacer(
@@ -97,6 +97,7 @@ func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 		return err, permanent
 	}
 
+	tr.Debugf("delivered")
 	return nil, false
 }
 
