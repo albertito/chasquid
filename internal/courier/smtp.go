@@ -57,6 +57,7 @@ retry:
 	if err != nil {
 		return tr.Errorf("Could not dial: %v", err), false
 	}
+	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(smtpTotalTimeout))
 
 	c, err := smtp.NewClient(conn, mx)

@@ -445,8 +445,12 @@ type Conn struct {
 	commandTimeout time.Duration
 }
 
+func (c *Conn) Close() {
+	c.netconn.Close()
+}
+
 func (c *Conn) Handle() {
-	defer c.netconn.Close()
+	defer c.Close()
 
 	c.tr = trace.New("SMTP.Conn", c.netconn.RemoteAddr().String())
 	defer c.tr.Finish()
