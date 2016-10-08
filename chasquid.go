@@ -472,7 +472,11 @@ loop:
 			break
 		}
 
-		c.tr.Debugf("-> %s %s", cmd, params)
+		if cmd == "AUTH" {
+			c.tr.Debugf("-> AUTH <redacted>")
+		} else {
+			c.tr.Debugf("-> %s %s", cmd, params)
+		}
 
 		var code int
 		var msg string
