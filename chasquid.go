@@ -655,19 +655,13 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 		}
 
 		// SPF check - https://tools.ietf.org/html/rfc7208#section-2.4
-		if tcp, ok := c.netconn.RemoteAddr().(*net.TCPAddr); ok {
-			c.spfResult, c.spfError = spf.CheckHost(
-				tcp.IP, envelope.DomainOf(addr))
-			c.tr.Debugf("SPF %v (%v)", c.spfResult, c.spfError)
-			spfResultCount.Add(string(c.spfResult), 1)
-
-			// https://tools.ietf.org/html/rfc7208#section-8
-			// We opt not to fail on errors, to avoid accidents to prevent
-			// delivery.
-			if c.spfResult == spf.Fail {
-				return 550, fmt.Sprintf(
-					"SPF check failed: %v", c.spfError)
-			}
+		// We opt not to fail on errors, to avoid accidents from preventing
+		// delivery.
+		c.spfResult, c.spfError = c.checkSPF(addr)
+		if c.spfResult == spf.Fail {
+			// https://tools.ietf.org/html/rfc7208#section-8.4
+			return 550, fmt.Sprintf(
+				"SPF check failed: %v", c.spfError)
 		}
 
 		addr, err = envelope.IDNAToUnicode(addr)
@@ -678,6 +672,26 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 
 	c.mailFrom = addr
 	return 250, "You feel like you are being watched"
+}
+
+// checkSPF for the given address, based on the current connection.
+func (c *Conn) checkSPF(addr string) (spf.Result, error) {
+	// Does not apply to authenticated connections, they're allowed regardless.
+	if c.completedAuth {
+		return "", nil
+	}
+
+	if tcp, ok := c.netconn.RemoteAddr().(*net.TCPAddr); ok {
+		res, err := spf.CheckHost(
+			tcp.IP, envelope.DomainOf(addr))
+
+		c.tr.Debugf("SPF %v (%v)", res, err)
+		spfResultCount.Add(string(res), 1)
+
+		return res, err
+	}
+
+	return "", nil
 }
 
 func (c *Conn) RCPT(params string) (code int, msg string) {

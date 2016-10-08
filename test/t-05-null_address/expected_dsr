@@ -20,7 +20,6 @@ Delivery to the following recipient(s) failed permanently:
 
 ----- Original message -----
 
-Received-SPF: *
 Received: from user user@testserver
 	by *
 	(envelope from "user@testserver")
