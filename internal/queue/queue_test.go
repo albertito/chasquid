@@ -41,13 +41,16 @@ type TestCourier struct {
 	wg       sync.WaitGroup
 	requests []*deliverRequest
 	reqFor   map[string]*deliverRequest
+	sync.Mutex
 }
 
 func (tc *TestCourier) Deliver(from string, to string, data []byte) (error, bool) {
 	defer tc.wg.Done()
 	dr := &deliverRequest{from, to, data}
+	tc.Lock()
 	tc.requests = append(tc.requests, dr)
 	tc.reqFor[to] = dr
+	tc.Unlock()
 	return nil, false
 }
 
