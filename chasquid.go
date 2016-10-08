@@ -621,8 +621,8 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 		return 500, "unknown command"
 	}
 
-	addr := ""
-	_, err := fmt.Sscanf(params[5:], "%s ", &addr)
+	rawAddr := ""
+	_, err := fmt.Sscanf(params[5:], "%s ", &rawAddr)
 	if err != nil {
 		return 500, "malformed command - " + err.Error()
 	}
@@ -635,29 +635,29 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 	// for notification messages.
 	// It should be written "<>", we check for that and remove spaces just to
 	// be more flexible.
-	e := &mail.Address{}
-	if strings.Replace(addr, " ", "", -1) == "<>" {
-		e.Address = "<>"
+	addr := ""
+	if strings.Replace(rawAddr, " ", "", -1) == "<>" {
+		addr = "<>"
 	} else {
-		var err error
-		e, err = mail.ParseAddress(addr)
+		e, err := mail.ParseAddress(rawAddr)
 		if err != nil || e.Address == "" {
 			return 501, "malformed address"
 		}
+		addr = e.Address
 
-		if !strings.Contains(e.Address, "@") {
+		if !strings.Contains(addr, "@") {
 			return 501, "sender address must contain a domain"
 		}
 
 		// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.3
-		if len(e.Address) > 256 {
+		if len(addr) > 256 {
 			return 501, "address too long"
 		}
 
 		// SPF check - https://tools.ietf.org/html/rfc7208#section-2.4
 		if tcp, ok := c.netconn.RemoteAddr().(*net.TCPAddr); ok {
 			c.spfResult, c.spfError = spf.CheckHost(
-				tcp.IP, envelope.DomainOf(e.Address))
+				tcp.IP, envelope.DomainOf(addr))
 			c.tr.Debugf("SPF %v (%v)", c.spfResult, c.spfError)
 			spfResultCount.Add(string(c.spfResult), 1)
 
@@ -670,14 +670,13 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 			}
 		}
 
-		e.Address, err = envelope.IDNAToUnicode(e.Address)
+		addr, err = envelope.IDNAToUnicode(addr)
 		if err != nil {
 			return 501, "malformed address (IDNA conversion failed)"
 		}
-
 	}
 
-	c.mailFrom = e.Address
+	c.mailFrom = addr
 	return 250, "You feel like you are being watched"
 }
 
@@ -705,35 +704,31 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 		return 452, "too many recipients"
 	}
 
-	// TODO: Write our own parser (we have different needs, mail.ParseAddress
-	// is useful for other things).
-	// Allow utf8, but prevent "control" characters.
-
 	e, err := mail.ParseAddress(rawAddr)
 	if err != nil || e.Address == "" {
 		return 501, "malformed address"
 	}
 
-	e.Address, err = envelope.IDNAToUnicode(e.Address)
+	addr, err := envelope.IDNAToUnicode(e.Address)
 	if err != nil {
 		return 501, "malformed address (IDNA conversion failed)"
 	}
 
 	// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.3
-	if len(e.Address) > 256 {
+	if len(addr) > 256 {
 		return 501, "address too long"
 	}
 
-	localDst := envelope.DomainIn(e.Address, c.localDomains)
+	localDst := envelope.DomainIn(addr, c.localDomains)
 	if !localDst && !c.completedAuth {
 		return 503, "relay not allowed"
 	}
 
-	if localDst && !c.userExists(e.Address) {
+	if localDst && !c.userExists(addr) {
 		return 550, "recipient unknown, please check the address for typos"
 	}
 
-	c.rcptTo = append(c.rcptTo, e.Address)
+	c.rcptTo = append(c.rcptTo, addr)
 	return 250, "You have an eerie feeling..."
 }
 
