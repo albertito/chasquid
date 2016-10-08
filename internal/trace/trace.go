@@ -16,7 +16,13 @@ type Trace struct {
 }
 
 func New(family, title string) *Trace {
-	return &Trace{family, title, nettrace.New(family, title)}
+	t := &Trace{family, title, nettrace.New(family, title)}
+
+	// The default for max events is 10, which is a bit short for a normal
+	// SMTP exchange. Expand it to 30 which should be large enough to keep
+	// most of the traces.
+	t.t.SetMaxEvents(30)
+	return t
 }
 
 func (t *Trace) Printf(format string, a ...interface{}) {
