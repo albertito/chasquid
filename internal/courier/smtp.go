@@ -54,6 +54,17 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	}
 	tr.Debugf("MX: %s", mx)
 
+	// Issue an EHLO with a valid domain; otherwise, some servers like postfix
+	// will complain.
+	helloDomain, err := idna.ToASCII(envelope.DomainOf(from))
+	if err != nil {
+		return tr.Errorf("Sender domain not IDNA compliant: %v", err), true
+	}
+	if helloDomain == "" {
+		// This can happen when sending bounces. Last resort.
+		helloDomain, _ = os.Hostname()
+	}
+
 	// Do we use insecure TLS?
 	// Set as fallback when retrying.
 	insecure := false
@@ -71,17 +82,7 @@ retry:
 		return tr.Errorf("Error creating client: %v", err), false
 	}
 
-	// Issue an EHLO with a valid domain; otherwise, some servers like postfix
-	// will complain.
-	fromDomain, err := idna.ToASCII(envelope.DomainOf(from))
-	if err != nil {
-		return tr.Errorf("Sender domain not IDNA compliant: %v", err), true
-	}
-	if fromDomain == "" {
-		// This can happen when sending bounces. Last resort.
-		fromDomain, _ = os.Hostname()
-	}
-	if err = c.Hello(fromDomain); err != nil {
+	if err = c.Hello(helloDomain); err != nil {
 		return tr.Errorf("Error saying hello: %v", err), false
 	}
 
