@@ -25,16 +25,17 @@ func (t *Trace) Printf(format string, a ...interface{}) {
 	if glog.V(0) {
 		msg := fmt.Sprintf("%s %s: %s", t.family, t.title,
 			quote(fmt.Sprintf(format, a...)))
-		glog.InfoDepth(2, msg)
+		glog.InfoDepth(1, msg)
 	}
 }
 
 func (t *Trace) Debugf(format string, a ...interface{}) {
+	t.t.LazyPrintf(format, a...)
+
 	if glog.V(2) {
-		t.t.LazyPrintf(format, a...)
 		msg := fmt.Sprintf("%s %s: %s", t.family, t.title,
 			quote(fmt.Sprintf(format, a...)))
-		glog.InfoDepth(2, msg)
+		glog.InfoDepth(1, msg)
 	}
 }
 
