@@ -184,11 +184,9 @@ func TestNullMailFrom(t *testing.T) {
 	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()
 
-	addrs := []string{"", "<>", "  <>", " <  > "}
+	addrs := []string{"<>", "  <>", "<> OPTION"}
 	for _, addr := range addrs {
-		if err := c.Text.PrintfLine(addr); err != nil {
-			t.Fatalf("MAIL FROM failed with addr %q: %v", addr, err)
-		}
+		simpleCmd(t, c, fmt.Sprintf("MAIL FROM:%s", addr), 250)
 	}
 }
 
@@ -198,6 +196,21 @@ func TestRcptBeforeMail(t *testing.T) {
 
 	if err := c.Rcpt("to@to"); err == nil {
 		t.Errorf("Rcpt not failed as expected")
+	}
+}
+
+func TestRcptOption(t *testing.T) {
+	c := mustDial(t, ModeSMTP, false)
+	defer c.Close()
+
+	if err := c.Mail("from@localhost"); err != nil {
+		t.Errorf("Mail: %v", err)
+	}
+
+	params := []string{
+		"<to@localhost>", "  <to@localhost>", "<to@localhost> OPTION"}
+	for _, p := range params {
+		simpleCmd(t, c, fmt.Sprintf("RCPT TO:%s", p), 250)
 	}
 }
 

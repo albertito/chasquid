@@ -595,8 +595,8 @@ func (c *Conn) NOOP(params string) (code int, msg string) {
 
 func (c *Conn) MAIL(params string) (code int, msg string) {
 	// params should be: "FROM:<name@host>", and possibly followed by
-	// "BODY=8BITMIME" (which we ignore).
-	// Check that it begins with "FROM:" first, otherwise it's pointless.
+	// options such as "BODY=8BITMIME" (which we ignore).
+	// Check that it begins with "FROM:" first, it's mandatory.
 	if !strings.HasPrefix(strings.ToLower(params), "from:") {
 		return 500, "unknown command"
 	}
@@ -655,23 +655,30 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 }
 
 func (c *Conn) RCPT(params string) (code int, msg string) {
-	// params should be: "TO:<name@host>"
-	// First, get rid of the "TO:" part (but check it, it's mandatory).
-	sp := strings.SplitN(strings.ToLower(params), ":", 2)
-	if len(sp) != 2 || sp[0] != "to" {
+	// params should be: "TO:<name@host>", and possibly followed by options
+	// such as "NOTIFY=SUCCESS,DELAY" (which we ignore).
+	// Check that it begins with "TO:" first, it's mandatory.
+	if !strings.HasPrefix(strings.ToLower(params), "to:") {
 		return 500, "unknown command"
 	}
 
+	rawAddr := ""
+	_, err := fmt.Sscanf(params[3:], "%s ", &rawAddr)
+	if err != nil {
+		return 500, "malformed command - " + err.Error()
+	}
+
 	// RFC says 100 is the minimum limit for this, but it seems excessive.
+	// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.8
 	if len(c.rcptTo) > 100 {
-		return 503, "too many recipients"
+		return 452, "too many recipients"
 	}
 
 	// TODO: Write our own parser (we have different needs, mail.ParseAddress
 	// is useful for other things).
 	// Allow utf8, but prevent "control" characters.
 
-	e, err := mail.ParseAddress(sp[1])
+	e, err := mail.ParseAddress(rawAddr)
 	if err != nil || e.Address == "" {
 		return 501, "malformed address"
 	}
