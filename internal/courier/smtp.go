@@ -2,6 +2,7 @@ package courier
 
 import (
 	"crypto/tls"
+	"expvar"
 	"flag"
 	"net"
 	"os"
@@ -27,6 +28,11 @@ var (
 
 	// Fake MX records, used for testing only.
 	fakeMX = map[string]string{}
+)
+
+// Exported variables.
+var (
+	tlsCount = expvar.NewMap("chasquid/smtpOut/tlsCount")
 )
 
 // SMTP delivers remote mail via outgoing SMTP.
@@ -91,6 +97,7 @@ retry:
 			// Unfortunately, many servers use self-signed certs, so if we
 			// fail verification we just try again without validating.
 			if insecure {
+				tlsCount.Add("tls:failed", 1)
 				return tr.Errorf("TLS error: %v", err), false
 			}
 
@@ -101,10 +108,13 @@ retry:
 
 		if config.InsecureSkipVerify {
 			tr.Debugf("Insecure - using TLS, but cert does not match %s", mx)
+			tlsCount.Add("tls:insecure", 1)
 		} else {
+			tlsCount.Add("tls:secure", 1)
 			tr.Debugf("Secure - using TLS")
 		}
 	} else {
+		tlsCount.Add("plain", 1)
 		tr.Debugf("Insecure - NOT using TLS")
 	}
 

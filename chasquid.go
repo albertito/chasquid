@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"expvar"
 	"flag"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -37,9 +39,17 @@ import (
 	"github.com/golang/glog"
 )
 
+// Command-line flags.
 var (
 	configDir = flag.String("config_dir", "/etc/chasquid",
 		"configuration directory")
+)
+
+// Exported variables.
+var (
+	commandCount      = expvar.NewMap("chasquid/smtpIn/commandCount")
+	responseCodeCount = expvar.NewMap("chasquid/smtpIn/responseCodeCount")
+	spfResultCount    = expvar.NewMap("chasquid/smtpIn/spfResultCount")
 )
 
 func main() {
@@ -476,6 +486,7 @@ loop:
 			break
 		}
 
+		commandCount.Add(cmd, 1)
 		if cmd == "AUTH" {
 			c.tr.Debugf("-> AUTH <redacted>")
 		} else {
@@ -642,6 +653,8 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 			c.spfResult, c.spfError = spf.CheckHost(
 				tcp.IP, envelope.DomainOf(e.Address))
 			c.tr.Debugf("SPF %v (%v)", c.spfResult, c.spfError)
+			spfResultCount.Add(string(c.spfResult), 1)
+
 			// https://tools.ietf.org/html/rfc7208#section-8
 			// We opt not to fail on errors, to avoid accidents to prevent
 			// delivery.
@@ -964,6 +977,7 @@ func (c *Conn) readLine() (line string, err error) {
 func (c *Conn) writeResponse(code int, msg string) error {
 	defer c.tc.W.Flush()
 
+	responseCodeCount.Add(strconv.Itoa(code), 1)
 	return writeResponse(c.tc.W, code, msg)
 }
 

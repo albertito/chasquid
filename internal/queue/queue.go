@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"expvar"
 	"fmt"
 	"os"
 	"os/exec"
@@ -49,6 +50,14 @@ const (
 
 var (
 	errQueueFull = fmt.Errorf("Queue size too big, try again later")
+)
+
+// Exported variables.
+var (
+	putCount        = expvar.NewInt("chasquid/queue/putCount")
+	itemsWritten    = expvar.NewInt("chasquid/queue/itemsWritten")
+	dsnQueued       = expvar.NewInt("chasquid/queue/dsnQueued")
+	deliverAttempts = expvar.NewMap("chasquid/queue/deliverAttempts")
 )
 
 // Channel used to get random IDs for items in the queue.
@@ -148,6 +157,7 @@ func (q *Queue) Put(hostname, from string, to []string, data []byte) (string, er
 	if q.Len() >= maxQueueSize {
 		return "", errQueueFull
 	}
+	putCount.Add(1)
 
 	item := &Item{
 		Message: Message{
@@ -272,6 +282,7 @@ func ItemFromFile(fname string) (*Item, error) {
 func (item *Item) WriteTo(dir string) error {
 	item.Lock()
 	defer item.Unlock()
+	itemsWritten.Add(1)
 
 	var err error
 	item.CreatedAtTs, err = ptypes.TimestampProto(item.CreatedAt)
@@ -394,12 +405,14 @@ func sendDSN(tr *trace.Trace, q *Queue, item *Item) {
 	}
 
 	tr.Printf("queued DSN: %s", id)
+	dsnQueued.Add(1)
 }
 
 // deliver the item to the given recipient, using the couriers from the queue.
 // Return an error (if any), and whether it is permanent or not.
 func (item *Item) deliver(q *Queue, rcpt *Recipient) (err error, permanent bool) {
 	if rcpt.Type == Recipient_PIPE {
+		deliverAttempts.Add("pipe", 1)
 		c := strings.Fields(rcpt.Address)
 		if len(c) == 0 {
 			return fmt.Errorf("empty pipe"), true
@@ -413,8 +426,10 @@ func (item *Item) deliver(q *Queue, rcpt *Recipient) (err error, permanent bool)
 
 	} else {
 		if envelope.DomainIn(rcpt.Address, q.localDomains) {
+			deliverAttempts.Add("email:local", 1)
 			return q.localC.Deliver(item.From, rcpt.Address, item.Data)
 		} else {
+			deliverAttempts.Add("email:remote", 1)
 			from := item.From
 			if !envelope.DomainIn(item.From, q.localDomains) {
 				// We're sending from a non-local to a non-local. This should
