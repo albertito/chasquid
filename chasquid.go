@@ -50,6 +50,7 @@ var (
 	commandCount      = expvar.NewMap("chasquid/smtpIn/commandCount")
 	responseCodeCount = expvar.NewMap("chasquid/smtpIn/responseCodeCount")
 	spfResultCount    = expvar.NewMap("chasquid/smtpIn/spfResultCount")
+	loopsDetected     = expvar.NewInt("chasquid/smtpIn/loopsDetected")
 )
 
 func main() {
@@ -648,6 +649,11 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 			return 501, "sender address must contain a domain"
 		}
 
+		// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.3
+		if len(e.Address) > 256 {
+			return 501, "address too long"
+		}
+
 		// SPF check - https://tools.ietf.org/html/rfc7208#section-2.4
 		if tcp, ok := c.netconn.RemoteAddr().(*net.TCPAddr); ok {
 			c.spfResult, c.spfError = spf.CheckHost(
@@ -683,6 +689,10 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 		return 500, "unknown command"
 	}
 
+	if c.mailFrom == "" {
+		return 503, "sender not yet given"
+	}
+
 	rawAddr := ""
 	_, err := fmt.Sscanf(params[3:], "%s ", &rawAddr)
 	if err != nil {
@@ -709,8 +719,9 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 		return 501, "malformed address (IDNA conversion failed)"
 	}
 
-	if c.mailFrom == "" {
-		return 503, "sender not yet given"
+	// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.3
+	if len(e.Address) > 256 {
+		return 501, "address too long"
 	}
 
 	localDst := envelope.DomainIn(e.Address, c.localDomains)
@@ -754,6 +765,10 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	}
 
 	c.tr.Debugf("-> ... %d bytes of data", len(c.data))
+
+	if err := checkData(c.data); err != nil {
+		return 554, err.Error()
+	}
 
 	c.addReceivedHeader()
 
@@ -813,6 +828,25 @@ func (c *Conn) addReceivedHeader() {
 		v = fmt.Sprintf("%s (%v)", c.spfResult, c.spfError)
 		c.data = envelope.AddHeader(c.data, "Received-SPF", v)
 	}
+}
+
+// checkData performs very basic checks on the body of the email, to help
+// detect very broad problems like email loops. It does not fully check the
+// sanity of the headers or the structure of the payload.
+func checkData(data []byte) error {
+	msg, err := mail.ReadMessage(bytes.NewBuffer(data))
+	if err != nil {
+		return fmt.Errorf("error parsing message: %v", err)
+	}
+
+	// This serves as a basic form of loop prevention. It's not infallible but
+	// should catch most instances of accidental looping.
+	if len(msg.Header["Received"]) > 50 {
+		loopsDetected.Add(1)
+		return fmt.Errorf("email passed through more than 50 MTAs, looping?")
+	}
+
+	return nil
 }
 
 func (c *Conn) STARTTLS(params string) (code int, msg string) {

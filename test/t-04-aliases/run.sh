@@ -13,13 +13,13 @@ chasquid -v=2 --log_dir=.logs --config_dir=config &
 wait_until_ready 1025
 
 function send_and_check() {
-		run_msmtp $1@testserver < content
-		shift
-		for i in $@; do
-				wait_for_file .mail/$i@testserver
-				mail_diff content .mail/$i@testserver
-				rm -f .mail/$i@testserver
-		done
+	run_msmtp $1@testserver < content
+	shift
+	for i in $@; do
+		wait_for_file .mail/$i@testserver
+		mail_diff content .mail/$i@testserver
+		rm -f .mail/$i@testserver
+	done
 }
 
 # Test email aliases.

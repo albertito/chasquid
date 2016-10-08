@@ -108,7 +108,7 @@ func sendEmailWithAuth(tb testing.TB, c *smtp.Client, auth smtp.Auth) {
 		tb.Fatalf("Data: %v", err)
 	}
 
-	msg := []byte("Hi! This is an email\n")
+	msg := []byte("Subject: Hi!\n\n This is an email\n")
 	if _, err = w.Write(msg); err != nil {
 		tb.Errorf("Data write: %v", err)
 	}
