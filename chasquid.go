@@ -807,19 +807,26 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 func (c *Conn) addReceivedHeader() {
 	var v string
 
+	// Format is semi-structured, defined by
+	// https://tools.ietf.org/html/rfc5321#section-4.4
+
 	if c.completedAuth {
-		v += fmt.Sprintf("from user %s@%s\n", c.authUser, c.authDomain)
+		v += fmt.Sprintf("from %s (authenticated as %s@%s)\n",
+			envelope.DomainOf(c.mailFrom), c.authUser, c.authDomain)
 	} else {
-		v += fmt.Sprintf("from %s\n", c.netconn.RemoteAddr().String())
+		v += fmt.Sprintf("from %s (%s)\n",
+			envelope.DomainOf(c.mailFrom), c.netconn.RemoteAddr().String())
 	}
 
-	v += fmt.Sprintf("by %s (chasquid SMTP) over ", c.hostname)
+	v += fmt.Sprintf("by %s (chasquid)\n", c.hostname)
+
+	v += "(over "
 	if c.tlsConnState != nil {
-		v += fmt.Sprintf("%s (%s)\n",
+		v += fmt.Sprintf("%s-%s)\n",
 			tlsconst.VersionName(c.tlsConnState.Version),
 			tlsconst.CipherSuiteName(c.tlsConnState.CipherSuite))
 	} else {
-		v += "plain text!\n"
+		v += "plain text!)\n"
 	}
 
 	// Note we must NOT include c.rcptTo, that would leak BCCs.
@@ -829,7 +836,7 @@ func (c *Conn) addReceivedHeader() {
 	// The ";" is a mandatory separator. The date format is not standard but
 	// this one seems to be widely used.
 	// https://tools.ietf.org/html/rfc5322#section-3.6.7
-	v += fmt.Sprintf("on ; %s\n", time.Now().Format(time.RFC1123Z))
+	v += fmt.Sprintf("; %s\n", time.Now().Format(time.RFC1123Z))
 	c.data = envelope.AddHeader(c.data, "Received", v)
 
 	if c.spfResult != "" {
@@ -850,6 +857,7 @@ func checkData(data []byte) error {
 
 	// This serves as a basic form of loop prevention. It's not infallible but
 	// should catch most instances of accidental looping.
+	// https://tools.ietf.org/html/rfc5321#section-6.3
 	if len(msg.Header["Received"]) > 50 {
 		loopsDetected.Add(1)
 		return fmt.Errorf("email passed through more than 50 MTAs, looping?")
