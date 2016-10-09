@@ -3,7 +3,9 @@ package protoio
 
 import (
 	"io/ioutil"
+	"net/url"
 	"os"
+	"strings"
 
 	"blitiri.com.ar/go/chasquid/internal/safeio"
 
@@ -45,4 +47,63 @@ func WriteMessage(fname string, pb proto.Message, perm os.FileMode) error {
 func WriteTextMessage(fname string, pb proto.Message, perm os.FileMode) error {
 	out := proto.MarshalTextString(pb)
 	return safeio.WriteFile(fname, []byte(out), perm)
+}
+
+///////////////////////////////////////////////////////////////
+
+// Store represents a persistent protocol buffer message store.
+type Store struct {
+	// Directory where the store is.
+	dir string
+}
+
+// NewStore returns a new Store instance.  It will create dir if needed.
+func NewStore(dir string) (*Store, error) {
+	s := &Store{dir}
+	err := os.MkdirAll(dir, 0770)
+	return s, err
+}
+
+const storeIDPrefix = "s:"
+
+// idToFname takes a generic id and returns the corresponding file for it
+// (which may or may not exist).
+func (s *Store) idToFname(id string) string {
+	return s.dir + "/" + storeIDPrefix + url.QueryEscape(id)
+}
+
+func (s *Store) Put(id string, m proto.Message) error {
+	return WriteTextMessage(s.idToFname(id), m, 0660)
+}
+
+func (s *Store) Get(id string, m proto.Message) (bool, error) {
+	err := ReadTextMessage(s.idToFname(id), m)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+func (s *Store) ListIDs() ([]string, error) {
+	ids := []string{}
+
+	entries, err := ioutil.ReadDir(s.dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range entries {
+		if !strings.HasPrefix(e.Name(), storeIDPrefix) {
+			continue
+		}
+
+		id := e.Name()[len(storeIDPrefix):]
+		id, err = url.QueryUnescape(id)
+		if err != nil {
+			continue
+		}
+
+		ids = append(ids, id)
+	}
+
+	return ids, nil
 }
