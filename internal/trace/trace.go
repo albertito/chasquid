@@ -80,3 +80,44 @@ func (t *Trace) Error(err error) error {
 func (t *Trace) Finish() {
 	t.t.Finish()
 }
+
+type EventLog struct {
+	family string
+	title  string
+	e      nettrace.EventLog
+}
+
+func NewEventLog(family, title string) *EventLog {
+	return &EventLog{family, title, nettrace.NewEventLog(family, title)}
+}
+
+func (e *EventLog) Printf(format string, a ...interface{}) {
+	e.e.Printf(format, a...)
+
+	if glog.V(0) {
+		msg := fmt.Sprintf("%s %s: %s", e.family, e.title,
+			quote(fmt.Sprintf(format, a...)))
+		glog.InfoDepth(1, msg)
+	}
+}
+
+func (e *EventLog) Debugf(format string, a ...interface{}) {
+	e.e.Printf(format, a...)
+
+	if glog.V(2) {
+		msg := fmt.Sprintf("%s %s: %s", e.family, e.title,
+			quote(fmt.Sprintf(format, a...)))
+		glog.InfoDepth(1, msg)
+	}
+}
+
+func (e *EventLog) Errorf(format string, a ...interface{}) error {
+	err := fmt.Errorf(format, a...)
+	e.e.Errorf("error: %v", err)
+
+	if glog.V(0) {
+		msg := fmt.Sprintf("%s %s: error: %v", e.family, e.title, err)
+		glog.InfoDepth(1, msg)
+	}
+	return err
+}
