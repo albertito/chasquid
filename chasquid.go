@@ -114,9 +114,12 @@ func main() {
 	// Load domains from "domains/".
 	glog.Infof("Domain config paths:")
 	for _, info := range mustReadDir("domains/") {
-		name := info.Name()
-		dir := filepath.Join("domains", name)
-		loadDomain(name, dir, s)
+		domain, err := normalize.Domain(info.Name())
+		if err != nil {
+			glog.Fatalf("Invalid name %+q: %v", info.Name(), err)
+		}
+		dir := filepath.Join("domains", info.Name())
+		loadDomain(domain, dir, s)
 	}
 
 	// Always include localhost as local domain.
@@ -665,7 +668,7 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 				"SPF check failed: %v", c.spfError)
 		}
 
-		addr, err = envelope.IDNAToUnicode(addr)
+		addr, err = normalize.DomainToUnicode(addr)
 		if err != nil {
 			return 501, "malformed address (IDNA conversion failed)"
 		}
@@ -724,7 +727,7 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 		return 501, "malformed address"
 	}
 
-	addr, err := envelope.IDNAToUnicode(e.Address)
+	addr, err := normalize.DomainToUnicode(e.Address)
 	if err != nil {
 		return 501, "malformed address (IDNA conversion failed)"
 	}

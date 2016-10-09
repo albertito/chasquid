@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/idna"
-
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 )
@@ -77,12 +75,13 @@ func DecodeResponse(response string) (user, domain, passwd string, err error) {
 
 	// Normalize the user and domain. This is so users can write the username
 	// in their own style and still can log in.  For the domain, we use IDNA
-	// to turn it to utf8 which is what we use internally.
+	// and relevant transformations to turn it to utf8 which is what we use
+	// internally.
 	user, err = normalize.User(user)
 	if err != nil {
 		return
 	}
-	domain, err = idna.ToUnicode(domain)
+	domain, err = normalize.Domain(domain)
 	if err != nil {
 		return
 	}

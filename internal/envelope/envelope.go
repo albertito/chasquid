@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"golang.org/x/net/idna"
-
 	"blitiri.com.ar/go/chasquid/internal/set"
 )
 
@@ -49,28 +47,4 @@ func AddHeader(data []byte, k, v string) []byte {
 
 	header := []byte(fmt.Sprintf("%s: %s\n", k, v))
 	return append(header, data...)
-}
-
-// Take an address with a potentially unicode domain, and convert it to ASCII
-// as per IDNA.
-// The user part is unchanged.
-func IDNAToASCII(addr string) (string, error) {
-	if addr == "<>" {
-		return addr, nil
-	}
-	user, domain := Split(addr)
-	domain, err := idna.ToASCII(domain)
-	return user + "@" + domain, err
-}
-
-// Take an address with an ASCII domain, and convert it to Unicode as per
-// IDNA.
-// The user part is unchanged.
-func IDNAToUnicode(addr string) (string, error) {
-	if addr == "<>" {
-		return addr, nil
-	}
-	user, domain := Split(addr)
-	domain, err := idna.ToUnicode(domain)
-	return user + "@" + domain, err
 }
