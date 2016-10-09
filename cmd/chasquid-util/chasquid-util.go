@@ -11,6 +11,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/config"
+	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 
 	"github.com/docopt/docopt-go"
@@ -77,9 +78,14 @@ func AddUser() {
 		}
 	}
 
+	user, err := normalize.User(args["<username>"].(string))
+	if err != nil {
+		Fatalf("Error normalizing user: %v", err)
+	}
+
 	password := getPassword()
 
-	err = db.AddUser(args["<username>"].(string), password)
+	err = db.AddUser(user, password)
 	if err != nil {
 		Fatalf("Error adding user: %v", err)
 	}

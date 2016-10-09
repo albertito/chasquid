@@ -19,6 +19,8 @@
 // is a tradeoff between flexibility and keeping the file format easy to edit
 // for people.
 //
+// User names will be normalized internally to lower-case.
+//
 // Usually there will be one database per domain, and there's no need to
 // include the "@" in the user (in this case, "@" will be forbidden).
 //
@@ -59,6 +61,7 @@ import (
 	"sync"
 
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/normalize"
 )
 
 // Recipient represents a single recipient, after resolving aliases.
@@ -176,6 +179,7 @@ func (v *Resolver) cleanIfLocal(addr string) string {
 
 	user = removeAllAfter(user, v.SuffixSep)
 	user = removeChars(user, v.DropChars)
+	user, _ = normalize.User(user)
 	return user + "@" + domain
 }
 
@@ -277,6 +281,7 @@ func parseFile(domain, path string) (map[string][]Recipient, error) {
 		}
 
 		addr = addr + "@" + domain
+		addr, _ = normalize.Addr(addr)
 
 		if rawalias[0] == '|' {
 			cmd := strings.TrimSpace(rawalias[1:])

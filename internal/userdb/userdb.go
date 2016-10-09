@@ -37,12 +37,11 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
-	"unicode/utf8"
 
 	"golang.org/x/crypto/scrypt"
 
+	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/protoio"
 )
 
@@ -55,7 +54,7 @@ type DB struct {
 }
 
 var (
-	ErrInvalidUsername = errors.New("username contains invalid characters")
+	ErrInvalidUsername = errors.New("invalid username")
 )
 
 func New(fname string) *DB {
@@ -107,15 +106,6 @@ func (db *DB) Write() error {
 	return protoio.WriteTextMessage(db.fname, db.db, 0660)
 }
 
-// Does this user exist in the database?
-func (db *DB) Exists(user string) bool {
-	db.mu.RLock()
-	_, ok := db.db.Users[user]
-	db.mu.RUnlock()
-
-	return ok
-}
-
 // Is this password valid for the user?
 func (db *DB) Authenticate(name, plainPassword string) bool {
 	db.mu.RLock()
@@ -142,23 +132,10 @@ func (p *Password) PasswordMatches(plain string) bool {
 	}
 }
 
-// Check if the given user name is valid.
-// User names have to be UTF-8, and must not have some particular characters,
-// including whitespace.
-func ValidUsername(name string) bool {
-	return utf8.ValidString(name) &&
-		!strings.ContainsAny(name, illegalUsernameChars)
-}
-
-// Illegal characters. Only whitespace for now, to prevent/minimize the
-// chances of parsing issues.
-// TODO: do we want to stop other characters, specifically about email? Or
-// keep this generic and handle the mail-specific filtering in chasquid?
-const illegalUsernameChars = "\t\n\v\f\r \xa0\x85"
-
 // Add a user to the database. If the user is already present, override it.
+// Note we enforce that the name has been normalized previously.
 func (db *DB) AddUser(name, plainPassword string) error {
-	if !ValidUsername(name) {
+	if norm, err := normalize.User(name); err != nil || name != norm {
 		return ErrInvalidUsername
 	}
 
@@ -195,7 +172,6 @@ func (db *DB) AddUser(name, plainPassword string) error {
 // otherwise.
 func (db *DB) RemoveUser(name string) bool {
 	db.mu.Lock()
-
 	_, present := db.db.Users[name]
 	delete(db.db.Users, name)
 	db.mu.Unlock()

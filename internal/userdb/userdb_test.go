@@ -129,7 +129,7 @@ func TestWrite(t *testing.T) {
 
 	db = mustLoad(t, fname)
 	for _, name := range []string{"user1", "ñoño"} {
-		if !db.Exists(name) {
+		if !db.HasUser(name) {
 			t.Errorf("user %q not in database", name)
 		}
 		if db.db.Users[name].GetScheme() == nil {
@@ -179,8 +179,17 @@ func TestInvalidUsername(t *testing.T) {
 	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
+	// Names that are invalid.
 	names := []string{
-		" ", "  ", "a b", "ñ ñ", "a\xa0b", "a\x85b", "a\nb", "a\tb", "a\xffb"}
+		// Contain various types of spaces.
+		" ", "  ", "a b", "ñ ñ", "a\xa0b", "a\x85b", "a\nb", "a\tb", "a\xffb",
+
+		// Contain characters not allowed by PRECIS.
+		"\u00b9", "\u2163",
+
+		// Names that are not normalized, but would otherwise be valid.
+		"A", "Ñ",
+	}
 	for _, name := range names {
 		err := db.AddUser(name, "passwd")
 		if err == nil {
@@ -289,7 +298,7 @@ func TestHasUser(t *testing.T) {
 	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
-	if ok := db.HasUser("unknown"); ok {
+	if db.HasUser("unknown") {
 		t.Errorf("unknown user exists")
 	}
 
@@ -297,15 +306,15 @@ func TestHasUser(t *testing.T) {
 		t.Fatalf("error adding user: %v", err)
 	}
 
-	if ok := db.HasUser("unknown"); ok {
+	if db.HasUser("unknown") {
 		t.Errorf("unknown user exists")
 	}
 
-	if ok := db.HasUser("user"); !ok {
+	if !db.HasUser("user") {
 		t.Errorf("known user does not exist")
 	}
 
-	if ok := db.HasUser("user"); !ok {
+	if !db.HasUser("user") {
 		t.Errorf("known user does not exist")
 	}
 }

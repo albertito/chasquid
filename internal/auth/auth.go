@@ -7,8 +7,10 @@ import (
 	"math/rand"
 	"strings"
 	"time"
-	"unicode/utf8"
 
+	"golang.org/x/net/idna"
+
+	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 )
 
@@ -73,11 +75,15 @@ func DecodeResponse(response string) (user, domain, passwd string, err error) {
 	user = idsp[0]
 	domain = idsp[1]
 
-	// TODO: Quedamos aca. Validar dominio no (solo) como utf8, sino ver que
-	// no contenga ni "/" ni "..". Podemos usar golang.org/x/net/idna para
-	// convertirlo a unicode primero, o al reves. No se que queremos.
-	if !utf8.ValidString(user) || !utf8.ValidString(domain) {
-		err = fmt.Errorf("User/domain is not valid UTF-8")
+	// Normalize the user and domain. This is so users can write the username
+	// in their own style and still can log in.  For the domain, we use IDNA
+	// to turn it to utf8 which is what we use internally.
+	user, err = normalize.User(user)
+	if err != nil {
+		return
+	}
+	domain, err = idna.ToUnicode(domain)
+	if err != nil {
 		return
 	}
 

@@ -25,6 +25,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/spf"
@@ -738,8 +739,15 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 		return 503, "relay not allowed"
 	}
 
-	if localDst && !c.userExists(addr) {
-		return 550, "recipient unknown, please check the address for typos"
+	if localDst {
+		addr, err = normalize.Addr(addr)
+		if err != nil {
+			return 550, "recipient invalid, please check the address for typos"
+		}
+
+		if !c.userExists(addr) {
+			return 550, "recipient unknown, please check the address for typos"
+		}
 	}
 
 	c.rcptTo = append(c.rcptTo, addr)
