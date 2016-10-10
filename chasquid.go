@@ -474,6 +474,7 @@ func (c *Conn) Handle() {
 
 	var cmd, params string
 	var err error
+	var errCount int
 
 loop:
 	for {
@@ -538,9 +539,17 @@ loop:
 		if code > 0 {
 			c.tr.Debugf("<- %d  %s", code, msg)
 
-			// Be verbose about errors, to help troubleshooting.
 			if code >= 400 {
+				// Be verbose about errors, to help troubleshooting.
 				c.tr.Errorf("%s failed: %d  %s", cmd, code, msg)
+
+				errCount++
+				if errCount > 10 {
+					// https://tools.ietf.org/html/rfc5321#section-4.3.2
+					c.tr.Errorf("too many errors, breaking connection")
+					c.writeResponse(421, "too many errors, bye")
+					break
+				}
 			}
 
 			err = c.writeResponse(code, msg)
