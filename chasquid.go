@@ -52,6 +52,7 @@ var (
 	responseCodeCount = expvar.NewMap("chasquid/smtpIn/responseCodeCount")
 	spfResultCount    = expvar.NewMap("chasquid/smtpIn/spfResultCount")
 	loopsDetected     = expvar.NewInt("chasquid/smtpIn/loopsDetected")
+	tlsCount          = expvar.NewMap("chasquid/smtpIn/tlsCount")
 )
 
 func main() {
@@ -798,6 +799,11 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	}
 
 	c.tr.Debugf("<- 354  You experience a strange sense of peace")
+	if c.onTLS {
+		tlsCount.Add("tls", 1)
+	} else {
+		tlsCount.Add("plain", 1)
+	}
 
 	// Increase the deadline for the data transfer to the connection-level
 	// one, we don't want the command timeout to interfere.
