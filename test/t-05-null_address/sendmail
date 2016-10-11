@@ -1,4 +1,4 @@
-EHLO
+EHLO localhost
 MAIL FROM: <>
 RCPT TO: user@testserver
 DATA

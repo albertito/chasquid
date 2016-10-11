@@ -422,6 +422,9 @@ type Conn struct {
 	// TLS configuration.
 	tlsConfig *tls.Config
 
+	// Address given at HELO/EHLO, used for tracing purposes.
+	ehloAddress string
+
 	// Envelope.
 	mailFrom string
 	rcptTo   []string
@@ -565,6 +568,11 @@ loop:
 }
 
 func (c *Conn) HELO(params string) (code int, msg string) {
+	if len(strings.TrimSpace(params)) == 0 {
+		return 501, "Invisible customers are not welcome!"
+	}
+	c.ehloAddress = strings.Fields(params)[0]
+
 	types := []string{
 		"general store", "used armor dealership", "second-hand bookstore",
 		"liquor emporium", "antique weapons outlet", "delicatessen",
@@ -577,6 +585,11 @@ func (c *Conn) HELO(params string) (code int, msg string) {
 }
 
 func (c *Conn) EHLO(params string) (code int, msg string) {
+	if len(strings.TrimSpace(params)) == 0 {
+		return 501, "Invisible customers are not welcome!"
+	}
+	c.ehloAddress = strings.Fields(params)[0]
+
 	buf := bytes.NewBuffer(nil)
 	fmt.Fprintf(buf, c.hostname+" - Your hour of destiny has come.\n")
 	fmt.Fprintf(buf, "8BITMIME\n")
@@ -767,6 +780,9 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 }
 
 func (c *Conn) DATA(params string) (code int, msg string) {
+	if c.ehloAddress == "" {
+		return 503, "Invisible customers are not welcome!"
+	}
 	if c.mailFrom == "" {
 		return 503, "sender not yet given"
 	}
@@ -832,10 +848,10 @@ func (c *Conn) addReceivedHeader() {
 
 	if c.completedAuth {
 		v += fmt.Sprintf("from %s (authenticated as %s@%s)\n",
-			envelope.DomainOf(c.mailFrom), c.authUser, c.authDomain)
+			c.ehloAddress, c.authUser, c.authDomain)
 	} else {
 		v += fmt.Sprintf("from %s (%s)\n",
-			envelope.DomainOf(c.mailFrom), c.netconn.RemoteAddr().String())
+			c.ehloAddress, c.netconn.RemoteAddr().String())
 	}
 
 	v += fmt.Sprintf("by %s (chasquid)\n", c.hostname)

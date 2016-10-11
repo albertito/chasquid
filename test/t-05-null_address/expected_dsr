@@ -20,7 +20,7 @@ Delivery to the following recipient(s) failed permanently:
 
 ----- Original message -----
 
-Received: from testserver (authenticated as user@testserver)
+Received: from localhost (authenticated as user@testserver)
 	by testserver (chasquid)
 	(over *
 	(envelope from "user@testserver")
