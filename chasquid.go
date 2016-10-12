@@ -55,6 +55,11 @@ var (
 	tlsCount          = expvar.NewMap("chasquid/smtpIn/tlsCount")
 )
 
+// Global event logs.
+var (
+	authLog = trace.NewEventLog("Authentication", "Incoming SMTP")
+)
+
 func main() {
 	flag.Parse()
 
@@ -1013,9 +1018,13 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 		c.authUser = user
 		c.authDomain = domain
 		c.completedAuth = true
+		authLog.Debugf("%s successful for %s@%s",
+			c.netconn.RemoteAddr().String(), user, domain)
 		return 235, ""
 	}
 
+	authLog.Debugf("%s failed for %s@%s",
+		c.netconn.RemoteAddr().String(), user, domain)
 	return 535, "Incorrect user or password"
 }
 
