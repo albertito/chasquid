@@ -45,11 +45,6 @@ func (t *Trace) Debugf(format string, a ...interface{}) {
 	}
 }
 
-func quote(s string) string {
-	qs := strconv.Quote(s)
-	return qs[1 : len(qs)-1]
-}
-
 func (t *Trace) SetError() {
 	t.t.SetError()
 }
@@ -60,7 +55,8 @@ func (t *Trace) Errorf(format string, a ...interface{}) error {
 	t.t.LazyPrintf("error: %v", err)
 
 	if glog.V(0) {
-		msg := fmt.Sprintf("%s %s: error: %v", t.family, t.title, err)
+		msg := fmt.Sprintf("%s %s: error: %s", t.family, t.title,
+			quote(err.Error()))
 		glog.InfoDepth(1, msg)
 	}
 	return err
@@ -71,7 +67,8 @@ func (t *Trace) Error(err error) error {
 	t.t.LazyPrintf("error: %v", err)
 
 	if glog.V(0) {
-		msg := fmt.Sprintf("%s %s: error: %v", t, t.family, t.title, err)
+		msg := fmt.Sprintf("%s %s: error: %v", t.family, t.title,
+			quote(err.Error()))
 		glog.InfoDepth(1, msg)
 	}
 	return err
@@ -116,8 +113,14 @@ func (e *EventLog) Errorf(format string, a ...interface{}) error {
 	e.e.Errorf("error: %v", err)
 
 	if glog.V(0) {
-		msg := fmt.Sprintf("%s %s: error: %v", e.family, e.title, err)
+		msg := fmt.Sprintf("%s %s: error: %s", e.family, e.title,
+			quote(err.Error()))
 		glog.InfoDepth(1, msg)
 	}
 	return err
+}
+
+func quote(s string) string {
+	qs := strconv.Quote(s)
+	return qs[1 : len(qs)-1]
 }
