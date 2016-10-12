@@ -80,6 +80,17 @@ func TestBasic(t *testing.T) {
 	localC.wg.Wait()
 	remoteC.wg.Wait()
 
+	// Make sure the delivered items leave the queue.
+	for d := time.Now().Add(2 * time.Second); time.Now().Before(d); {
+		if q.Len() == 0 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if q.Len() != 0 {
+		t.Fatalf("%d items not removed from the queue after delivery", q.Len())
+	}
+
 	cases := []struct {
 		courier    *TestCourier
 		expectedTo string
