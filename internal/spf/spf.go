@@ -28,8 +28,6 @@ import (
 	"strings"
 )
 
-// TODO: Neutral if not supported (including macros).
-
 // Functions that we can override for testing purposes.
 var (
 	lookupTXT func(domain string) (txts []string, err error) = net.LookupTXT

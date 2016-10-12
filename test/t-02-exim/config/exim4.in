@@ -12,7 +12,6 @@ keep_environment =
 tls_advertise_hosts =
 
 # Run as the current user.
-# TODO: obviously do not hard-code it!
 exim_group = ${USER}
 exim_user = ${USER}
 

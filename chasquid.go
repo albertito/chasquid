@@ -970,7 +970,6 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 	}
 
 	if c.authAttempts > 3 {
-		// TODO: close the connection?
 		return 503, "Too many attempts - go away"
 	}
 	c.authAttempts++
