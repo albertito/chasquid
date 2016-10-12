@@ -235,6 +235,7 @@ func mustReadDir(path string) []os.FileInfo {
 // We keep them distinct, as policies can differ between them.
 type SocketMode string
 
+// Valid socket modes.
 const (
 	ModeSMTP       SocketMode = "SMTP"
 	ModeSubmission SocketMode = "Submission"

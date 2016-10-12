@@ -74,6 +74,7 @@ type Recipient struct {
 
 type RType string
 
+// Valid recipient types.
 const (
 	EMAIL RType = "(email)"
 	PIPE  RType = "(pipe)"
@@ -148,7 +149,7 @@ func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
 
 	rcpts := v.aliases[addr]
 	if len(rcpts) == 0 {
-		return []Recipient{Recipient{addr, EMAIL}}, nil
+		return []Recipient{{addr, EMAIL}}, nil
 	}
 
 	ret := []Recipient{}
@@ -285,7 +286,7 @@ func parseFile(domain, path string) (map[string][]Recipient, error) {
 
 		if rawalias[0] == '|' {
 			cmd := strings.TrimSpace(rawalias[1:])
-			aliases[addr] = []Recipient{Recipient{cmd, PIPE}}
+			aliases[addr] = []Recipient{{cmd, PIPE}}
 		} else {
 			rs := []Recipient{}
 			for _, a := range strings.Split(rawalias, ",") {

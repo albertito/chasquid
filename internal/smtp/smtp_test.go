@@ -17,10 +17,10 @@ func TestIsPermanent(t *testing.T) {
 		err       error
 		permanent bool
 	}{
-		{&textproto.Error{499, ""}, false},
-		{&textproto.Error{500, ""}, true},
-		{&textproto.Error{599, ""}, true},
-		{&textproto.Error{600, ""}, false},
+		{&textproto.Error{Code: 499, Msg: ""}, false},
+		{&textproto.Error{Code: 500, Msg: ""}, true},
+		{&textproto.Error{Code: 599, Msg: ""}, true},
+		{&textproto.Error{Code: 600, Msg: ""}, false},
 		{fmt.Errorf("something"), false},
 	}
 	for _, c := range cases {

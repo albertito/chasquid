@@ -30,9 +30,9 @@ import (
 
 // Functions that we can override for testing purposes.
 var (
-	lookupTXT func(domain string) (txts []string, err error) = net.LookupTXT
-	lookupMX  func(domain string) (mxs []*net.MX, err error) = net.LookupMX
-	lookupIP  func(host string) (ips []net.IP, err error)    = net.LookupIP
+	lookupTXT = net.LookupTXT
+	lookupMX  = net.LookupMX
+	lookupIP  = net.LookupIP
 )
 
 // Results and Errors. Note the values have meaning, we use them in headers.

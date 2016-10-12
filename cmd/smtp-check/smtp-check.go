@@ -28,7 +28,7 @@ func main() {
 
 	domain, err := idna.ToASCII(domain)
 	if err != nil {
-		log.Fatal("IDNA conversion failed: %v", err)
+		log.Fatalf("IDNA conversion failed: %v", err)
 	}
 
 	mxs, err := net.LookupMX(domain)

@@ -47,16 +47,16 @@ func (c *Client) cmd(expectCode int, format string, args ...interface{}) (int, s
 // It will check the addresses, decide if SMTPUTF8 is needed, and apply the
 // necessary transformations.
 func (c *Client) MailAndRcpt(from string, to string) error {
-	from, from_needs, err := c.prepareForSMTPUTF8(from)
+	from, fromNeeds, err := c.prepareForSMTPUTF8(from)
 	if err != nil {
 		return err
 	}
 
-	to, to_needs, err := c.prepareForSMTPUTF8(to)
+	to, toNeeds, err := c.prepareForSMTPUTF8(to)
 	if err != nil {
 		return err
 	}
-	smtputf8Needed := from_needs || to_needs
+	smtputf8Needed := fromNeeds || toNeeds
 
 	cmdStr := "MAIL FROM:<%s>"
 	if ok, _ := c.Extension("8BITMIME"); ok {
@@ -102,8 +102,8 @@ func (c *Client) prepareForSMTPUTF8(addr string) (string, bool, error) {
 	user, domain := envelope.Split(addr)
 
 	if !isASCII(user) {
-		return addr, true, &textproto.Error{599,
-			"local part is not ASCII but server does not support SMTPUTF8"}
+		return addr, true, &textproto.Error{Code: 599,
+			Msg: "local part is not ASCII but server does not support SMTPUTF8"}
 	}
 
 	// If it's only the domain, convert to IDNA and move on.
@@ -112,8 +112,8 @@ func (c *Client) prepareForSMTPUTF8(addr string) (string, bool, error) {
 		// The domain is not IDNA compliant, which is odd.
 		// Fail with a permanent error, not ideal but this should not
 		// happen.
-		return addr, true, &textproto.Error{599,
-			"non-ASCII domain is not IDNA safe"}
+		return addr, true, &textproto.Error{
+			Code: 599, Msg: "non-ASCII domain is not IDNA safe"}
 	}
 
 	return user + "@" + domain, false, nil
