@@ -1134,11 +1134,15 @@ const monitoringHTMLIndex = `<!DOCTYPE html>
     <h1>chasquid monitoring</h1>
     <ul>
       <li><a href="/debug/queue">queue</a>
-      <li><a href="/debug/requests">requests</a>
-          <small><a href="https://godoc.org/golang.org/x/net/trace">
+      <li><a href="/debug/vars">exported variables</a>
+	       <small><a href="https://golang.org/pkg/expvar/">(ref)</a></small>
+	  <li>traces <small><a href="https://godoc.org/golang.org/x/net/trace">
             (ref)</a></small>
+        <ul>
+          <li><a href="/debug/requests?exp=1">requests (short-lived)</a>
+          <li><a href="/debug/events?exp=1">events (long-lived)</a>
+        </ul>
       <li><a href="/debug/flags">flags</a>
-      <li><a href="/debug/vars">public variables</a>
       <li><a href="/debug/pprof">pprof</a>
           <small><a href="https://golang.org/pkg/net/http/pprof/">
             (ref)</a></small>
