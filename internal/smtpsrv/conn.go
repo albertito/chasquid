@@ -147,7 +147,6 @@ loop:
 			break
 		}
 
-		commandCount.Add(cmd, 1)
 		if cmd == "AUTH" {
 			c.tr.Debugf("-> AUTH <redacted>")
 		} else {
@@ -187,10 +186,14 @@ loop:
 			c.writeResponse(221, "Be seeing you...")
 			break loop
 		default:
+			// Sanitize it a bit to avoid filling the logs and events with
+			// noisy data. Keep the first 6 bytes for debugging.
+			cmd = fmt.Sprintf("unknown<%.6s>", cmd)
 			code = 500
 			msg = "unknown command"
 		}
 
+		commandCount.Add(cmd, 1)
 		if code > 0 {
 			c.tr.Debugf("<- %d  %s", code, msg)
 
