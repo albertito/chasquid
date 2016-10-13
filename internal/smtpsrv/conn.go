@@ -50,7 +50,7 @@ type SocketMode string
 // Valid socket modes.
 const (
 	ModeSMTP       SocketMode = "SMTP"
-	ModeSubmission SocketMode = "Submission"
+	ModeSubmission SocketMode = "submission"
 )
 
 // Incoming SMTP connection.
@@ -550,7 +550,7 @@ func (c *Conn) addReceivedHeader() {
 
 	v += fmt.Sprintf("by %s (chasquid)\n", c.hostname)
 
-	v += "(over "
+	v += fmt.Sprintf("(over %s ", c.mode)
 	if c.tlsConnState != nil {
 		v += fmt.Sprintf("%s-%s)\n",
 			tlsconst.VersionName(c.tlsConnState.Version),
