@@ -56,29 +56,12 @@ func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, p.Binary, args...)
 
-	cmdStdin, err := cmd.StdinPipe()
-	if err != nil {
-		return tr.Errorf("StdinPipe: %v", err), true
-	}
-
+	cmd.Stdin = bytes.NewReader(data)
 	output := &bytes.Buffer{}
 	cmd.Stdout = output
 	cmd.Stderr = output
 
-	err = cmd.Start()
-	if err != nil {
-		return tr.Errorf("Error starting procmail: %v", err), true
-	}
-
-	_, err = bytes.NewBuffer(data).WriteTo(cmdStdin)
-	if err != nil {
-		return tr.Errorf("Error sending data to procmail: %v", err), true
-	}
-
-	cmdStdin.Close()
-
-	err = cmd.Wait()
-
+	err := cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
 		return tr.Error(errTimeout), false
 	}
