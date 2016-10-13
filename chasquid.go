@@ -24,6 +24,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/auth"
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
+	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/queue"
@@ -53,6 +54,7 @@ var (
 	spfResultCount    = expvar.NewMap("chasquid/smtpIn/spfResultCount")
 	loopsDetected     = expvar.NewInt("chasquid/smtpIn/loopsDetected")
 	tlsCount          = expvar.NewMap("chasquid/smtpIn/tlsCount")
+	slcResults        = expvar.NewMap("chasquid/smtpIn/securityLevelChecks")
 )
 
 // Global event logs.
@@ -133,12 +135,14 @@ func main() {
 	// as a remote domain (for loops, alias resolutions, etc.).
 	s.AddDomain("localhost")
 
+	s.InitDomainInfo(conf.DataDir + "/domaininfo")
+
 	localC := &courier.Procmail{
 		Binary:  conf.MailDeliveryAgentBin,
 		Args:    conf.MailDeliveryAgentArgs,
 		Timeout: 30 * time.Second,
 	}
-	remoteC := &courier.SMTP{}
+	remoteC := &courier.SMTP{Dinfo: s.dinfo}
 	s.InitQueue(conf.DataDir+"/queue", localC, remoteC)
 
 	go s.periodicallyReload()
@@ -266,6 +270,9 @@ type Server struct {
 	// Aliases resolver.
 	aliasesR *aliases.Resolver
 
+	// Domain info database.
+	dinfo *domaininfo.DB
+
 	// Time before we give up on a connection, even if it's sending data.
 	connTimeout time.Duration
 
@@ -312,6 +319,19 @@ func (s *Server) AddDomain(d string) {
 
 func (s *Server) AddUserDB(domain string, db *userdb.DB) {
 	s.userDBs[domain] = db
+}
+
+func (s *Server) InitDomainInfo(dir string) {
+	var err error
+	s.dinfo, err = domaininfo.New(dir)
+	if err != nil {
+		glog.Fatalf("Error opening domain info database: %v", err)
+	}
+
+	err = s.dinfo.Load()
+	if err != nil {
+		glog.Fatalf("Error loading domain info database: %v", err)
+	}
 }
 
 func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
@@ -399,6 +419,7 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 			userDBs:        s.userDBs,
 			aliasesR:       s.aliasesR,
 			localDomains:   s.localDomains,
+			dinfo:          s.dinfo,
 			deadline:       time.Now().Add(s.connTimeout),
 			commandTimeout: s.commandTimeout,
 			queue:          s.queue,
@@ -449,6 +470,7 @@ type Conn struct {
 	userDBs      map[string]*userdb.DB
 	localDomains *set.String
 	aliasesR     *aliases.Resolver
+	dinfo        *domaininfo.DB
 
 	// Have we successfully completed AUTH?
 	completedAuth bool
@@ -697,6 +719,10 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 				"SPF check failed: %v", c.spfError)
 		}
 
+		if !c.secLevelCheck(addr) {
+			return 550, "security level check failed"
+		}
+
 		addr, err = normalize.DomainToUnicode(addr)
 		if err != nil {
 			return 501, "malformed address (IDNA conversion failed)"
@@ -725,6 +751,37 @@ func (c *Conn) checkSPF(addr string) (spf.Result, error) {
 	}
 
 	return "", nil
+}
+
+// secLevelCheck checks if the security level is acceptable for the given
+// address.
+func (c *Conn) secLevelCheck(addr string) bool {
+	// Only check if SPF passes. This serves two purposes:
+	//  - Skip for authenticated connections (we trust them implicitly).
+	//  - Don't apply this if we can't be sure the sender is authorized.
+	//    Otherwise anyone could raise the level of any domain.
+	if c.spfResult != spf.Pass {
+		slcResults.Add("skip", 1)
+		c.tr.Debugf("SPF did not pass, skipping security level check")
+		return true
+	}
+
+	domain := envelope.DomainOf(addr)
+	level := domaininfo.SecLevel_PLAIN
+	if c.onTLS {
+		level = domaininfo.SecLevel_TLS_CLIENT
+	}
+
+	ok := c.dinfo.IncomingSecLevel(domain, level)
+	if ok {
+		slcResults.Add("pass", 1)
+		c.tr.Debugf("security level check for %s passed (%s)", domain, level)
+	} else {
+		slcResults.Add("fail", 1)
+		c.tr.Errorf("security level check for %s failed (%s)", domain, level)
+	}
+
+	return ok
 }
 
 func (c *Conn) RCPT(params string) (code int, msg string) {
@@ -793,7 +850,6 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	if c.mailFrom == "" {
 		return 503, "sender not yet given"
 	}
-
 	if len(c.rcptTo) == 0 {
 		return 503, "need an address to send to"
 	}

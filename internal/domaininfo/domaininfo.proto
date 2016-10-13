@@ -1,0 +1,28 @@
+
+syntax = "proto3";
+
+package domaininfo;
+
+enum SecLevel {
+	// Does not do TLS.
+	PLAIN = 0;
+
+	// TLS client connection (no certificate validation).
+	TLS_CLIENT = 1;
+
+	// TLS, but with invalid certificates.
+	TLS_INSECURE = 2;
+
+	// TLS, with valid certificates.
+	TLS_SECURE = 3;
+}
+
+message Domain {
+	string name = 1;
+
+	// Security level for mail coming from this domain (they send to us).
+	SecLevel incoming_sec_level = 2;
+
+	// Security level for mail going to this domain (we send to them).
+	SecLevel outgoing_sec_level = 3;
+}

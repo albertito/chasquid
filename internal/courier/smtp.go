@@ -11,6 +11,7 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/net/idna"
 
+	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/smtp"
 	"blitiri.com.ar/go/chasquid/internal/trace"
@@ -32,11 +33,13 @@ var (
 
 // Exported variables.
 var (
-	tlsCount = expvar.NewMap("chasquid/smtpOut/tlsCount")
+	tlsCount   = expvar.NewMap("chasquid/smtpOut/tlsCount")
+	slcResults = expvar.NewMap("chasquid/smtpOut/securityLevelChecks")
 )
 
 // SMTP delivers remote mail via outgoing SMTP.
 type SMTP struct {
+	Dinfo *domaininfo.DB
 }
 
 func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
@@ -44,7 +47,8 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	defer tr.Finish()
 	tr.Debugf("%s  ->  %s", from, to)
 
-	mx, err := lookupMX(envelope.DomainOf(to))
+	toDomain := envelope.DomainOf(to)
+	mx, err := lookupMX(toDomain)
 	if err != nil {
 		// Note this is considered a permanent error.
 		// This is in line with what other servers (Exim) do. However, the
@@ -68,6 +72,7 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	// Do we use insecure TLS?
 	// Set as fallback when retrying.
 	insecure := false
+	secLevel := domaininfo.SecLevel_PLAIN
 
 retry:
 	conn, err := net.DialTimeout("tcp", mx+":"+*smtpPort, smtpDialTimeout)
@@ -110,14 +115,24 @@ retry:
 		if config.InsecureSkipVerify {
 			tr.Debugf("Insecure - using TLS, but cert does not match %s", mx)
 			tlsCount.Add("tls:insecure", 1)
+			secLevel = domaininfo.SecLevel_TLS_INSECURE
 		} else {
 			tlsCount.Add("tls:secure", 1)
 			tr.Debugf("Secure - using TLS")
+			secLevel = domaininfo.SecLevel_TLS_SECURE
 		}
 	} else {
 		tlsCount.Add("plain", 1)
 		tr.Debugf("Insecure - NOT using TLS")
 	}
+
+	if toDomain != "" && !s.Dinfo.OutgoingSecLevel(toDomain, secLevel) {
+		// We consider the failure transient, so transient misconfigurations
+		// do not affect deliveries.
+		slcResults.Add("fail", 1)
+		return tr.Errorf("Security level check failed (level:%s)", secLevel), false
+	}
+	slcResults.Add("pass", 1)
 
 	// c.Mail will add the <> for us when the address is empty.
 	if from == "<>" {

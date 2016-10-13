@@ -2,11 +2,29 @@ package courier
 
 import (
 	"bufio"
+	"io/ioutil"
 	"net"
 	"net/textproto"
+	"os"
 	"testing"
 	"time"
+
+	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 )
+
+func newSMTP(t *testing.T) (*SMTP, string) {
+	dir, err := ioutil.TempDir("", "smtp_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dinfo, err := domaininfo.New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return &SMTP{dinfo}, dir
+}
 
 // Fake server, to test SMTP out.
 func fakeServer(t *testing.T, responses map[string]string) string {
@@ -72,7 +90,8 @@ func TestSMTP(t *testing.T) {
 	fakeMX["to"] = host
 	*smtpPort = port
 
-	s := &SMTP{}
+	s, tmpDir := newSMTP(t)
+	defer os.Remove(tmpDir)
 	err, _ := s.Deliver("me@me", "to@to", []byte("data"))
 	if err != nil {
 		t.Errorf("deliver failed: %v", err)
@@ -132,7 +151,8 @@ func TestSMTPErrors(t *testing.T) {
 		fakeMX["to"] = host
 		*smtpPort = port
 
-		s := &SMTP{}
+		s, tmpDir := newSMTP(t)
+		defer os.Remove(tmpDir)
 		err, _ := s.Deliver("me@me", "to@to", []byte("data"))
 		if err == nil {
 			t.Errorf("deliver not failed in case %q: %v", rs["_welcome"], err)
