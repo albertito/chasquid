@@ -146,6 +146,15 @@ func TestAuth(t *testing.T) {
 	sendEmailWithAuth(t, c, auth)
 }
 
+func TestSubmissionWithoutAuth(t *testing.T) {
+	c := mustDial(t, ModeSubmission, true)
+	defer c.Close()
+
+	if err := c.Mail("from@from"); err == nil {
+		t.Errorf("Mail not failed as expected")
+	}
+}
+
 func TestAuthOnSMTP(t *testing.T) {
 	c := mustDial(t, ModeSMTP, true)
 	defer c.Close()

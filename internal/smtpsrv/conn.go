@@ -298,6 +298,9 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 	if !strings.HasPrefix(strings.ToLower(params), "from:") {
 		return 500, "unknown command"
 	}
+	if c.mode == ModeSubmission && !c.completedAuth {
+		return 550, "mail to submission port must be authenticated"
+	}
 
 	rawAddr := ""
 	_, err := fmt.Sscanf(params[5:], "%s ", &rawAddr)
