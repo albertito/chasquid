@@ -13,12 +13,11 @@ func TestDSN(t *testing.T) {
 					"oh! horror!", ""},
 				{"newman@rcpt", Recipient_EMAIL, Recipient_FAILED,
 					"oh! the humanity!", ""}},
-			Data:     []byte("data ñaca"),
-			Hostname: "from.org",
+			Data: []byte("data ñaca"),
 		},
 	}
 
-	msg, err := deliveryStatusNotification(item)
+	msg, err := deliveryStatusNotification("dsnDomain", item)
 	if err != nil {
 		t.Error(err)
 	}

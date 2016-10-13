@@ -15,11 +15,11 @@ const maxOrigMsgLen = 256 * 1024
 // There is a standard, https://tools.ietf.org/html/rfc3464, although most
 // MTAs seem to use a plain email and include an X-Failed-Recipients header.
 // We're going with the latter for now, may extend it to the former later.
-func deliveryStatusNotification(item *Item) ([]byte, error) {
+func deliveryStatusNotification(domainFrom string, item *Item) ([]byte, error) {
 	info := dsnInfo{
-		OurDomain:   item.Hostname,
+		OurDomain:   domainFrom,
 		Destination: item.From,
-		MessageID:   "chasquid-dsn-" + <-newID + "@" + item.Hostname,
+		MessageID:   "chasquid-dsn-" + <-newID + "@" + domainFrom,
 		Date:        time.Now().Format(time.RFC1123Z),
 		To:          item.To,
 		Recipients:  item.Rcpt,

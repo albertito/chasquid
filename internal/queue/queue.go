@@ -105,11 +105,14 @@ type Queue struct {
 
 	// Aliases resolver.
 	aliases *aliases.Resolver
+
+	// Domain we use to send delivery status notifications from.
+	dsnDomain string
 }
 
-// Load the queue and launch the sending loops on startup.
+// New creates a new Queue instance.
 func New(path string, localDomains *set.String, aliases *aliases.Resolver,
-	localC, remoteC courier.Courier) *Queue {
+	localC, remoteC courier.Courier, dsnDomain string) *Queue {
 
 	os.MkdirAll(path, 0700)
 
@@ -120,9 +123,11 @@ func New(path string, localDomains *set.String, aliases *aliases.Resolver,
 		localDomains: localDomains,
 		path:         path,
 		aliases:      aliases,
+		dsnDomain:    dsnDomain,
 	}
 }
 
+// Load the queue and launch the sending loops on startup.
 func (q *Queue) Load() error {
 	files, err := filepath.Glob(q.path + "/" + itemFilePrefix + "*")
 	if err != nil {
@@ -153,7 +158,7 @@ func (q *Queue) Len() int {
 }
 
 // Put an envelope in the queue.
-func (q *Queue) Put(hostname, from string, to []string, data []byte) (string, error) {
+func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
 	if q.Len() >= maxQueueSize {
 		return "", errQueueFull
 	}
@@ -161,10 +166,9 @@ func (q *Queue) Put(hostname, from string, to []string, data []byte) (string, er
 
 	item := &Item{
 		Message: Message{
-			ID:       <-newID,
-			From:     from,
-			Data:     data,
-			Hostname: hostname,
+			ID:   <-newID,
+			From: from,
+			Data: data,
 		},
 		CreatedAt: time.Now(),
 	}
@@ -423,13 +427,13 @@ func (item *Item) countRcpt(status Recipient_Status) int {
 func sendDSN(tr *trace.Trace, q *Queue, item *Item) {
 	tr.Debugf("sending DSN")
 
-	msg, err := deliveryStatusNotification(item)
+	msg, err := deliveryStatusNotification(q.dsnDomain, item)
 	if err != nil {
 		tr.Errorf("failed to build DSN: %v", err)
 		return
 	}
 
-	id, err := q.Put(item.Hostname, "<>", []string{item.From}, msg)
+	id, err := q.Put("<>", []string{item.From}, msg)
 	if err != nil {
 		tr.Errorf("failed to queue DSN: %v", err)
 		return

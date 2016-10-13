@@ -19,9 +19,6 @@ message Message {
 
 	// Creation timestamp.
 	google.protobuf.Timestamp created_at_ts = 6;
-
-	// Hostname of the server receiving this message.
-	string hostname = 7;
 }
 
 message Recipient {

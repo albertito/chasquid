@@ -64,11 +64,11 @@ func TestBasic(t *testing.T) {
 	localC := newTestCourier()
 	remoteC := newTestCourier()
 	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
-		localC, remoteC)
+		localC, remoteC, "dsndomain")
 
 	localC.wg.Add(2)
 	remoteC.wg.Add(1)
-	id, err := q.Put("host", "from", []string{"am@loco", "x@remote", "nodomain"}, []byte("data"))
+	id, err := q.Put("from", []string{"am@loco", "x@remote", "nodomain"}, []byte("data"))
 	if err != nil {
 		t.Fatalf("Put: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestBasic(t *testing.T) {
 
 func TestFullQueue(t *testing.T) {
 	q := New("/tmp/queue_test", set.NewString(), aliases.NewResolver(),
-		dumbCourier, dumbCourier)
+		dumbCourier, dumbCourier, "dsndomain")
 
 	// Force-insert maxQueueSize items in the queue.
 	oneID := ""
@@ -135,7 +135,7 @@ func TestFullQueue(t *testing.T) {
 	}
 
 	// This one should fail due to the queue being too big.
-	id, err := q.Put("host", "from", []string{"to"}, []byte("data-qf"))
+	id, err := q.Put("from", []string{"to"}, []byte("data-qf"))
 	if err != errQueueFull {
 		t.Errorf("Not failed as expected: %v - %v", id, err)
 	}
@@ -146,7 +146,7 @@ func TestFullQueue(t *testing.T) {
 	q.q[oneID].WriteTo(q.path)
 	q.Remove(oneID)
 
-	id, err = q.Put("host", "from", []string{"to"}, []byte("data"))
+	id, err = q.Put("from", []string{"to"}, []byte("data"))
 	if err != nil {
 		t.Errorf("Put: %v", err)
 	}
@@ -164,7 +164,7 @@ var dumbCourier = DumbCourier{}
 
 func TestAliases(t *testing.T) {
 	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
-		dumbCourier, dumbCourier)
+		dumbCourier, dumbCourier, "dsndomain")
 
 	q.aliases.AddDomain("loco")
 	q.aliases.AddAliasForTesting("ab@loco", "pq@loco", aliases.EMAIL)
@@ -187,7 +187,7 @@ func TestAliases(t *testing.T) {
 			{"ata@hualpa", Recipient_EMAIL, Recipient_PENDING, "", "cd@loco"}}},
 	}
 	for _, c := range cases {
-		id, err := q.Put("host", "from", c.to, []byte("data"))
+		id, err := q.Put("from", c.to, []byte("data"))
 		if err != nil {
 			t.Errorf("Put: %v", err)
 		}
@@ -201,7 +201,7 @@ func TestAliases(t *testing.T) {
 
 func TestPipes(t *testing.T) {
 	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
-		dumbCourier, dumbCourier)
+		dumbCourier, dumbCourier, "dsndomain")
 	item := &Item{
 		Message: Message{
 			ID:   <-newID,
