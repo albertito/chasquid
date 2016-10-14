@@ -2,6 +2,7 @@ package smtpsrv
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"expvar"
 	"fmt"
@@ -11,6 +12,8 @@ import (
 	"net"
 	"net/mail"
 	"net/textproto"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +39,7 @@ var (
 	loopsDetected     = expvar.NewInt("chasquid/smtpIn/loopsDetected")
 	tlsCount          = expvar.NewMap("chasquid/smtpIn/tlsCount")
 	slcResults        = expvar.NewMap("chasquid/smtpIn/securityLevelChecks")
+	hookResults       = expvar.NewMap("chasquid/smtpIn/hookResults")
 )
 
 // Global event logs.
@@ -60,6 +64,9 @@ type Conn struct {
 
 	// Maximum data size.
 	maxDataSize int64
+
+	// Post-DATA hook location.
+	postDataHook string
 
 	// Connection information.
 	conn         net.Conn
@@ -514,6 +521,12 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 
 	c.addReceivedHeader()
 
+	hookOut, err := c.runPostDataHook(c.data)
+	if err != nil {
+		return 554, err.Error()
+	}
+	c.data = append(hookOut, c.data...)
+
 	// There are no partial failures here: we put it in the queue, and then if
 	// individual deliveries fail, we report via email.
 	msgID, err := c.queue.Put(c.mailFrom, c.rcptTo, c.data)
@@ -597,6 +610,115 @@ func checkData(data []byte) error {
 	}
 
 	return nil
+}
+
+// runPostDataHook and return the new headers to add, an error (if any), and
+// true if the error is permanent or false if transient.
+func (c *Conn) runPostDataHook(data []byte) ([]byte, error) {
+	// TODO: check if the file is executable.
+	if _, err := os.Stat(c.postDataHook); os.IsNotExist(err) {
+		hookResults.Add("post-data:skip", 1)
+		return nil, nil
+	}
+	tr := trace.New("Hook.Post-DATA", c.conn.RemoteAddr().String())
+	defer tr.Finish()
+	tr.Debugf("running")
+
+	ctx, cancel := context.WithDeadline(context.Background(),
+		time.Now().Add(1*time.Minute))
+	defer cancel()
+	cmd := exec.CommandContext(ctx, c.postDataHook)
+	cmd.Stdin = bytes.NewReader(data)
+
+	// Prepare the environment, copying some common variables so the hook has
+	// someting reasonable, and then setting the specific ones for this case.
+	for _, v := range strings.Fields("USER PWD SHELL PATH") {
+		cmd.Env = append(cmd.Env, v+"="+os.Getenv(v))
+	}
+	cmd.Env = append(cmd.Env, "REMOTE_ADDR="+c.conn.RemoteAddr().String())
+	cmd.Env = append(cmd.Env, "MAIL_FROM="+c.mailFrom)
+	cmd.Env = append(cmd.Env, "RCPT_TO="+strings.Join(c.rcptTo, " "))
+	cmd.Env = append(cmd.Env, "AUTH_AS="+c.authUser+"@"+c.authDomain)
+	if c.onTLS {
+		cmd.Env = append(cmd.Env, "ON_TLS=1")
+	}
+	if envelope.DomainIn(c.mailFrom, c.localDomains) {
+		cmd.Env = append(cmd.Env, "FROM_LOCAL_DOMAIN=1")
+	}
+
+	out, err := cmd.Output()
+	if err != nil {
+		hookResults.Add("post-data:fail", 1)
+		tr.Error(err)
+		tr.Debugf("stdout: %s", out)
+		if ee, ok := err.(*exec.ExitError); ok {
+			tr.Printf("stderr: %s", string(ee.Stderr))
+		}
+
+		// The error contains the last line of stdout, so filters can pass
+		// some rejection information back to the sender.
+		err = fmt.Errorf(lastLine(string(out)))
+		return nil, err
+	}
+
+	// Check that output looks like headers, to avoid breaking the email
+	// contents. If it does not, just skip it.
+	if !isHeader(out) {
+		hookResults.Add("post-data:badoutput", 1)
+		tr.Errorf("error parsing post-data output: '%s'", out)
+		return nil, nil
+	}
+
+	tr.Debugf("success")
+	tr.Debugf("stdout: %s", out)
+	hookResults.Add("post-data:success", 1)
+	return out, nil
+}
+
+// isHeader checks if the given buffer is a valid MIME header.
+func isHeader(b []byte) bool {
+	s := string(b)
+	if len(s) == 0 {
+		return true
+	}
+
+	// If it is just a \n, or contains two \n, then it's not a header.
+	if s == "\n" || strings.Contains(s, "\n\n") {
+		return false
+	}
+
+	// If it does not end in \n, not a header.
+	if s[len(s)-1] != '\n' {
+		return false
+	}
+
+	// Each line must either start with a space or have a ':'.
+	seen := false
+	for _, line := range strings.SplitAfter(s, "\n") {
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
+			if !seen {
+				// Continuation without a header first (invalid).
+				return false
+			}
+			continue
+		}
+		if !strings.Contains(line, ":") {
+			return false
+		}
+		seen = true
+	}
+	return true
+}
+
+func lastLine(s string) string {
+	l := strings.Split(s, "\n")
+	if len(l) < 2 {
+		return ""
+	}
+	return l[len(l)-2]
 }
 
 func (c *Conn) STARTTLS(params string) (code int, msg string) {

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+env > ../.data/post-data.out
+echo >> ../.data/post-data.out
+
+cat >> ../.data/post-data.out
+
+if [ "$RCPT_TO" == "blockme@testserver" ]; then
+	echo "¡No pasarán!"
+	exit 1
+fi
+
+echo "X-Post-Data: success"
+

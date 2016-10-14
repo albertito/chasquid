@@ -58,3 +58,26 @@ func TestSecLevel(t *testing.T) {
 		t.Fatalf("plain seclevel worked, downgrade was allowed")
 	}
 }
+
+func TestIsHeader(t *testing.T) {
+	no := []string{
+		"a", "\n", "\n\n", " \n", " ",
+		"a:b", "a:  b\nx: y",
+		"\na:b\n", " a\nb:c\n",
+	}
+	for _, s := range no {
+		if isHeader([]byte(s)) {
+			t.Errorf("%q accepted as header, should be rejected", s)
+		}
+	}
+
+	yes := []string{
+		"", "a:b\n",
+		"X-Post-Data: success\n",
+	}
+	for _, s := range yes {
+		if !isHeader([]byte(s)) {
+			t.Errorf("%q rejected as header, should be accepted", s)
+		}
+	}
+}

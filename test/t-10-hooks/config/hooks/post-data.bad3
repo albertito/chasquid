@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo $0 > ../.data/post-data.out
+
+# Just a newline is quite problematic, as it would break the headers.
+echo
+

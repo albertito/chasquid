@@ -1,0 +1,8 @@
+#!/bin/bash
+
+echo $0 > ../.data/post-data.out
+
+echo "X-Post-DATA: This starts like a header"
+echo
+echo "But then is not"
+

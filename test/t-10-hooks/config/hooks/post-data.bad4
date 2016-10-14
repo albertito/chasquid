@@ -1,0 +1,5 @@
+#!/bin/bash
+
+echo $0 > ../.data/post-data.out
+
+echo -n "X-Post-DATA: valid header with no newline at the end"

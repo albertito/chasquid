@@ -53,6 +53,9 @@ type Server struct {
 
 	// Queue where we put incoming mail.
 	queue *queue.Queue
+
+	// Path to the Post-DATA hook.
+	PostDataHook string
 }
 
 func NewServer() *Server {
@@ -193,6 +196,7 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 		sc := &Conn{
 			hostname:       s.Hostname,
 			maxDataSize:    s.MaxDataSize,
+			postDataHook:   s.PostDataHook,
 			conn:           conn,
 			tc:             textproto.NewConn(conn),
 			mode:           mode,
