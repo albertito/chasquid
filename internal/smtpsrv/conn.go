@@ -22,6 +22,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/auth"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
@@ -40,11 +41,6 @@ var (
 	tlsCount          = expvar.NewMap("chasquid/smtpIn/tlsCount")
 	slcResults        = expvar.NewMap("chasquid/smtpIn/securityLevelChecks")
 	hookResults       = expvar.NewMap("chasquid/smtpIn/hookResults")
-)
-
-// Global event logs.
-var (
-	authLog = trace.NewEventLog("Authentication", "Incoming SMTP")
 )
 
 // Mode for a socket (listening or connection).
@@ -351,16 +347,22 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 		c.spfResult, c.spfError = c.checkSPF(addr)
 		if c.spfResult == spf.Fail {
 			// https://tools.ietf.org/html/rfc7208#section-8.4
+			maillog.Rejected(c.conn.RemoteAddr(), addr, nil,
+				fmt.Sprintf("failed SPF: %v", c.spfError))
 			return 550, fmt.Sprintf(
 				"SPF check failed: %v", c.spfError)
 		}
 
 		if !c.secLevelCheck(addr) {
+			maillog.Rejected(c.conn.RemoteAddr(), addr, nil,
+				"security level check failed")
 			return 550, "security level check failed"
 		}
 
 		addr, err = normalize.DomainToUnicode(addr)
 		if err != nil {
+			maillog.Rejected(c.conn.RemoteAddr(), addr, nil,
+				fmt.Sprintf("malformed address: %v", err))
 			return 501, "malformed address (IDNA conversion failed)"
 		}
 	}
@@ -461,16 +463,22 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 
 	localDst := envelope.DomainIn(addr, c.localDomains)
 	if !localDst && !c.completedAuth {
+		maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, []string{addr},
+			"relay not allowed")
 		return 503, "relay not allowed"
 	}
 
 	if localDst {
 		addr, err = normalize.Addr(addr)
 		if err != nil {
+			maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, []string{addr},
+				fmt.Sprintf("invalid address: %v", err))
 			return 550, "recipient invalid, please check the address for typos"
 		}
 
 		if !c.userExists(addr) {
+			maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, []string{addr},
+				"local user does not exist")
 			return 550, "recipient unknown, please check the address for typos"
 		}
 	}
@@ -516,6 +524,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	c.tr.Debugf("-> ... %d bytes of data", len(c.data))
 
 	if err := checkData(c.data); err != nil {
+		maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, c.rcptTo, err.Error())
 		return 554, err.Error()
 	}
 
@@ -523,6 +532,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 
 	hookOut, err := c.runPostDataHook(c.data)
 	if err != nil {
+		maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, c.rcptTo, err.Error())
 		return 554, err.Error()
 	}
 	c.data = append(hookOut, c.data...)
@@ -535,6 +545,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	}
 
 	c.tr.Printf("Queued from %s to %s - %s", c.mailFrom, c.rcptTo, msgID)
+	maillog.Queued(c.conn.RemoteAddr(), c.mailFrom, c.rcptTo, msgID)
 
 	// It is very important that we reset the envelope before returning,
 	// so clients can send other emails right away without needing to RSET.
@@ -825,13 +836,11 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 		c.authUser = user
 		c.authDomain = domain
 		c.completedAuth = true
-		authLog.Debugf("%s successful for %s@%s",
-			c.conn.RemoteAddr().String(), user, domain)
+		maillog.Auth(c.conn.RemoteAddr(), user+"@"+domain, true)
 		return 235, ""
 	}
 
-	authLog.Debugf("%s failed for %s@%s",
-		c.conn.RemoteAddr().String(), user, domain)
+	maillog.Auth(c.conn.RemoteAddr(), user+"@"+domain, false)
 	return 535, "Incorrect user or password"
 }
 

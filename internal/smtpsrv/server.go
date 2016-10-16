@@ -11,6 +11,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
+	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
@@ -168,6 +169,7 @@ func (s *Server) ListenAndServe() {
 			}
 
 			glog.Infof("Server listening on %s (%v)", addr, m)
+			maillog.Listening(addr)
 			go s.serve(l, m)
 		}
 	}
@@ -175,6 +177,7 @@ func (s *Server) ListenAndServe() {
 	for m, ls := range s.listeners {
 		for _, l := range ls {
 			glog.Infof("Server listening on %s (%v, via systemd)", l.Addr(), m)
+			maillog.Listening(l.Addr().String())
 			go s.serve(l, m)
 		}
 	}

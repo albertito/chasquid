@@ -59,5 +59,10 @@ message Config {
 	// "u.se_r" will be delivered to "user".
 	// Default: ".".
 	string drop_characters = 10;
+
+	// Path where to write the mail log to.
+	// If "<syslog>", log using the syslog (at MAIL|INFO priority).
+	// Default: <syslog>
+	string mail_log_path = 11;
 }
 

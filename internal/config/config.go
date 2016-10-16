@@ -70,6 +70,10 @@ func Load(path string) (*Config, error) {
 		c.DropCharacters = "."
 	}
 
+	if c.MailLogPath == "" {
+		c.MailLogPath = "<syslog>"
+	}
+
 	return c, nil
 }
 
@@ -84,4 +88,5 @@ func LogConfig(c *Config) {
 	glog.Infof("  Data directory: %s", c.DataDir)
 	glog.Infof("  Suffix separators: %s", c.SuffixSeparators)
 	glog.Infof("  Drop characters: %s", c.DropCharacters)
+	glog.Infof("  Mail log: %s", c.MailLogPath)
 }

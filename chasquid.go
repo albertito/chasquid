@@ -14,6 +14,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
+	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/smtpsrv"
 	"blitiri.com.ar/go/chasquid/internal/systemd"
@@ -44,7 +45,7 @@ func main() {
 
 	conf, err := config.Load(*configDir + "/chasquid.conf")
 	if err != nil {
-		glog.Fatalf("Error reading config")
+		glog.Fatalf("Error reading config: %v", err)
 	}
 	config.LogConfig(conf)
 
@@ -54,6 +55,8 @@ func main() {
 	// where paths inside the configuration itself could be relative, and this
 	// fixes the point of reference.
 	os.Chdir(*configDir)
+
+	initMailLog(conf.MailLogPath)
 
 	if conf.MonitoringAddress != "" {
 		launchMonitoringServer(conf.MonitoringAddress)
@@ -146,6 +149,23 @@ func loadAddresses(srv *smtpsrv.Server, addrs []string, ls []net.Listener, mode 
 		glog.Errorf("No %v addresses/listeners", mode)
 		glog.Errorf("If using systemd, check that you named the sockets")
 		glog.Fatalf("Exiting")
+	}
+}
+
+func initMailLog(path string) {
+	var err error
+
+	if path == "<syslog>" {
+		maillog.Default, err = maillog.NewSyslog()
+	} else {
+		os.MkdirAll(filepath.Dir(path), 0775)
+		var f *os.File
+		f, err = os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+		maillog.Default = maillog.New(f)
+	}
+
+	if err != nil {
+		glog.Fatalf("Error opening mail log: %v", err)
 	}
 }
 

@@ -23,6 +23,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/protoio"
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/trace"
@@ -328,6 +329,7 @@ func (item *Item) SendLoop(q *Queue) {
 
 		delay = nextDelay(delay)
 		tr.Printf("waiting for %v", delay)
+		maillog.QueueLoop(item.ID, delay)
 		time.Sleep(delay)
 	}
 
@@ -337,6 +339,7 @@ func (item *Item) SendLoop(q *Queue) {
 	}
 
 	tr.Printf("all done")
+	maillog.QueueLoop(item.ID, 0)
 	q.Remove(item.ID)
 }
 
@@ -353,12 +356,15 @@ func (item *Item) sendOneRcpt(wg *sync.WaitGroup, tr *trace.Trace, q *Queue, rcp
 		rcpt.LastFailureMessage = err.Error()
 		if permanent {
 			tr.Errorf("%s permanent error: %v", to, err)
+			maillog.SendAttempt(item.ID, item.From, to, err, true)
 			rcpt.Status = Recipient_FAILED
 		} else {
 			tr.Printf("%s temporary error: %v", to, err)
+			maillog.SendAttempt(item.ID, item.From, to, err, false)
 		}
 	} else {
 		tr.Printf("%s sent", to)
+		maillog.SendAttempt(item.ID, item.From, to, nil, false)
 		rcpt.Status = Recipient_SENT
 	}
 	item.Unlock()
