@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"syscall"
 )
 
 // WriteFile writes data to a file named by filename, atomically.
@@ -24,10 +25,18 @@ func WriteFile(filename string, data []byte, perm os.FileMode) error {
 		return err
 	}
 
-	if err = os.Chmod(tmpf.Name(), perm); err != nil {
+	if err = tmpf.Chmod(perm); err != nil {
 		tmpf.Close()
 		os.Remove(tmpf.Name())
 		return err
+	}
+
+	if uid, gid := getOwner(filename); uid >= 0 {
+		if err = tmpf.Chown(uid, gid); err != nil {
+			tmpf.Close()
+			os.Remove(tmpf.Name())
+			return err
+		}
 	}
 
 	if _, err = tmpf.Write(data); err != nil {
@@ -42,4 +51,18 @@ func WriteFile(filename string, data []byte, perm os.FileMode) error {
 	}
 
 	return os.Rename(tmpf.Name(), filename)
+}
+
+func getOwner(fname string) (uid, gid int) {
+	uid = -1
+	gid = -1
+	stat, err := os.Stat(fname)
+	if err == nil {
+		if sysstat, ok := stat.Sys().(*syscall.Stat_t); ok {
+			uid = int(sysstat.Uid)
+			gid = int(sysstat.Gid)
+		}
+	}
+
+	return
 }
