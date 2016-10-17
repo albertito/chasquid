@@ -40,11 +40,12 @@ function chasquid() {
 
 function add_user() {
 	CONFDIR="${CONFDIR:-config}"
-	mkdir -p "${CONFDIR}/domains/${1}/"
+	DOMAIN=$(echo $1 | cut -d @ -f 2)
+	mkdir -p "${CONFDIR}/domains/$DOMAIN/"
 	go run ${TBASE}/../../cmd/chasquid-util/chasquid-util.go \
 		-C "${CONFDIR}" \
-		user-add "$2@$1" \
-		--password "${3}" \
+		user-add "$1" \
+		--password "$2" \
 		>> .add_user_logs
 }
 
@@ -65,11 +66,17 @@ function mail_diff() {
 }
 
 function success() {
-	echo "SUCCESS"
+	echo success
 }
 
 function skip() {
-	echo "SKIPPED" $*
+	echo skipped: $*
+	exit 0
+}
+
+function fail() {
+	echo FAILED: $*
+	exit 1
 }
 
 # Wait until there's something listening on the given port.
@@ -103,8 +110,7 @@ function generate_certs_for() {
 function skip_if_python_is_too_old() {
 	# We need Python >= 3.5 to be able to use SMTPUTF8.
 	check='import sys; sys.exit(0 if sys.version_info >= (3, 5) else 1)'
-	if ! python3 -c "${check}"; then
+	if ! python3 -c "${check}" > /dev/null 2>&1; then
 		skip "python3 >= 3.5 not available"
-		exit 0
 	fi
 }

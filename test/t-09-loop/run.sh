@@ -15,7 +15,7 @@ rm -rf .data-A .data-B .mail
 #   userA -> aliasB -> aliasA -> aliasB -> ...
 
 CONFDIR=A generate_certs_for srv-A
-CONFDIR=A add_user srv-A userA userA
+CONFDIR=A add_user userA@srv-A userA
 
 CONFDIR=B generate_certs_for srv-B
 

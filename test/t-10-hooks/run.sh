@@ -6,9 +6,9 @@ set -e
 init
 
 generate_certs_for testserver
-add_user testserver user secretpassword
-add_user testserver someone secretpassword
-add_user testserver blockme secretpassword
+add_user user@testserver secretpassword
+add_user someone@testserver secretpassword
+add_user blockme@testserver secretpassword
 
 mkdir -p .logs
 chasquid -v=2 --log_dir=.logs --config_dir=config &
@@ -23,14 +23,12 @@ wait_for_file .mail/someone@testserver
 mail_diff content .mail/someone@testserver
 
 if ! grep -q "X-Post-Data: success" .mail/someone@testserver; then
-	echo "missing X-Post-Data header"
-	exit 1
+	fail "missing X-Post-Data header"
 fi
 
 function check() {
 	if ! grep -q "$1" .data/post-data.out; then
-		echo missing: $1
-		exit 1
+		fail "missing: $1"
 	fi
 }
 
@@ -48,8 +46,7 @@ check "REMOTE_ADDR="
 
 # Check that a failure in the script results in failing delivery.
 if run_msmtp blockme@testserver < content 2>/dev/null; then
-	echo "ERROR: hook did not block email as expected"
-	exit 1
+	fail "ERROR: hook did not block email as expected"
 fi
 
 # Check that the bad hooks don't prevent delivery.

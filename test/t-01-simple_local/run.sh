@@ -6,8 +6,8 @@ set -e
 init
 
 generate_certs_for testserver
-add_user testserver user secretpassword
-add_user testserver someone secretpassword
+add_user user@testserver secretpassword
+add_user someone@testserver secretpassword
 
 mkdir -p .logs
 chasquid -v=2 --log_dir=.logs --config_dir=config &
@@ -22,23 +22,19 @@ mail_diff content .mail/someone@testserver
 # At least for now, we allow AUTH over the SMTP port to avoid unnecessary
 # complexity, so we expect it to work.
 if ! run_msmtp -a smtpport someone@testserver < content 2> /dev/null; then
-	echo "ERROR: failed auth on the SMTP port"
-	exit 1
+	fail "failed auth on the SMTP port"
 fi
 
 if run_msmtp nobody@testserver < content 2> /dev/null; then
-	echo "ERROR: successfuly sent an email to a non-existent user"
-	exit 1
+	fail "successfuly sent an email to a non-existent user"
 fi
 
 if run_msmtp -a baduser someone@testserver < content 2> /dev/null; then
-	echo "ERROR: successfully sent an email with a bad password"
-	exit 1
+	fail "successfully sent an email with a bad password"
 fi
 
 if run_msmtp -a badpasswd someone@testserver < content 2> /dev/null; then
-	echo "ERROR: successfully sent an email with a bad password"
-	exit 1
+	fail "successfully sent an email with a bad password"
 fi
 
 success

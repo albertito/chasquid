@@ -28,7 +28,7 @@ set -e
 init
 
 if ! .exim4/exim4 --version > /dev/null; then
-	skip "(exim4 binary at .exim4/exim4 is not functional)"
+	skip "exim4 binary at .exim4/exim4 is not functional"
 	exit 0
 fi
 
@@ -38,8 +38,8 @@ mkdir -p .exim4
 EXIMDIR="$PWD/.exim4" envsubst < config/exim4.in > .exim4/config
 
 generate_certs_for srv-chasquid
-add_user srv-chasquid user secretpassword
-add_user srv-chasquid someone secretpassword
+add_user user@srv-chasquid secretpassword
+add_user someone@srv-chasquid secretpassword
 
 # Launch chasquid at port 1025 (in config).
 # Use outgoing port 2025 which is where exim will be at.

@@ -15,10 +15,10 @@ generate_certs_for ñoños
 
 # Intentionally have a config directory for upper case; this should be
 # normalized to lowercase internally (and match the cert accordingly).
-add_user ñoñOS ñangapirí antaño
+add_user ñangapirí@ñoñOS antaño
 
 # Python doesn't support UTF8 for auth, use an ascii user and domain.
-add_user nada nada nada
+add_user nada@nada nada
 
 mkdir -p .logs
 chasquid -v=2 --log_dir=.logs --config_dir=config &

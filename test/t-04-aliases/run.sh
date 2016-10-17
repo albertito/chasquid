@@ -6,7 +6,7 @@ set -e
 init
 
 generate_certs_for testserver
-add_user testserver user secretpassword
+add_user user@testserver secretpassword
 
 mkdir -p .logs
 chasquid -v=2 --log_dir=.logs --config_dir=config &

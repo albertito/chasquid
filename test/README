@@ -6,7 +6,7 @@ They're not expected to be portable, as that gets impractical very quickly.
 They also have some dependencies, listed below.
 
 
-=== Dependencies
+## Dependencies
 
 The tests depend on the following things being installed on the system (listed
 as Debian package, for consistency):
@@ -15,9 +15,11 @@ as Debian package, for consistency):
  - msmtp
  - util-linux (for /usr/bin/setsid)
 
-For t-exim (Exim interaction tests):
+For t-02-exim (Exim interaction tests):
  - gettext-base (for /usr/bin/envsubst)
  - The exim binary available somewhere, but it doesn't have to be installed.
    There's a script "get-exim4-debian.sh" to get it from the archives.
 
+For some tests, python >= 3.5 is required; they will be skipped if it's not
+available.
 
