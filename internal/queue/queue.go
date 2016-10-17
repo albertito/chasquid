@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"expvar"
 	"fmt"
+	mathrand "math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -305,7 +306,6 @@ func (item *Item) SendLoop(q *Queue) {
 	defer tr.Finish()
 	tr.Printf("from %s", item.From)
 
-	var delay time.Duration
 	for time.Since(item.CreatedAt) < giveUpAfter {
 		// Send to all recipients that are still pending.
 		var wg sync.WaitGroup
@@ -327,7 +327,7 @@ func (item *Item) SendLoop(q *Queue) {
 		// TODO: Consider sending a non-final notification after 30m or so,
 		// that some of the messages have been delayed.
 
-		delay = nextDelay(delay)
+		delay := nextDelay(item.CreatedAt)
 		tr.Printf("waiting for %v", delay)
 		maillog.QueueLoop(item.ID, delay)
 		time.Sleep(delay)
@@ -452,17 +452,25 @@ func sendDSN(tr *trace.Trace, q *Queue, item *Item) {
 	dsnQueued.Add(1)
 }
 
-func nextDelay(last time.Duration) time.Duration {
+func nextDelay(createdAt time.Time) time.Duration {
+	var delay time.Duration
+
+	since := time.Since(createdAt)
 	switch {
-	case last < 1*time.Minute:
-		return 1 * time.Minute
-	case last < 5*time.Minute:
-		return 5 * time.Minute
-	case last < 10*time.Minute:
-		return 10 * time.Minute
+	case since < 1*time.Minute:
+		delay = 1 * time.Minute
+	case since < 5*time.Minute:
+		delay = 5 * time.Minute
+	case since < 10*time.Minute:
+		delay = 10 * time.Minute
 	default:
-		return 20 * time.Minute
+		delay = 20 * time.Minute
 	}
+
+	// Perturb the delay, to avoid all queued emails to be retried at the
+	// exact same time after a restart.
+	delay += time.Duration(mathrand.Intn(60)) * time.Second
+	return delay
 }
 
 func timestampNow() *timestamp.Timestamp {

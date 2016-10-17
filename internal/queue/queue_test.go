@@ -263,3 +263,25 @@ func TestPipes(t *testing.T) {
 		t.Errorf("pipe delivery failed: %v", err)
 	}
 }
+
+func TestNextDelay(t *testing.T) {
+	cases := []struct{ since, min time.Duration }{
+		{10 * time.Second, 1 * time.Minute},
+		{3 * time.Minute, 5 * time.Minute},
+		{7 * time.Minute, 10 * time.Minute},
+		{15 * time.Minute, 20 * time.Minute},
+		{30 * time.Minute, 20 * time.Minute},
+	}
+	for _, c := range cases {
+		// Repeat each case a few times to exercise the perturbation a bit.
+		for i := 0; i < 10; i++ {
+			delay := nextDelay(time.Now().Add(-c.since))
+
+			max := c.min + 1*time.Minute
+			if delay < c.min || delay > max {
+				t.Errorf("since:%v  expected [%v, %v], got %v",
+					c.since, c.min, max, delay)
+			}
+		}
+	}
+}
