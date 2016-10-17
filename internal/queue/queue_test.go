@@ -3,7 +3,6 @@ package queue
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -153,6 +152,59 @@ func TestDSNOnTimeout(t *testing.T) {
 	}
 }
 
+func TestAliases(t *testing.T) {
+	localC := newTestCourier()
+	remoteC := newTestCourier()
+	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
+		localC, remoteC, "dsndomain")
+
+	q.aliases.AddDomain("loco")
+	q.aliases.AddAliasForTesting("ab@loco", "pq@loco", aliases.EMAIL)
+	q.aliases.AddAliasForTesting("ab@loco", "rs@loco", aliases.EMAIL)
+	q.aliases.AddAliasForTesting("cd@loco", "ata@hualpa", aliases.EMAIL)
+	// Note the pipe aliases are tested below, as they don't use the couriers
+	// and it can be quite inconvenient to test them in this way.
+
+	localC.wg.Add(2)
+	remoteC.wg.Add(1)
+	_, err := q.Put("from", []string{"ab@loco", "cd@loco"}, []byte("data"))
+	if err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	localC.wg.Wait()
+	remoteC.wg.Wait()
+
+	cases := []struct {
+		courier    *TestCourier
+		expectedTo string
+	}{
+		{localC, "pq@loco"},
+		{localC, "rs@loco"},
+		{remoteC, "ata@hualpa"},
+	}
+	for _, c := range cases {
+		req := c.courier.reqFor[c.expectedTo]
+		if req == nil {
+			t.Errorf("missing request for %q", c.expectedTo)
+			continue
+		}
+
+		if req.from != "from" || req.to != c.expectedTo ||
+			!bytes.Equal(req.data, []byte("data")) {
+			t.Errorf("wrong request for %q: %v", c.expectedTo, req)
+		}
+	}
+}
+
+// Dumb courier, for when we just want to return directly.
+type DumbCourier struct{}
+
+func (c DumbCourier) Deliver(from string, to string, data []byte) (error, bool) {
+	return nil, false
+}
+
+var dumbCourier = DumbCourier{}
+
 func TestFullQueue(t *testing.T) {
 	q := New("/tmp/queue_test", set.NewString(), aliases.NewResolver(),
 		dumbCourier, dumbCourier, "dsndomain")
@@ -191,52 +243,6 @@ func TestFullQueue(t *testing.T) {
 		t.Errorf("Put: %v", err)
 	}
 	q.Remove(id)
-}
-
-// Dumb courier, for when we just want to return directly.
-type DumbCourier struct{}
-
-func (c DumbCourier) Deliver(from string, to string, data []byte) (error, bool) {
-	return nil, false
-}
-
-var dumbCourier = DumbCourier{}
-
-func TestAliases(t *testing.T) {
-	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
-		dumbCourier, dumbCourier, "dsndomain")
-
-	q.aliases.AddDomain("loco")
-	q.aliases.AddAliasForTesting("ab@loco", "pq@loco", aliases.EMAIL)
-	q.aliases.AddAliasForTesting("ab@loco", "rs@loco", aliases.EMAIL)
-	q.aliases.AddAliasForTesting("ab@loco", "command", aliases.PIPE)
-	q.aliases.AddAliasForTesting("cd@loco", "ata@hualpa", aliases.EMAIL)
-
-	cases := []struct {
-		to       []string
-		expected []*Recipient
-	}{
-		{[]string{"ab@loco"}, []*Recipient{
-			{"pq@loco", Recipient_EMAIL, Recipient_PENDING, "", "ab@loco"},
-			{"rs@loco", Recipient_EMAIL, Recipient_PENDING, "", "ab@loco"},
-			{"command", Recipient_PIPE, Recipient_PENDING, "", "ab@loco"}}},
-		{[]string{"ab@loco", "cd@loco"}, []*Recipient{
-			{"pq@loco", Recipient_EMAIL, Recipient_PENDING, "", "ab@loco"},
-			{"rs@loco", Recipient_EMAIL, Recipient_PENDING, "", "ab@loco"},
-			{"command", Recipient_PIPE, Recipient_PENDING, "", "ab@loco"},
-			{"ata@hualpa", Recipient_EMAIL, Recipient_PENDING, "", "cd@loco"}}},
-	}
-	for _, c := range cases {
-		id, err := q.Put("from", c.to, []byte("data"))
-		if err != nil {
-			t.Errorf("Put: %v", err)
-		}
-		item := q.q[id]
-		if !reflect.DeepEqual(item.Rcpt, c.expected) {
-			t.Errorf("case %q, expected %v, got %v", c.to, c.expected, item.Rcpt)
-		}
-		q.Remove(id)
-	}
 }
 
 func TestPipes(t *testing.T) {
