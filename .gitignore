@@ -9,7 +9,7 @@
 
 # The binaries.
 chasquid
-chasquid-userdb
+cmd/chasquid-util/chasquid-util
 
 # Exclude any .pem files, to prevent accidentally including test keys and
 # certificates.

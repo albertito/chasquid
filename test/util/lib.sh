@@ -42,7 +42,8 @@ function add_user() {
 	CONFDIR="${CONFDIR:-config}"
 	mkdir -p "${CONFDIR}/domains/${1}/"
 	go run ${TBASE}/../../cmd/chasquid-util/chasquid-util.go \
-		adduser "${CONFDIR}/domains/${1}/users" "${2}" \
+		-C "${CONFDIR}" \
+		user-add "$2@$1" \
 		--password "${3}" \
 		>> .add_user_logs
 }

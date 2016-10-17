@@ -11,6 +11,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/config"
+	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 
@@ -22,23 +23,36 @@ import (
 // Usage, which doubles as parameter definitions thanks to docopt.
 const usage = `
 Usage:
-  chasquid-util adduser <db> <username> [--password=<password>]
-  chasquid-util removeuser <db> <username>
-  chasquid-util authenticate <db> <username> [--password=<password>]
-  chasquid-util check-userdb <db>
-  chasquid-util aliases-resolve <configdir> <address>
-  chasquid-util print-config <configdir>
+  chasquid-util [options] user-add <username> [--password=<password>]
+  chasquid-util [options] user-remove <username>
+  chasquid-util [options] authenticate <username> [--password=<password>]
+  chasquid-util [options] check-userdb <domain>
+  chasquid-util [options] aliases-resolve <address>
+  chasquid-util [options] print-config
+
+Options:
+  -C --configdir=<path>  Configuration directory
 `
 
 // Command-line arguments.
 var args map[string]interface{}
 
+// Globals, loaded from top-level options.
+var (
+	configDir = "/etc/chasquid"
+)
+
 func main() {
 	args, _ = docopt.Parse(usage, nil, true, "", false)
 
+	// Load globals.
+	if d, ok := args["--configdir"].(string); ok {
+		configDir = d
+	}
+
 	commands := map[string]func(){
-		"adduser":         AddUser,
-		"removeuser":      RemoveUser,
+		"user-add":        UserAdd,
+		"user-remove":     UserRemove,
 		"authenticate":    Authenticate,
 		"check-userdb":    CheckUserDB,
 		"aliases-resolve": AliasesResolve,
@@ -57,9 +71,37 @@ func Fatalf(s string, arg ...interface{}) {
 	os.Exit(1)
 }
 
-// chasquid-util check-userdb <db>
+func userDBForDomain(domain string) string {
+	if domain == "" {
+		domain = args["<domain>"].(string)
+	}
+	return configDir + "/domains/" + domain + "/users"
+}
+
+func userDBFromArgs(create bool) (string, string, *userdb.DB) {
+	username := args["<username>"].(string)
+	user, domain := envelope.Split(username)
+
+	db, err := userdb.Load(userDBForDomain(domain))
+	if err != nil {
+		if create && os.IsNotExist(err) {
+			fmt.Println("Creating database")
+		} else {
+			Fatalf("Error loading database: %v", err)
+		}
+	}
+
+	user, err = normalize.User(user)
+	if err != nil {
+		Fatalf("Error normalizing user: %v", err)
+	}
+
+	return user, domain, db
+}
+
+// chasquid-util check-userdb <domain>
 func CheckUserDB() {
-	_, err := userdb.Load(args["<db>"].(string))
+	_, err := userdb.Load(userDBForDomain(""))
 	if err != nil {
 		Fatalf("Error loading database: %v", err)
 	}
@@ -67,25 +109,12 @@ func CheckUserDB() {
 	fmt.Println("Database loaded")
 }
 
-// chasquid-util adduser <db> <username> [--password=<password>]
-func AddUser() {
-	db, err := userdb.Load(args["<db>"].(string))
-	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println("Creating database")
-		} else {
-			Fatalf("Error loading database: %v", err)
-		}
-	}
-
-	user, err := normalize.User(args["<username>"].(string))
-	if err != nil {
-		Fatalf("Error normalizing user: %v", err)
-	}
-
+// chasquid-util user-add <username> [--password=<password>]
+func UserAdd() {
+	user, _, db := userDBFromArgs(true)
 	password := getPassword()
 
-	err = db.AddUser(user, password)
+	err := db.AddUser(user, password)
 	if err != nil {
 		Fatalf("Error adding user: %v", err)
 	}
@@ -98,15 +127,12 @@ func AddUser() {
 	fmt.Println("Added user")
 }
 
-// chasquid-util authenticate <db> <username> [--password=<password>]
+// chasquid-util authenticate <username> [--password=<password>]
 func Authenticate() {
-	db, err := userdb.Load(args["<db>"].(string))
-	if err != nil {
-		Fatalf("Error loading database: %v", err)
-	}
+	user, _, db := userDBFromArgs(false)
 
 	password := getPassword()
-	ok := db.Authenticate(args["<username>"].(string), password)
+	ok := db.Authenticate(user, password)
 	if ok {
 		fmt.Println("Authentication succeeded")
 	} else {
@@ -141,19 +167,16 @@ func getPassword() string {
 	return string(p1)
 }
 
-// chasquid-util removeuser <db> <username>
-func RemoveUser() {
-	db, err := userdb.Load(args["<db>"].(string))
-	if err != nil {
-		Fatalf("Error loading database: %v", err)
-	}
+// chasquid-util user-remove <username>
+func UserRemove() {
+	user, _, db := userDBFromArgs(false)
 
-	present := db.RemoveUser(args["<username>"].(string))
+	present := db.RemoveUser(user)
 	if !present {
 		Fatalf("Unknown user")
 	}
 
-	err = db.Write()
+	err := db.Write()
 	if err != nil {
 		Fatalf("Error writing database: %v", err)
 	}
@@ -161,9 +184,8 @@ func RemoveUser() {
 	fmt.Println("Removed user")
 }
 
-// chasquid-util aliases-resolve <configdir> <address>
+// chasquid-util aliases-resolve <address>
 func AliasesResolve() {
-	configDir := args["<configdir>"].(string)
 	conf, err := config.Load(configDir + "/chasquid.conf")
 	if err != nil {
 		Fatalf("Error reading config")
@@ -206,9 +228,8 @@ func AliasesResolve() {
 
 }
 
-// chasquid-util print-config <configdir>
+// chasquid-util print-config
 func PrintConfig() {
-	configDir := args["<configdir>"].(string)
 	conf, err := config.Load(configDir + "/chasquid.conf")
 	if err != nil {
 		Fatalf("Error reading config")
