@@ -334,7 +334,7 @@ func (item *Item) SendLoop(q *Queue) {
 	}
 
 	// Completed to all recipients (some may not have succeeded).
-	if item.countRcpt(Recipient_FAILED) > 0 && item.From != "<>" {
+	if item.countRcpt(Recipient_FAILED, Recipient_PENDING) > 0 && item.From != "<>" {
 		sendDSN(tr, q, item)
 	}
 
@@ -420,11 +420,14 @@ func (item *Item) deliver(q *Queue, rcpt *Recipient) (err error, permanent bool)
 }
 
 // countRcpt counts how many recipients are in the given status.
-func (item *Item) countRcpt(status Recipient_Status) int {
+func (item *Item) countRcpt(statuses ...Recipient_Status) int {
 	c := 0
 	for _, rcpt := range item.Rcpt {
-		if rcpt.Status == status {
-			c++
+		for _, status := range statuses {
+			if rcpt.Status == status {
+				c++
+				break
+			}
 		}
 	}
 	return c

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -110,6 +111,45 @@ func TestBasic(t *testing.T) {
 			!bytes.Equal(req.data, []byte("data")) {
 			t.Errorf("wrong request for %q: %v", c.expectedTo, req)
 		}
+	}
+}
+
+func TestDSNOnTimeout(t *testing.T) {
+	localC := newTestCourier()
+	remoteC := newTestCourier()
+	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
+		localC, remoteC, "dsndomain")
+
+	// Insert an expired item in the queue.
+	item := &Item{
+		Message: Message{
+			ID:   <-newID,
+			From: fmt.Sprintf("from@loco"),
+			Rcpt: []*Recipient{
+				{"to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to"}},
+			Data: []byte("data"),
+		},
+		CreatedAt: time.Now().Add(-24 * time.Hour),
+	}
+	q.q[item.ID] = item
+	err := item.WriteTo(q.path)
+	if err != nil {
+		t.Errorf("failed to write item: %v", err)
+	}
+
+	// Launch the sending loop, expect 1 local delivery (the DSN).
+	localC.wg.Add(1)
+	go item.SendLoop(q)
+	localC.wg.Wait()
+
+	req := localC.reqFor["from@loco"]
+	if req == nil {
+		t.Fatal("missing DSN")
+	}
+
+	if req.from != "<>" || req.to != "from@loco" ||
+		!strings.Contains(string(req.data), "X-Failed-Recipients: to@to,") {
+		t.Errorf("wrong DSN: %q", string(req.data))
 	}
 }
 

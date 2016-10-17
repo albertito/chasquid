@@ -23,11 +23,18 @@ func deliveryStatusNotification(domainFrom string, item *Item) ([]byte, error) {
 		Date:        time.Now().Format(time.RFC1123Z),
 		To:          item.To,
 		Recipients:  item.Rcpt,
+		FailedTo:    map[string]string{},
 	}
 
 	for _, rcpt := range item.Rcpt {
-		if rcpt.Status == Recipient_FAILED {
-			info.FailedRcpts = append(info.FailedRcpts, rcpt)
+		if rcpt.Status != Recipient_SENT {
+			info.FailedTo[rcpt.OriginalAddress] = rcpt.OriginalAddress
+			switch rcpt.Status {
+			case Recipient_FAILED:
+				info.FailedRecipients = append(info.FailedRecipients, rcpt)
+			case Recipient_PENDING:
+				info.PendingRecipients = append(info.PendingRecipients, rcpt)
+			}
 		}
 	}
 
@@ -43,14 +50,16 @@ func deliveryStatusNotification(domainFrom string, item *Item) ([]byte, error) {
 }
 
 type dsnInfo struct {
-	OurDomain       string
-	Destination     string
-	MessageID       string
-	Date            string
-	To              []string
-	Recipients      []*Recipient
-	FailedRcpts     []*Recipient
-	OriginalMessage string
+	OurDomain         string
+	Destination       string
+	MessageID         string
+	Date              string
+	To                []string
+	FailedTo          map[string]string
+	Recipients        []*Recipient
+	FailedRecipients  []*Recipient
+	PendingRecipients []*Recipient
+	OriginalMessage   string
 }
 
 var dsnTemplate = template.Must(template.New("dsn").Parse(
@@ -59,17 +68,22 @@ To: <{{.Destination}}>
 Subject: Mail delivery failed: returning message to sender
 Message-ID: <{{.MessageID}}>
 Date: {{.Date}}
-X-Failed-Recipients: {{range .To}}{{.}}, {{end}}
+X-Failed-Recipients: {{range .FailedTo}}{{.}}, {{end}}
 Auto-Submitted: auto-replied
 
 Delivery to the following recipient(s) failed permanently:
 
-  {{range .To -}} - {{.}}
-  {{end}}
+  {{range .FailedTo -}} - {{.}}
+  {{- end}}
+
 
 ----- Technical details -----
-{{range .Recipients}}
-- "{{.Address}}" ({{.Type}}) failed with error:
+{{range .FailedRecipients}}
+- "{{.Address}}" ({{.Type}}) failed permanently with error:
+    {{.LastFailureMessage}}
+{{end}}
+{{- range .PendingRecipients}}
+- "{{.Address}}" ({{.Type}}) failed repeatedly and timed out, last error:
     {{.LastFailureMessage}}
 {{end}}
 

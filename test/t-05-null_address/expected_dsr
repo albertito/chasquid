@@ -10,11 +10,11 @@ Auto-Submitted: auto-replied
 Delivery to the following recipient(s) failed permanently:
 
   - fail@testserver
-  
+
 
 ----- Technical details -----
 
-- "false" (PIPE) failed with error:
+- "false" (PIPE) failed permanently with error:
     exit status 1
 
 
