@@ -11,7 +11,6 @@
 //
 // Not supported (return Neutral if used):
 //  - "exists".
-//  - "ptr".
 //  - "exp".
 //  - Macros.
 //
@@ -30,9 +29,10 @@ import (
 
 // Functions that we can override for testing purposes.
 var (
-	lookupTXT = net.LookupTXT
-	lookupMX  = net.LookupMX
-	lookupIP  = net.LookupIP
+	lookupTXT  = net.LookupTXT
+	lookupMX   = net.LookupMX
+	lookupIP   = net.LookupIP
+	lookupAddr = net.LookupAddr
 )
 
 // Results and Errors. Note the values have meaning, we use them in headers.
@@ -81,13 +81,16 @@ var QualToResult = map[byte]Result{
 // with a given identity.
 // Reference: https://tools.ietf.org/html/rfc7208#section-4
 func CheckHost(ip net.IP, domain string) (Result, error) {
-	r := &resolution{ip, 0}
+	r := &resolution{ip, 0, nil}
 	return r.Check(domain)
 }
 
 type resolution struct {
 	ip    net.IP
 	count uint
+
+	// Result of doing a reverse lookup for ip (so we only do it once).
+	ipNames []string
 }
 
 func (r *resolution) Check(domain string) (Result, error) {
@@ -167,10 +170,12 @@ func (r *resolution) Check(domain string) (Result, error) {
 			if ok, res, err := r.ipField(result, field); ok {
 				return res, err
 			}
+		} else if strings.HasPrefix(field, "ptr") {
+			if ok, res, err := r.ptrField(result, field, domain); ok {
+				return res, err
+			}
 		} else if strings.HasPrefix(field, "exists") {
 			return Neutral, fmt.Errorf("'exists' not supported")
-		} else if strings.HasPrefix(field, "ptr") {
-			return Neutral, fmt.Errorf("'ptr' not supported")
 		} else if strings.HasPrefix(field, "exp=") {
 			return Neutral, fmt.Errorf("'exp' not supported")
 		} else if strings.HasPrefix(field, "redirect=") {
@@ -240,6 +245,36 @@ func (r *resolution) ipField(res Result, field string) (bool, Result, error) {
 		}
 		if ip.Equal(r.ip) {
 			return true, res, fmt.Errorf("matched %v", ip)
+		}
+	}
+
+	return false, "", nil
+}
+
+// ptrField processes a "ptr" field.
+func (r *resolution) ptrField(res Result, field, domain string) (bool, Result, error) {
+	// Extract the domain if the field is in the form "ptr:domain"
+	if len(field) >= 4 {
+		domain = field[4:]
+
+	}
+
+	if r.ipNames == nil {
+		r.count++
+		n, err := lookupAddr(r.ip.String())
+		if err != nil {
+			// https://tools.ietf.org/html/rfc7208#section-5
+			if isTemporary(err) {
+				return true, TempError, err
+			}
+			return false, "", err
+		}
+		r.ipNames = n
+	}
+
+	for _, n := range r.ipNames {
+		if strings.HasSuffix(n, domain+".") {
+			return true, res, fmt.Errorf("matched ptr:%s", domain)
 		}
 	}
 

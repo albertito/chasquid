@@ -29,10 +29,18 @@ func LookupIP(host string) (ips []net.IP, err error) {
 	return ipResults[host], ipErrors[host]
 }
 
+var addrResults = map[string][]string{}
+var addrErrors = map[string]error{}
+
+func LookupAddr(host string) (addrs []string, err error) {
+	return addrResults[host], addrErrors[host]
+}
+
 func TestMain(m *testing.M) {
 	lookupTXT = LookupTXT
 	lookupMX = LookupMX
 	lookupIP = LookupIP
+	lookupAddr = LookupAddr
 
 	flag.Parse()
 	os.Exit(m.Run())
@@ -41,6 +49,7 @@ func TestMain(m *testing.M) {
 var ip1110 = net.ParseIP("1.1.1.0")
 var ip1111 = net.ParseIP("1.1.1.1")
 var ip6666 = net.ParseIP("2001:db8::68")
+var ip6660 = net.ParseIP("2001:db8::0")
 
 func TestBasic(t *testing.T) {
 	cases := []struct {
@@ -70,12 +79,16 @@ func TestBasic(t *testing.T) {
 		{"v=spf1 ip4:1.2.3.4 ~all", SoftFail},
 		{"v=spf1 ip6:12 ~all", PermError},
 		{"v=spf1 ip4:1.1.1.1 -all", Pass},
+		{"v=spf1 ptr -all", Pass},
+		{"v=spf1 ptr:d1111 -all", Pass},
+		{"v=spf1 ptr:lalala -all", Pass},
 		{"v=spf1 blah", PermError},
 	}
 
 	ipResults["d1111"] = []net.IP{ip1111}
 	ipResults["d1110"] = []net.IP{ip1110}
 	mxResults["d1110"] = []*net.MX{{"d1110", 5}, {"nothing", 10}}
+	addrResults["1.1.1.1"] = []string{"lalala.", "domain.", "d1111."}
 
 	for _, c := range cases {
 		txtResults["domain"] = []string{c.txt}
@@ -90,10 +103,48 @@ func TestBasic(t *testing.T) {
 	}
 }
 
+func TestIPv6(t *testing.T) {
+	cases := []struct {
+		txt string
+		res Result
+	}{
+		{"v=spf1 all", Pass},
+		{"v=spf1 a ~all", SoftFail},
+		{"v=spf1 a/24", Neutral},
+		{"v=spf1 a:d6660/24", Pass},
+		{"v=spf1 a:d6660", Neutral},
+		{"v=spf1 a:d6666", Pass},
+		{"v=spf1 a:nothing/24", Neutral},
+		{"v=spf1 mx:d6660/24 ~all", Pass},
+		{"v=spf1 ip6:2001:db8::68 ~all", Pass},
+		{"v=spf1 ip6:2001:db8::1/24 ~all", Pass},
+		{"v=spf1 ip6:2001:db8::1/100 ~all", Pass},
+		{"v=spf1 ptr -all", Pass},
+		{"v=spf1 ptr:d6666 -all", Pass},
+		{"v=spf1 ptr:sonlas6 -all", Pass},
+	}
+
+	ipResults["d6666"] = []net.IP{ip6666}
+	ipResults["d6660"] = []net.IP{ip6660}
+	mxResults["d6660"] = []*net.MX{{"d6660", 5}, {"nothing", 10}}
+	addrResults["2001:db8::68"] = []string{"sonlas6.", "domain.", "d6666."}
+
+	for _, c := range cases {
+		txtResults["domain"] = []string{c.txt}
+		res, err := CheckHost(ip6666, "domain")
+		if (res == TempError || res == PermError) && (err == nil) {
+			t.Errorf("%q: expected error, got nil", c.txt)
+		}
+		if res != c.res {
+			t.Errorf("%q: expected %q, got %q", c.txt, c.res, res)
+			t.Logf("%q:   error: %v", c.txt, err)
+		}
+	}
+}
+
 func TestNotSupported(t *testing.T) {
 	cases := []string{
 		"v=spf1 exists:blah -all",
-		"v=spf1 ptr -all",
 		"v=spf1 exp=blah -all",
 		"v=spf1 a:%{o} -all",
 	}
