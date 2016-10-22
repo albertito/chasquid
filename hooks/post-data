@@ -3,6 +3,7 @@
 # This file is an example post-data hook that will run standard filtering
 # utilities if they are available.
 #
+#  - greylist (from greylistd) to do greylisting.
 #  - spamc (from Spamassassin) to filter spam.
 #  - clamdscan (from ClamAV) to filter virus.
 #
@@ -11,7 +12,23 @@
 
 set -e
 
-TF="$(mktemp --tmpdir "post-data-XXXXXXXXXX")"
+
+# Note greylistd needs you to add the user to the "greylist" group:
+#   usermod -a -G greylist mail
+if [ "$AUTH_AS" == "" ] && [ "$SPF_PASS" == "0" ] && \
+	command -v greylist >/dev/null && \
+	groups | grep -q greylist;
+then
+	REMOTE_IP=$(echo "$REMOTE_ADDR" | rev | cut -d : -f 2- | rev)
+	if ! greylist update "$REMOTE_IP" "$MAIL_FROM" 1>&2; then
+		echo "greylisted, please try again"
+		exit 75  # temporary error
+	fi
+	echo "X-Greylist: pass"
+fi
+
+
+TF="$(mktemp --tmpdir post-data-XXXXXXXXXX)"
 trap 'rm "$TF"' EXIT
 
 # Save the message to the temporary file, so we can pass it on to the various
