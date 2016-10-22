@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
@@ -530,10 +531,13 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 
 	c.addReceivedHeader()
 
-	hookOut, err := c.runPostDataHook(c.data)
+	hookOut, permanent, err := c.runPostDataHook(c.data)
 	if err != nil {
 		maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, c.rcptTo, err.Error())
-		return 554, err.Error()
+		if permanent {
+			return 554, err.Error()
+		}
+		return 451, err.Error()
 	}
 	c.data = append(hookOut, c.data...)
 
@@ -623,13 +627,13 @@ func checkData(data []byte) error {
 	return nil
 }
 
-// runPostDataHook and return the new headers to add, an error (if any), and
-// true if the error is permanent or false if transient.
-func (c *Conn) runPostDataHook(data []byte) ([]byte, error) {
+// runPostDataHook and return the new headers to add, and on error a boolean
+// indicating if it's permanent, and the error itself.
+func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 	// TODO: check if the file is executable.
 	if _, err := os.Stat(c.postDataHook); os.IsNotExist(err) {
 		hookResults.Add("post-data:skip", 1)
-		return nil, nil
+		return nil, false, nil
 	}
 	tr := trace.New("Hook.Post-DATA", c.conn.RemoteAddr().String())
 	defer tr.Finish()
@@ -662,14 +666,19 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, error) {
 		hookResults.Add("post-data:fail", 1)
 		tr.Error(err)
 		tr.Debugf("stdout: %s", out)
+
+		permanent := false
 		if ee, ok := err.(*exec.ExitError); ok {
 			tr.Printf("stderr: %s", string(ee.Stderr))
+			if status, ok := ee.Sys().(syscall.WaitStatus); ok {
+				permanent = status.ExitStatus() == 20
+			}
 		}
 
 		// The error contains the last line of stdout, so filters can pass
 		// some rejection information back to the sender.
 		err = fmt.Errorf(lastLine(string(out)))
-		return nil, err
+		return nil, permanent, err
 	}
 
 	// Check that output looks like headers, to avoid breaking the email
@@ -677,13 +686,13 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, error) {
 	if !isHeader(out) {
 		hookResults.Add("post-data:badoutput", 1)
 		tr.Errorf("error parsing post-data output: '%s'", out)
-		return nil, nil
+		return nil, false, nil
 	}
 
 	tr.Debugf("success")
 	tr.Debugf("stdout: %s", out)
 	hookResults.Add("post-data:success", 1)
-	return out, nil
+	return out, false, nil
 }
 
 // isHeader checks if the given buffer is a valid MIME header.

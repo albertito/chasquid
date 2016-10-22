@@ -5,6 +5,9 @@
 #
 #  - spamc (from Spamassassin) to filter spam.
 #  - clamdscan (from ClamAV) to filter virus.
+#
+# If it exits with code 20, it will be considered a permanent error.
+# Otherwise, temporary.
 
 set -e
 
@@ -19,7 +22,7 @@ cat > "$TF"
 if command -v spamc >/dev/null; then
         if ! SL=$(spamc -c - < "$TF") ; then
                 echo "spam detected"
-                exit 1
+                exit 20  # permanent
         fi
         echo "X-Spam-Score: $SL"
 fi
@@ -28,7 +31,7 @@ fi
 if command -v clamdscan >/dev/null; then
         if ! clamdscan --no-summary --infected - < "$TF" 1>&2 ; then
                 echo "virus detected"
-                exit 1
+                exit 20  # permanent
         fi
         echo "X-Virus-Scanned: pass"
 fi
