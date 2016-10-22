@@ -42,6 +42,7 @@ check "ON_TLS=1"
 check "AUTH_AS=user@testserver"
 check "PATH="
 check "REMOTE_ADDR="
+check "SPF_PASS=0"
 
 
 # Check that a failure in the script results in failing delivery.

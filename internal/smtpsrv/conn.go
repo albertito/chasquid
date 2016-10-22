@@ -653,13 +653,17 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 	cmd.Env = append(cmd.Env, "REMOTE_ADDR="+c.conn.RemoteAddr().String())
 	cmd.Env = append(cmd.Env, "MAIL_FROM="+c.mailFrom)
 	cmd.Env = append(cmd.Env, "RCPT_TO="+strings.Join(c.rcptTo, " "))
-	cmd.Env = append(cmd.Env, "AUTH_AS="+c.authUser+"@"+c.authDomain)
-	if c.onTLS {
-		cmd.Env = append(cmd.Env, "ON_TLS=1")
+
+	if c.completedAuth {
+		cmd.Env = append(cmd.Env, "AUTH_AS="+c.authUser+"@"+c.authDomain)
+	} else {
+		cmd.Env = append(cmd.Env, "AUTH_AS=")
 	}
-	if envelope.DomainIn(c.mailFrom, c.localDomains) {
-		cmd.Env = append(cmd.Env, "FROM_LOCAL_DOMAIN=1")
-	}
+
+	cmd.Env = append(cmd.Env, "ON_TLS="+boolToStr(c.onTLS))
+	cmd.Env = append(cmd.Env, "FROM_LOCAL_DOMAIN="+boolToStr(
+		envelope.DomainIn(c.mailFrom, c.localDomains)))
+	cmd.Env = append(cmd.Env, "SPF_PASS="+boolToStr(c.spfResult == spf.Pass))
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -739,6 +743,13 @@ func lastLine(s string) string {
 		return ""
 	}
 	return l[len(l)-2]
+}
+
+func boolToStr(b bool) string {
+	if b {
+		return "1"
+	}
+	return "0"
 }
 
 func (c *Conn) STARTTLS(params string) (code int, msg string) {
