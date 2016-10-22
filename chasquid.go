@@ -1,14 +1,17 @@
 package main
 
 import (
+	"expvar"
 	"flag"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -30,10 +33,34 @@ import (
 var (
 	configDir = flag.String("config_dir", "/etc/chasquid",
 		"configuration directory")
+	showVer = flag.Bool("version", false, "show version and exit")
+)
+
+// Build information, overridden at build time using
+// -ldflags="-X main.version=blah".
+var (
+	version      = "undefined"
+	sourceDateTs = "0"
+)
+
+var (
+	versionVar = expvar.NewString("chasquid/version")
+
+	sourceDate      time.Time
+	sourceDateVar   = expvar.NewString("chasquid/sourceDateStr")
+	sourceDateTsVar = expvar.NewInt("chasquid/sourceDateTimestamp")
 )
 
 func main() {
 	flag.Parse()
+
+	parseVersionInfo()
+	if *showVer {
+		fmt.Printf("chasquid %s (source date: %s)\n", version, sourceDate)
+		return
+	}
+
+	glog.Infof("chasquid starting (version %s)", version)
 
 	setupSignalHandling()
 
@@ -223,15 +250,40 @@ func mustReadDir(path string) []os.FileInfo {
 	return dirs
 }
 
+func parseVersionInfo() {
+	versionVar.Set(version)
+
+	sdts, err := strconv.ParseInt(sourceDateTs, 10, 0)
+	if err != nil {
+		panic(err)
+	}
+
+	sourceDate = time.Unix(sdts, 0)
+	sourceDateVar.Set(sourceDate.Format("2006-01-02 15:04:05 -0700"))
+	sourceDateTsVar.Set(sdts)
+}
+
 func launchMonitoringServer(addr string) {
 	glog.Infof("Monitoring HTTP server listening on %s", addr)
+
+	indexData := struct {
+		Version    string
+		SourceDate time.Time
+		StartTime  time.Time
+	}{
+		Version:    version,
+		SourceDate: sourceDate,
+		StartTime:  time.Now(),
+	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
-		w.Write([]byte(monitoringHTMLIndex))
+		if err := monitoringHTMLIndex.Execute(w, indexData); err != nil {
+			glog.Infof("monitoring handler error: %v", err)
+		}
 	})
 
 	flags := dumpFlags()
@@ -243,13 +295,22 @@ func launchMonitoringServer(addr string) {
 }
 
 // Static index for the monitoring website.
-const monitoringHTMLIndex = `<!DOCTYPE html>
+var monitoringHTMLIndex = template.Must(template.New("index").Funcs(
+	template.FuncMap{"since": time.Since}).Parse(
+	`<!DOCTYPE html>
 <html>
   <head>
     <title>chasquid monitoring</title>
   </head>
   <body>
     <h1>chasquid monitoring</h1>
+
+	chasquid {{.Version}}<br>
+	source date {{.SourceDate.Format "2006-01-02 15:04:05 -0700"}}<p>
+
+	started {{.StartTime.Format "Mon, 2006-01-02 15:04:05 -0700"}}<br>
+	up since {{.StartTime | since}}<p>
+
     <ul>
       <li><a href="/debug/queue">queue</a>
       <li><a href="/debug/vars">exported variables</a>
@@ -270,7 +331,7 @@ const monitoringHTMLIndex = `<!DOCTYPE html>
     </ul>
   </body>
 </html>
-`
+`))
 
 // dumpFlags to a string, for troubleshooting purposes.
 func dumpFlags() string {
