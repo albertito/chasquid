@@ -42,7 +42,7 @@ type SMTP struct {
 }
 
 func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
-	tr := trace.New("SMTP.Courier", to)
+	tr := trace.New("Courier.SMTP", to)
 	defer tr.Finish()
 	tr.Debugf("%s  ->  %s", from, to)
 
@@ -55,7 +55,6 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 		// have to make sure we try hard enough on the lookup above.
 		return tr.Errorf("Could not find mail server: %v", err), true
 	}
-	tr.Debugf("MX: %s", mx)
 
 	// Issue an EHLO with a valid domain; otherwise, some servers like postfix
 	// will complain.
@@ -90,8 +89,6 @@ retry:
 		return tr.Errorf("Error saying hello: %v", err), false
 	}
 
-	// TODO: Keep track of hosts and MXs that we've successfully done TLS
-	// against, and enforce it.
 	if ok, _ := c.Extension("STARTTLS"); ok {
 		config := &tls.Config{
 			ServerName:         mx,
@@ -174,11 +171,11 @@ func lookupMX(tr *trace.Trace, domain string) (string, error) {
 	mxs, err := net.LookupMX(domain)
 	if err == nil {
 		if len(mxs) == 0 {
-			tr.Printf("domain %q has no MX, falling back to A", domain)
+			tr.Debugf("domain %q has no MX, falling back to A", domain)
 			return domain, nil
 		}
 
-		tr.Printf("MX %s", mxs[0].Host)
+		tr.Debugf("MX %s", mxs[0].Host)
 		return mxs[0].Host, nil
 	}
 
@@ -188,14 +185,16 @@ func lookupMX(tr *trace.Trace, domain string) (string, error) {
 	// For now, if the error is permanent, we assume it's because there was no
 	// MX and fall back, otherwise we return.
 	// TODO: Find a better way to do this.
-	tr.Errorf("MX lookup error: %v", err)
 	dnsErr, ok := err.(*net.DNSError)
 	if !ok {
+		tr.Debugf("MX lookup error: %v", err)
 		return "", err
 	} else if dnsErr.Temporary() {
+		tr.Debugf("temporary DNS error: %v", dnsErr)
 		return "", err
 	}
 
 	// Permanent error, we assume MX does not exist and fall back to A.
+	tr.Debugf("failed to resolve MX for %s, falling back to A", domain)
 	return domain, nil
 }

@@ -329,7 +329,7 @@ func (item *Item) SendLoop(q *Queue) {
 
 		delay := nextDelay(item.CreatedAt)
 		tr.Printf("waiting for %v", delay)
-		maillog.QueueLoop(item.ID, delay)
+		maillog.QueueLoop(item.ID, item.From, delay)
 		time.Sleep(delay)
 	}
 
@@ -339,7 +339,7 @@ func (item *Item) SendLoop(q *Queue) {
 	}
 
 	tr.Printf("all done")
-	maillog.QueueLoop(item.ID, 0)
+	maillog.QueueLoop(item.ID, item.From, 0)
 	q.Remove(item.ID)
 }
 

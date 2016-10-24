@@ -26,7 +26,7 @@ type Procmail struct {
 }
 
 func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
-	tr := trace.New("Procmail.Courier", to)
+	tr := trace.New("Courier.Procmail", to)
 	defer tr.Finish()
 
 	// Sanitize, just in case.
@@ -50,18 +50,15 @@ func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 	for _, a := range p.Args {
 		args = append(args, replacer.Replace(a))
 	}
+	tr.Debugf("%s %q", p.Binary, args)
 
 	ctx, cancel := context.WithDeadline(context.Background(),
 		time.Now().Add(p.Timeout))
 	defer cancel()
 	cmd := exec.CommandContext(ctx, p.Binary, args...)
-
 	cmd.Stdin = bytes.NewReader(data)
-	output := &bytes.Buffer{}
-	cmd.Stdout = output
-	cmd.Stderr = output
 
-	err := cmd.Run()
+	output, err := cmd.CombinedOutput()
 	if ctx.Err() == context.DeadlineExceeded {
 		return tr.Error(errTimeout), false
 	}
@@ -76,7 +73,7 @@ func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 				permanent = status.ExitStatus() != 75
 			}
 		}
-		err = tr.Errorf("Procmail failed: %v - %q", err, output.String())
+		err = tr.Errorf("Procmail failed: %v - %q", err, string(output))
 		return err, permanent
 	}
 

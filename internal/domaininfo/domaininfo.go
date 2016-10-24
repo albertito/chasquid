@@ -33,7 +33,7 @@ func New(dir string) (*DB, error) {
 		store: st,
 		info:  map[string]*Domain{},
 	}
-	l.ev = trace.NewEventLog("DomainInfo", fmt.Sprintf("%p", l))
+	l.ev = trace.NewEventLog("DomainInfo", dir)
 
 	return l, nil
 }
@@ -55,7 +55,7 @@ func (db *DB) Load() error {
 		db.info[d.Name] = d
 	}
 
-	db.ev.Debugf("loaded: %s", ids)
+	db.ev.Debugf("loaded %d domains", len(ids))
 	return nil
 }
 

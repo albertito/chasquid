@@ -63,11 +63,11 @@ func (l *Logger) Listening(a string) {
 }
 
 func (l *Logger) Auth(netAddr net.Addr, user string, successful bool) {
-	res := "successful"
+	res := "succeeded"
 	if !successful {
 		res = "failed"
 	}
-	msg := fmt.Sprintf("%s authentication %s for %s\n", netAddr, res, user)
+	msg := fmt.Sprintf("%s auth %s for %s\n", netAddr, res, user)
 	l.printf(msg)
 	authLog.Debugf(msg)
 }
@@ -89,21 +89,21 @@ func (l *Logger) Queued(netAddr net.Addr, from string, to []string, id string) {
 
 func (l *Logger) SendAttempt(id, from, to string, err error, permanent bool) {
 	if err == nil {
-		l.printf("%s from=%s to=%s sent successfully\n", id, from, to)
+		l.printf("%s from=%s to=%s sent\n", id, from, to)
 	} else {
 		t := "(temporary)"
 		if permanent {
 			t = "(permanent)"
 		}
-		l.printf("%s from=%s to=%s sent failed %s: %v\n", id, from, to, t, err)
+		l.printf("%s from=%s to=%s failed %s: %v\n", id, from, to, t, err)
 	}
 }
 
-func (l *Logger) QueueLoop(id string, nextDelay time.Duration) {
+func (l *Logger) QueueLoop(id, from string, nextDelay time.Duration) {
 	if nextDelay > 0 {
-		l.printf("%s completed loop, next in %v\n", id, nextDelay)
+		l.printf("%s from=%s completed loop, next in %v\n", id, from, nextDelay)
 	} else {
-		l.printf("%s all done\n", id)
+		l.printf("%s from=%s all done\n", id, from)
 	}
 }
 
@@ -130,6 +130,6 @@ func SendAttempt(id, from, to string, err error, permanent bool) {
 	Default.SendAttempt(id, from, to, err, permanent)
 }
 
-func QueueLoop(id string, nextDelay time.Duration) {
-	Default.QueueLoop(id, nextDelay)
+func QueueLoop(id, from string, nextDelay time.Duration) {
+	Default.QueueLoop(id, from, nextDelay)
 }
