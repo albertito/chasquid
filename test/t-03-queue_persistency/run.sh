@@ -14,7 +14,7 @@ go run addtoqueue.go --queue_dir=.data/queue \
 generate_certs_for testserver
 
 mkdir -p .logs
-chasquid -v=2 --log_dir=.logs --config_dir=config &
+chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025
 
 # Check that the item in the queue was delivered.

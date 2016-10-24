@@ -10,8 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
-
+	"blitiri.com.ar/go/chasquid/internal/log"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
@@ -53,8 +52,8 @@ func (l *Logger) printf(format string, args ...interface{}) {
 	_, err := fmt.Fprintf(l.w, format, args...)
 	if err != nil {
 		l.once.Do(func() {
-			glog.Errorf("failed to write to maillog: %v", err)
-			glog.Error("(will not report this again)")
+			log.Errorf("failed to write to maillog: %v", err)
+			log.Errorf("(will not report this again)")
 		})
 	}
 }

@@ -20,8 +20,6 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
-
-	"github.com/golang/glog"
 )
 
 // Flags.
@@ -414,7 +412,6 @@ func waitForServer(addr string) error {
 // os.Exit(). We have to do this so we can use defer.
 func realMain(m *testing.M) int {
 	flag.Parse()
-	defer glog.Flush()
 
 	if *externalSMTPAddr != "" {
 		smtpAddr = *externalSMTPAddr

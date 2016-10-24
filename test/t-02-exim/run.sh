@@ -45,7 +45,7 @@ add_user someone@srv-chasquid secretpassword
 # Use outgoing port 2025 which is where exim will be at.
 # Bypass MX lookup, so it can find srv-exim (via our host alias).
 mkdir -p .logs
-chasquid -v=2 --log_dir=.logs --config_dir=config \
+chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config \
 	--testing__outgoing_smtp_port=2025 &
 
 wait_until_ready 1025

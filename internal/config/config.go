@@ -8,7 +8,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/golang/glog"
+	"blitiri.com.ar/go/chasquid/internal/log"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -18,14 +19,14 @@ func Load(path string) (*Config, error) {
 
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
-		glog.Errorf("Failed to read config at %q", path)
-		glog.Errorf("  (%v)", err)
+		log.Errorf("Failed to read config at %q", path)
+		log.Errorf("  (%v)", err)
 		return nil, err
 	}
 
 	err = proto.UnmarshalText(string(buf), c)
 	if err != nil {
-		glog.Errorf("Error parsing config: %v", err)
+		log.Errorf("Error parsing config: %v", err)
 		return nil, err
 	}
 
@@ -34,7 +35,7 @@ func Load(path string) (*Config, error) {
 	if c.Hostname == "" {
 		c.Hostname, err = os.Hostname()
 		if err != nil {
-			glog.Errorf("Could not get hostname: %v", err)
+			log.Errorf("Could not get hostname: %v", err)
 			return nil, err
 		}
 	}
@@ -78,15 +79,15 @@ func Load(path string) (*Config, error) {
 }
 
 func LogConfig(c *Config) {
-	glog.Infof("Configuration:")
-	glog.Infof("  Hostname: %q", c.Hostname)
-	glog.Infof("  Max data size (MB): %d", c.MaxDataSizeMb)
-	glog.Infof("  SMTP Addresses: %v", c.SmtpAddress)
-	glog.Infof("  Submission Addresses: %v", c.SubmissionAddress)
-	glog.Infof("  Monitoring address: %s", c.MonitoringAddress)
-	glog.Infof("  MDA: %s %v", c.MailDeliveryAgentBin, c.MailDeliveryAgentArgs)
-	glog.Infof("  Data directory: %s", c.DataDir)
-	glog.Infof("  Suffix separators: %s", c.SuffixSeparators)
-	glog.Infof("  Drop characters: %s", c.DropCharacters)
-	glog.Infof("  Mail log: %s", c.MailLogPath)
+	log.Infof("Configuration:")
+	log.Infof("  Hostname: %q", c.Hostname)
+	log.Infof("  Max data size (MB): %d", c.MaxDataSizeMb)
+	log.Infof("  SMTP Addresses: %v", c.SmtpAddress)
+	log.Infof("  Submission Addresses: %v", c.SubmissionAddress)
+	log.Infof("  Monitoring address: %s", c.MonitoringAddress)
+	log.Infof("  MDA: %s %v", c.MailDeliveryAgentBin, c.MailDeliveryAgentArgs)
+	log.Infof("  Data directory: %s", c.DataDir)
+	log.Infof("  Suffix separators: %s", c.SuffixSeparators)
+	log.Infof("  Drop characters: %s", c.DropCharacters)
+	log.Infof("  Mail log: %s", c.MailLogPath)
 }

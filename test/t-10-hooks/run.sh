@@ -11,7 +11,7 @@ add_user someone@testserver secretpassword
 add_user blockme@testserver secretpassword
 
 mkdir -p .logs
-chasquid -v=2 --log_dir=.logs --config_dir=config &
+chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025
 
 cp config/hooks/post-data.good config/hooks/post-data

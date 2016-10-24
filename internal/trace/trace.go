@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/golang/glog"
+	"blitiri.com.ar/go/chasquid/internal/log"
+
 	nettrace "golang.org/x/net/trace"
 )
 
@@ -28,21 +29,15 @@ func New(family, title string) *Trace {
 func (t *Trace) Printf(format string, a ...interface{}) {
 	t.t.LazyPrintf(format, a...)
 
-	if glog.V(0) {
-		msg := fmt.Sprintf("%s %s: %s", t.family, t.title,
-			quote(fmt.Sprintf(format, a...)))
-		glog.InfoDepth(1, msg)
-	}
+	log.Log(log.Info, 1, "%s %s: %s", t.family, t.title,
+		quote(fmt.Sprintf(format, a...)))
 }
 
 func (t *Trace) Debugf(format string, a ...interface{}) {
 	t.t.LazyPrintf(format, a...)
 
-	if glog.V(2) {
-		msg := fmt.Sprintf("%s %s: %s", t.family, t.title,
-			quote(fmt.Sprintf(format, a...)))
-		glog.InfoDepth(1, msg)
-	}
+	log.Log(log.Debug, 1, "%s %s: %s",
+		t.family, t.title, quote(fmt.Sprintf(format, a...)))
 }
 
 func (t *Trace) SetError() {
@@ -50,15 +45,13 @@ func (t *Trace) SetError() {
 }
 
 func (t *Trace) Errorf(format string, a ...interface{}) error {
+	// Note we can't just call t.Error here, as it breaks caller logging.
 	err := fmt.Errorf(format, a...)
 	t.t.SetError()
 	t.t.LazyPrintf("error: %v", err)
 
-	if glog.V(0) {
-		msg := fmt.Sprintf("%s %s: error: %s", t.family, t.title,
-			quote(err.Error()))
-		glog.InfoDepth(1, msg)
-	}
+	log.Log(log.Info, 1, "%s %s: error: %s", t.family, t.title,
+		quote(err.Error()))
 	return err
 }
 
@@ -66,11 +59,9 @@ func (t *Trace) Error(err error) error {
 	t.t.SetError()
 	t.t.LazyPrintf("error: %v", err)
 
-	if glog.V(0) {
-		msg := fmt.Sprintf("%s %s: error: %v", t.family, t.title,
-			quote(err.Error()))
-		glog.InfoDepth(1, msg)
-	}
+	log.Log(log.Info, 1, "%s %s: error: %s", t.family, t.title,
+		quote(err.Error()))
+
 	return err
 }
 
@@ -91,32 +82,24 @@ func NewEventLog(family, title string) *EventLog {
 func (e *EventLog) Printf(format string, a ...interface{}) {
 	e.e.Printf(format, a...)
 
-	if glog.V(0) {
-		msg := fmt.Sprintf("%s %s: %s", e.family, e.title,
-			quote(fmt.Sprintf(format, a...)))
-		glog.InfoDepth(1, msg)
-	}
+	log.Log(log.Info, 1, "%s %s: %s", e.family, e.title,
+		quote(fmt.Sprintf(format, a...)))
 }
 
 func (e *EventLog) Debugf(format string, a ...interface{}) {
 	e.e.Printf(format, a...)
 
-	if glog.V(2) {
-		msg := fmt.Sprintf("%s %s: %s", e.family, e.title,
-			quote(fmt.Sprintf(format, a...)))
-		glog.InfoDepth(1, msg)
-	}
+	log.Log(log.Debug, 1, "%s %s: %s", e.family, e.title,
+		quote(fmt.Sprintf(format, a...)))
 }
 
 func (e *EventLog) Errorf(format string, a ...interface{}) error {
 	err := fmt.Errorf(format, a...)
 	e.e.Errorf("error: %v", err)
 
-	if glog.V(0) {
-		msg := fmt.Sprintf("%s %s: error: %s", e.family, e.title,
-			quote(err.Error()))
-		glog.InfoDepth(1, msg)
-	}
+	log.Log(log.Info, 1, "%s %s: error: %s",
+		e.family, e.title, quote(err.Error()))
+
 	return err
 }
 

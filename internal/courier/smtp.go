@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/glog"
 	"golang.org/x/net/idna"
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
@@ -48,7 +47,7 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	tr.Debugf("%s  ->  %s", from, to)
 
 	toDomain := envelope.DomainOf(to)
-	mx, err := lookupMX(toDomain)
+	mx, err := lookupMX(tr, toDomain)
 	if err != nil {
 		// Note this is considered a permanent error.
 		// This is in line with what other servers (Exim) do. However, the
@@ -162,7 +161,7 @@ retry:
 	return nil, false
 }
 
-func lookupMX(domain string) (string, error) {
+func lookupMX(tr *trace.Trace, domain string) (string, error) {
 	if v, ok := fakeMX[domain]; ok {
 		return v, nil
 	}
@@ -175,10 +174,11 @@ func lookupMX(domain string) (string, error) {
 	mxs, err := net.LookupMX(domain)
 	if err == nil {
 		if len(mxs) == 0 {
-			glog.Infof("domain %q has no MX, falling back to A", domain)
+			tr.Printf("domain %q has no MX, falling back to A", domain)
 			return domain, nil
 		}
 
+		tr.Printf("MX %s", mxs[0].Host)
 		return mxs[0].Host, nil
 	}
 
@@ -188,6 +188,7 @@ func lookupMX(domain string) (string, error) {
 	// For now, if the error is permanent, we assume it's because there was no
 	// MX and fall back, otherwise we return.
 	// TODO: Find a better way to do this.
+	tr.Errorf("MX lookup error: %v", err)
 	dnsErr, ok := err.(*net.DNSError)
 	if !ok {
 		return "", err

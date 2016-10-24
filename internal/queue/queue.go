@@ -24,12 +24,12 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/log"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/protoio"
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 
-	"github.com/golang/glog"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/idna"
@@ -139,7 +139,7 @@ func (q *Queue) Load() error {
 	for _, fname := range files {
 		item, err := ItemFromFile(fname)
 		if err != nil {
-			glog.Errorf("error loading queue item from %q: %v", fname, err)
+			log.Errorf("error loading queue item from %q: %v", fname, err)
 			continue
 		}
 
@@ -197,7 +197,7 @@ func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
 			case aliases.PIPE:
 				r.Type = Recipient_PIPE
 			default:
-				glog.Errorf("unknown alias type %v when resolving %q",
+				log.Errorf("unknown alias type %v when resolving %q",
 					aliasRcpt.Type, t)
 				return "", fmt.Errorf("internal error - unknown alias type")
 			}
@@ -225,7 +225,7 @@ func (q *Queue) Remove(id string) {
 	path := fmt.Sprintf("%s/%s%s", q.path, itemFilePrefix, id)
 	err := os.Remove(path)
 	if err != nil {
-		glog.Errorf("failed to remove queue file %q: %v", path, err)
+		log.Errorf("failed to remove queue file %q: %v", path, err)
 	}
 
 	q.mu.Lock()

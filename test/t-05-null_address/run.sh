@@ -9,7 +9,7 @@ generate_certs_for testserver
 add_user user@testserver secretpassword
 
 mkdir -p .logs
-chasquid -v=2 --log_dir=.logs --config_dir=config &
+chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025
 
 

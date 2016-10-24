@@ -23,9 +23,9 @@ CONFDIR=B add_user nadaB@nadaB nadaB
 
 mkdir -p .logs-A .logs-B
 
-chasquid -v=2 --log_dir=.logs-A --config_dir=A \
+chasquid -v=2 --logfile=.logs-A/chasquid.log --config_dir=A \
 	--testing__outgoing_smtp_port=2025 &
-chasquid -v=2 --log_dir=.logs-B --config_dir=B \
+chasquid -v=2 --logfile=.logs-B/chasquid.log --config_dir=B \
 	--testing__outgoing_smtp_port=1025 &
 
 wait_until_ready 1025

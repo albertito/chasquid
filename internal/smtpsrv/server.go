@@ -11,11 +11,11 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
+	"blitiri.com.ar/go/chasquid/internal/log"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
-	"github.com/golang/glog"
 )
 
 type Server struct {
@@ -111,12 +111,12 @@ func (s *Server) InitDomainInfo(dir string) *domaininfo.DB {
 	var err error
 	s.dinfo, err = domaininfo.New(dir)
 	if err != nil {
-		glog.Fatalf("Error opening domain info database: %v", err)
+		log.Fatalf("Error opening domain info database: %v", err)
 	}
 
 	err = s.dinfo.Load()
 	if err != nil {
-		glog.Fatalf("Error loading domain info database: %v", err)
+		log.Fatalf("Error loading domain info database: %v", err)
 	}
 
 	return s.dinfo
@@ -126,7 +126,7 @@ func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
 	q := queue.New(path, s.localDomains, s.aliasesR, localC, remoteC, s.Hostname)
 	err := q.Load()
 	if err != nil {
-		glog.Fatalf("Error loading queue: %v", err)
+		log.Fatalf("Error loading queue: %v", err)
 	}
 	s.queue = q
 
@@ -142,13 +142,13 @@ func (s *Server) periodicallyReload() {
 	for range time.Tick(30 * time.Second) {
 		err := s.aliasesR.Reload()
 		if err != nil {
-			glog.Errorf("Error reloading aliases: %v", err)
+			log.Errorf("Error reloading aliases: %v", err)
 		}
 
 		for domain, udb := range s.userDBs {
 			err = udb.Reload()
 			if err != nil {
-				glog.Errorf("Error reloading %q user db: %v", domain, err)
+				log.Errorf("Error reloading %q user db: %v", domain, err)
 			}
 		}
 	}
@@ -165,10 +165,10 @@ func (s *Server) ListenAndServe() {
 		for _, addr := range addrs {
 			l, err := net.Listen("tcp", addr)
 			if err != nil {
-				glog.Fatalf("Error listening: %v", err)
+				log.Fatalf("Error listening: %v", err)
 			}
 
-			glog.Infof("Server listening on %s (%v)", addr, m)
+			log.Infof("Server listening on %s (%v)", addr, m)
 			maillog.Listening(addr)
 			go s.serve(l, m)
 		}
@@ -176,7 +176,7 @@ func (s *Server) ListenAndServe() {
 
 	for m, ls := range s.listeners {
 		for _, l := range ls {
-			glog.Infof("Server listening on %s (%v, via systemd)", l.Addr(), m)
+			log.Infof("Server listening on %s (%v, via systemd)", l.Addr(), m)
 			maillog.Listening(l.Addr().String())
 			go s.serve(l, m)
 		}
@@ -193,7 +193,7 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			glog.Fatalf("Error accepting: %v", err)
+			log.Fatalf("Error accepting: %v", err)
 		}
 
 		sc := &Conn{
