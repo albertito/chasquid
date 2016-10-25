@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"expvar"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -42,6 +43,11 @@ var (
 	tlsCount          = expvar.NewMap("chasquid/smtpIn/tlsCount")
 	slcResults        = expvar.NewMap("chasquid/smtpIn/securityLevelChecks")
 	hookResults       = expvar.NewMap("chasquid/smtpIn/hookResults")
+)
+
+var (
+	maxReceivedHeaders = flag.Int("testing__max_received_headers", 50,
+		"max Received headers, for loop detection; ONLY FOR TESTING")
 )
 
 // Mode for a socket (listening or connection).
@@ -619,9 +625,10 @@ func checkData(data []byte) error {
 	// This serves as a basic form of loop prevention. It's not infallible but
 	// should catch most instances of accidental looping.
 	// https://tools.ietf.org/html/rfc5321#section-6.3
-	if len(msg.Header["Received"]) > 50 {
+	if len(msg.Header["Received"]) > *maxReceivedHeaders {
 		loopsDetected.Add(1)
-		return fmt.Errorf("email passed through more than 50 MTAs, looping?")
+		return fmt.Errorf("email passed through more than %d MTAs, looping?",
+			*maxReceivedHeaders)
 	}
 
 	return nil

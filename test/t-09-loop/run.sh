@@ -22,6 +22,7 @@ CONFDIR=B generate_certs_for srv-B
 mkdir -p .logs-A .logs-B
 
 chasquid -v=2 --logfile=.logs-A/chasquid.log --config_dir=A \
+	--testing__max_received_headers=5 \
 	--testing__outgoing_smtp_port=2025 &
 chasquid -v=2 --logfile=.logs-B/chasquid.log --config_dir=B \
 	--testing__outgoing_smtp_port=1025 &
