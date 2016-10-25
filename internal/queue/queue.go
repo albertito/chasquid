@@ -7,11 +7,10 @@ package queue
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"expvar"
 	"fmt"
-	mathrand "math/rand"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -66,20 +65,19 @@ var (
 var newID chan string
 
 func generateNewIDs() {
+	// The IDs are only used internally, we are ok with using a PRNG.
+	// We create our own to avoid relying on external sources initializing it
+	// properly.
+	prng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	// IDs are base64(8 random bytes), but the code doesn't care.
-	var err error
 	buf := make([]byte, 8)
 	id := ""
 	for {
-		_, err = rand.Read(buf)
-		if err != nil {
-			panic(err)
-		}
-
+		prng.Read(buf)
 		id = base64.RawURLEncoding.EncodeToString(buf)
 		newID <- id
 	}
-
 }
 
 func init() {
@@ -469,7 +467,7 @@ func nextDelay(createdAt time.Time) time.Duration {
 
 	// Perturb the delay, to avoid all queued emails to be retried at the
 	// exact same time after a restart.
-	delay += time.Duration(mathrand.Intn(60)) * time.Second
+	delay += time.Duration(rand.Intn(60)) * time.Second
 	return delay
 }
 
