@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/smtp"
 
+	"blitiri.com.ar/go/chasquid/internal/spf"
 	"blitiri.com.ar/go/chasquid/internal/tlsconst"
 
 	"golang.org/x/net/idna"
@@ -43,6 +44,18 @@ func main() {
 	for _, mx := range mxs {
 		log.Printf("=== Testing MX: %2d  %s", mx.Pref, mx.Host)
 
+		ips, err := net.LookupIP(mx.Host)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, ip := range ips {
+			result, err := spf.CheckHost(ip, domain)
+			if result != spf.Pass {
+				log.Printf("SPF check != pass for IP %s: %s - %s",
+					ip, result, err)
+			}
+		}
+
 		c, err := smtp.Dial(mx.Host + ":" + *port)
 		if err != nil {
 			log.Fatal(err)
@@ -55,11 +68,11 @@ func main() {
 		}
 		err = c.StartTLS(config)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("TLS error: %v", err)
 		}
 
 		cstate, _ := c.TLSConnectionState()
-		log.Printf("%s - %s", tlsconst.VersionName(cstate.Version),
+		log.Printf("TLS OK: %s - %s", tlsconst.VersionName(cstate.Version),
 			tlsconst.CipherSuiteName(cstate.CipherSuite))
 
 		log.Printf("")
