@@ -8,10 +8,10 @@
 !.gitignore
 
 # The binaries.
-chasquid
-chasquid-util
-smtp-check
-spf-check
+/chasquid
+/chasquid-util
+/smtp-check
+/spf-check
 cmd/chasquid-util/chasquid-util
 cmd/smtp-check/smtp-check
 cmd/spf-check/spf-check
