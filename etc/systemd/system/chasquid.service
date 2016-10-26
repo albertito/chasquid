@@ -1,0 +1,23 @@
+[Unit]
+Description=chasquid mail daemon (service)
+Requires = chasquid-smtp.socket chasquid-submission.socket
+
+[Service]
+ExecStart = /usr/local/bin/chasquid \
+
+#	-v=3 \
+#	--log_dir=/var/log/chasquid/ \
+#	--alsologtostderr \
+
+Type = simple
+Restart = always
+
+User = mail
+Group = mail
+
+# Simple security measures just in case.
+ProtectSystem = full
+
+[Install]
+WantedBy = multi-user.target
+

@@ -1,0 +1,27 @@
+
+This directory contains chasquid's configuration.
+
+- chasquid.conf          Main config file.
+
+- domains/               Domains' data.
+  - example.com/
+    - users          User and password database for the domain.
+    - aliases        Aliases for the domain.
+  ...
+
+- certs/                 Certificates to use, one dir per pair.
+  - example.com/
+    - fullchain.pem  Certificate (full chain).
+    - privkey.pem    Private key.
+  ...
+
+
+Note the certs/ directory matches certbot's structure, so if you use it you
+can just symlink to /etc/letsencrypt/live.
+
+Make sure the user you use to run chasquid under ("mail" in the example
+config) can access the certificates and private keys.
+
+
+The user databases can be created and edited with the chasquid-util tool.
+

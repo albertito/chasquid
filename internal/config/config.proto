@@ -5,7 +5,8 @@ message Config {
 	// Main/default hostname to use.
 	// This is used to say hello to clients, and by default as the domain
 	// we send delivery notifications errors from.
-	// It should be a domain we can send email from.
+	// It should be a domain we can send email from, and we should have a
+	// certificate for it.
 	// It usually helps if our IP address resolves to it.
 	// Default: machine hostname.
 	string hostname = 1;
@@ -25,6 +26,7 @@ message Config {
 	repeated string submission_address = 4;
 
 	// Address for the monitoring http server.
+	// Do NOT expose this to the public internet.
 	// Default: no monitoring http server.
 	string monitoring_address = 5;
 
@@ -36,10 +38,17 @@ message Config {
 	string mail_delivery_agent_bin = 6;
 
 	// Command line arguments for the mail delivery agent. One per argument.
-	// Some replacements will be done:
-	//  - "%user%"   -> local user (anything before the @)
-	//  - "%domain%" -> domain (anything after the @)
-	// Default: "-d", "%user"  (adequate for procmail)
+	// Some replacements will be done.
+	// On an email sent from marsnik@mars to venera@venus:
+	//  - %from%        -> from address (marsnik@mars)
+	//  - %from_user%   -> from user (marsnik)
+	//  - %from_domain% -> from domain (mars)
+	//  - %to%        -> to address (venera@venus)
+	//  - %to_user%   -> to user (venera)
+	//  - %to_domain% -> to domain (venus)
+	//
+	// Default: "-f", "%from%", "-d", "%to_user%"  (adequate for procmail
+	// and maildrop).
 	repeated string mail_delivery_agent_args = 7;
 
 	// Directory where we store our persistent data.
