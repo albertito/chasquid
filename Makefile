@@ -37,4 +37,18 @@ test:
 	setsid -w ./cmd/chasquid-util/test.sh
 
 
+install-binaries: chasquid chasquid-util smtp-check
+	mkdir -p /usr/local/bin/
+	cp -a chasquid chasquid-util smtp-check /usr/local/bin/
+
+install-config-skeleton:
+	if ! [ -d /etc/chasquid ] ; then cp -arv etc / ; fi
+	
+	if ! [ -d /var/lib/chasquid ]; then \
+		mkdir -v /var/lib/chasquid; \
+		chmod -v 0700 /var/lib/chasquid ; \
+		chown -v mail:mail /var/lib/chasquid ; \
+	fi
+
+
 .PHONY: chasquid chasquid-util smtp-check spf-check test
