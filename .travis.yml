@@ -1,0 +1,22 @@
+# Configuration for https://travis-ci.org/
+
+language: go
+go_import_path: blitiri.com.ar/go/chasquid
+
+go:
+    - 1.7
+    - tip
+
+
+# This is needed because the repository has a Makefile, so travis won't invoke
+# "go get" by default.
+install:
+    - go get blitiri.com.ar/go/chasquid
+    - go get blitiri.com.ar/go/chasquid/cmd/chasquid-util
+
+
+script:
+    - make all
+    - go test ./...
+    - go test -race ./...
+
