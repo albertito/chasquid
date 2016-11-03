@@ -151,9 +151,10 @@ To use them, they just need to be available in your system.
 
 For example, in Debian you can run the following to install all three:
 
-  apt install greylistd spamc clamdscan
-  usermod -a -G greylist mail
-
+```
+apt install greylistd spamc clamdscan
+usermod -a -G greylist mail
+```
 
 Note that the default hook may not work in all cases, it is provided as a
 practical example but you should adjust it to your particular system if
