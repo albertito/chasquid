@@ -105,14 +105,11 @@ type Queue struct {
 
 	// Aliases resolver.
 	aliases *aliases.Resolver
-
-	// Domain we use to send delivery status notifications from.
-	dsnDomain string
 }
 
 // New creates a new Queue instance.
 func New(path string, localDomains *set.String, aliases *aliases.Resolver,
-	localC, remoteC courier.Courier, dsnDomain string) *Queue {
+	localC, remoteC courier.Courier) *Queue {
 
 	os.MkdirAll(path, 0700)
 
@@ -123,7 +120,6 @@ func New(path string, localDomains *set.String, aliases *aliases.Resolver,
 		localDomains: localDomains,
 		path:         path,
 		aliases:      aliases,
-		dsnDomain:    dsnDomain,
 	}
 }
 
@@ -434,7 +430,21 @@ func (item *Item) countRcpt(statuses ...Recipient_Status) int {
 func sendDSN(tr *trace.Trace, q *Queue, item *Item) {
 	tr.Debugf("sending DSN")
 
-	msg, err := deliveryStatusNotification(q.dsnDomain, item)
+	// Pick a (local) domain to send the DSN from. We should always find one,
+	// as otherwise we're relaying.
+	domain := "unknown"
+	if item.From != "<>" && envelope.DomainIn(item.From, q.localDomains) {
+		domain = envelope.DomainOf(item.From)
+	} else {
+		for _, rcpt := range item.Rcpt {
+			if envelope.DomainIn(rcpt.OriginalAddress, q.localDomains) {
+				domain = envelope.DomainOf(rcpt.OriginalAddress)
+				break
+			}
+		}
+	}
+
+	msg, err := deliveryStatusNotification(domain, item)
 	if err != nil {
 		tr.Errorf("failed to build DSN: %v", err)
 		return

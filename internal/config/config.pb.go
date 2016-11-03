@@ -29,12 +29,9 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type Config struct {
-	// Main/default hostname to use.
-	// This is used to say hello to clients, and by default as the domain
-	// we send delivery notifications errors from.
-	// It should be a domain we can send email from.
-	// It usually helps if our IP address resolves to it.
-	// Default: machine hostname.
+	// Default hostname to use when saying hello.
+	// This is used to say hello to clients, for aesthetic purposes.
+	// Default: the system's hostname.
 	Hostname string `protobuf:"bytes,1,opt,name=hostname" json:"hostname,omitempty"`
 	// Maximum email size, in megabytes.
 	// Default: 50.
@@ -48,6 +45,7 @@ type Config struct {
 	// systemd sockets must be named with "FileDescriptorName=submission".
 	SubmissionAddress []string `protobuf:"bytes,4,rep,name=submission_address,json=submissionAddress" json:"submission_address,omitempty"`
 	// Address for the monitoring http server.
+	// Do NOT expose this to the public internet.
 	// Default: no monitoring http server.
 	MonitoringAddress string `protobuf:"bytes,5,opt,name=monitoring_address,json=monitoringAddress" json:"monitoring_address,omitempty"`
 	// Mail delivery agent (MDA, also known as LDA) to use.
@@ -57,10 +55,17 @@ type Config struct {
 	// Default: "procmail".
 	MailDeliveryAgentBin string `protobuf:"bytes,6,opt,name=mail_delivery_agent_bin,json=mailDeliveryAgentBin" json:"mail_delivery_agent_bin,omitempty"`
 	// Command line arguments for the mail delivery agent. One per argument.
-	// Some replacements will be done:
-	//  - "%user%"   -> local user (anything before the @)
-	//  - "%domain%" -> domain (anything after the @)
-	// Default: "-d", "%user"  (adequate for procmail)
+	// Some replacements will be done.
+	// On an email sent from marsnik@mars to venera@venus:
+	//  - %from%        -> from address (marsnik@mars)
+	//  - %from_user%   -> from user (marsnik)
+	//  - %from_domain% -> from domain (mars)
+	//  - %to%        -> to address (venera@venus)
+	//  - %to_user%   -> to user (venera)
+	//  - %to_domain% -> to domain (venus)
+	//
+	// Default: "-f", "%from%", "-d", "%to_user%"  (adequate for procmail
+	// and maildrop).
 	MailDeliveryAgentArgs []string `protobuf:"bytes,7,rep,name=mail_delivery_agent_args,json=mailDeliveryAgentArgs" json:"mail_delivery_agent_args,omitempty"`
 	// Directory where we store our persistent data.
 	// Default: "/var/lib/chasquid"

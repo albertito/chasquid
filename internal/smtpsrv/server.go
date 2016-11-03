@@ -123,7 +123,7 @@ func (s *Server) InitDomainInfo(dir string) *domaininfo.DB {
 }
 
 func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
-	q := queue.New(path, s.localDomains, s.aliasesR, localC, remoteC, s.Hostname)
+	q := queue.New(path, s.localDomains, s.aliasesR, localC, remoteC)
 	err := q.Load()
 	if err != nil {
 		log.Fatalf("Error loading queue: %v", err)

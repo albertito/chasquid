@@ -64,7 +64,7 @@ func TestBasic(t *testing.T) {
 	localC := newTestCourier()
 	remoteC := newTestCourier()
 	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
-		localC, remoteC, "dsndomain")
+		localC, remoteC)
 
 	localC.wg.Add(2)
 	remoteC.wg.Add(1)
@@ -117,7 +117,7 @@ func TestDSNOnTimeout(t *testing.T) {
 	localC := newTestCourier()
 	remoteC := newTestCourier()
 	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
-		localC, remoteC, "dsndomain")
+		localC, remoteC)
 
 	// Insert an expired item in the queue.
 	item := &Item{
@@ -156,7 +156,7 @@ func TestAliases(t *testing.T) {
 	localC := newTestCourier()
 	remoteC := newTestCourier()
 	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
-		localC, remoteC, "dsndomain")
+		localC, remoteC)
 
 	q.aliases.AddDomain("loco")
 	q.aliases.AddAliasForTesting("ab@loco", "pq@loco", aliases.EMAIL)
@@ -207,7 +207,7 @@ var dumbCourier = DumbCourier{}
 
 func TestFullQueue(t *testing.T) {
 	q := New("/tmp/queue_test", set.NewString(), aliases.NewResolver(),
-		dumbCourier, dumbCourier, "dsndomain")
+		dumbCourier, dumbCourier)
 
 	// Force-insert maxQueueSize items in the queue.
 	oneID := ""
@@ -247,7 +247,7 @@ func TestFullQueue(t *testing.T) {
 
 func TestPipes(t *testing.T) {
 	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
-		dumbCourier, dumbCourier, "dsndomain")
+		dumbCourier, dumbCourier)
 	item := &Item{
 		Message: Message{
 			ID:   <-newID,
