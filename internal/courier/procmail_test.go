@@ -66,6 +66,13 @@ func TestProcmailBadCommandLine(t *testing.T) {
 // Test that local delivery failures are considered permanent or not
 // according to the exit code.
 func TestExitCode(t *testing.T) {
+	// TODO: This can happen when building under unusual circumstances, such
+	// as Debian package building. Are they reasonable enough for us to keep
+	// this?
+	if _, err := os.Stat("../../test/util/exitcode"); os.IsNotExist(err) {
+		t.Skipf("util/exitcode not found, running from outside repo?")
+	}
+
 	cases := []struct {
 		cmd             string
 		args            []string
