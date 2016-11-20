@@ -151,7 +151,7 @@ func main() {
 
 	keyOut, err := os.OpenFile("privkey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Fatalf("failed to open privkey.pem for writing:", err)
+		log.Fatalf("failed to open privkey.pem for writing: %s", err)
 		return
 	}
 	pem.Encode(keyOut, pemBlockForKey(priv))

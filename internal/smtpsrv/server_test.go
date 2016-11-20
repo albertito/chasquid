@@ -32,7 +32,7 @@ var (
 
 var (
 	// Server addresses.
-	// We default to internal ones, but may get overriden via flags.
+	// We default to internal ones, but may get overridden via flags.
 	// TODO: Don't hard-code the default.
 	smtpAddr       = "127.0.0.1:13444"
 	submissionAddr = "127.0.0.1:13999"
