@@ -48,6 +48,9 @@ var (
 var (
 	maxReceivedHeaders = flag.Int("testing__max_received_headers", 50,
 		"max Received headers, for loop detection; ONLY FOR TESTING")
+
+	// Some go tests disable SPF, to avoid leaking DNS lookups.
+	disableSPFForTesting = false
 )
 
 // Mode for a socket (listening or connection).
@@ -382,6 +385,10 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 func (c *Conn) checkSPF(addr string) (spf.Result, error) {
 	// Does not apply to authenticated connections, they're allowed regardless.
 	if c.completedAuth {
+		return "", nil
+	}
+
+	if disableSPFForTesting {
 		return "", nil
 	}
 

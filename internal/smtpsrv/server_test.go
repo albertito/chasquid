@@ -453,6 +453,9 @@ func realMain(m *testing.M) int {
 		s.AddDomain("localhost")
 		s.AddUserDB("localhost", udb)
 
+		// Disable SPF lookups, to avoid leaking DNS queries.
+		disableSPFForTesting = true
+
 		go s.ListenAndServe()
 	}
 
