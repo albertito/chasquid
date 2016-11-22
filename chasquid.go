@@ -94,13 +94,19 @@ func main() {
 	log.Infof("Loading certificates")
 	for _, info := range mustReadDir("certs/") {
 		name := info.Name()
+		dir := filepath.Join("certs/", name)
+		if fi, err := os.Stat(dir); err == nil && !fi.IsDir() {
+			// Skip non-directories.
+			continue
+		}
+
 		log.Infof("  %s", name)
 
-		certPath := filepath.Join("certs/", name, "fullchain.pem")
+		certPath := filepath.Join(dir, "fullchain.pem")
 		if _, err := os.Stat(certPath); os.IsNotExist(err) {
 			continue
 		}
-		keyPath := filepath.Join("certs/", name, "privkey.pem")
+		keyPath := filepath.Join(dir, "privkey.pem")
 		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 			continue
 		}
