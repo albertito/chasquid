@@ -19,8 +19,11 @@ This directory contains chasquid's configuration.
 Note the certs/ directory matches certbot's structure, so if you use it you
 can just symlink to /etc/letsencrypt/live.
 
+You need at least one certificate, or the server will refuse to start.
+Ideally there should be a certificate for each DNS name pointing to you.
+
 Make sure the user you use to run chasquid under ("mail" in the example
-config) can access the certificates and private keys.
+systemd files) can access the certificates and private keys.
 
 
 The user databases can be created and edited with the chasquid-util tool.
