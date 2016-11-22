@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	"bytes"
@@ -86,6 +87,7 @@ func userDBFromArgs(create bool) (string, string, *userdb.DB) {
 	if err != nil {
 		if create && os.IsNotExist(err) {
 			fmt.Println("Creating database")
+			os.MkdirAll(filepath.Dir(userDBForDomain(domain)), 0755)
 		} else {
 			Fatalf("Error loading database: %v", err)
 		}
