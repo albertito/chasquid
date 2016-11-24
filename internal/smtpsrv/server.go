@@ -155,6 +155,15 @@ func (s *Server) periodicallyReload() {
 }
 
 func (s *Server) ListenAndServe() {
+	if len(s.tlsConfig.Certificates) == 0 {
+		// chasquid assumes there's at least one valid certificate (for things
+		// like STARTTLS, user authentication, etc.), so we fail if none was
+		// found.
+		log.Errorf("No SSL/TLS certificates found")
+		log.Errorf("Ideally there should be a certificate for each MX you act as")
+		log.Fatalf("At least one valid certificate is needed")
+	}
+
 	// At this point the TLS config should be done, build the
 	// name->certificate map (used by the TLS library for SNI).
 	s.tlsConfig.BuildNameToCertificate()

@@ -5,6 +5,12 @@ set -e
 
 init
 
+# This should fail, as it has no certificates.
+rm config/certs/testserver/*.pem
+if chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config; then
+	fail "chasquid should not start without certificates"
+fi
+
 generate_certs_for testserver
 add_user user@testserver secretpassword
 add_user someone@testserver secretpassword
