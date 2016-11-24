@@ -81,6 +81,11 @@ func testLogger(t *testing.T, fname string, l *Logger) {
 	checkContentsMatch(t, "log", fname,
 		`^_ log_test.go:....   log info 1\n`)
 
+	os.Truncate(fname, 0)
+	l.Level = Info
+	l.Log(Fatal, 0, "log fatal %d", 1)
+	checkContentsMatch(t, "log", fname,
+		`^☠ log_test.go:....   log fatal 1\n`)
 }
 
 func TestBasic(t *testing.T) {

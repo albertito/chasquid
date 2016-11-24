@@ -44,12 +44,14 @@ var (
 type Level int
 
 const (
+	Fatal = Level(-2)
 	Error = Level(-1)
 	Info  = Level(0)
 	Debug = Level(1)
 )
 
 var levelToLetter = map[Level]string{
+	Fatal: "☠",
 	Error: "E",
 	Info:  "_",
 	Debug: ".",
