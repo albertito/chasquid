@@ -17,6 +17,8 @@ import (
 var (
 	port = flag.String("port", "smtp",
 		"port to use for connecting to the MX servers")
+	skipTLSCheck = flag.Bool("skip_tls_check", false,
+		"skip TLS check (useful if connections are blocked)")
 )
 
 func main() {
@@ -56,27 +58,32 @@ func main() {
 			}
 		}
 
-		c, err := smtp.Dial(mx.Host + ":" + *port)
-		if err != nil {
-			log.Fatal(err)
-		}
+		if *skipTLSCheck {
+			log.Printf("TLS check skipped")
+		} else {
+			c, err := smtp.Dial(mx.Host + ":" + *port)
+			if err != nil {
+				log.Fatal(err)
+			}
 
-		config := &tls.Config{
-			// Expect the server to have a certificate valid for the MX
-			// we're connecting to.
-			ServerName: mx.Host,
-		}
-		err = c.StartTLS(config)
-		if err != nil {
-			log.Fatalf("TLS error: %v", err)
-		}
+			config := &tls.Config{
+				// Expect the server to have a certificate valid for the MX
+				// we're connecting to.
+				ServerName: mx.Host,
+			}
+			err = c.StartTLS(config)
+			if err != nil {
+				log.Fatalf("TLS error: %v", err)
+			}
 
-		cstate, _ := c.TLSConnectionState()
-		log.Printf("TLS OK: %s - %s", tlsconst.VersionName(cstate.Version),
-			tlsconst.CipherSuiteName(cstate.CipherSuite))
+			cstate, _ := c.TLSConnectionState()
+			log.Printf("TLS OK: %s - %s", tlsconst.VersionName(cstate.Version),
+				tlsconst.CipherSuiteName(cstate.CipherSuite))
+
+			c.Close()
+		}
 
 		log.Printf("")
-		c.Close()
 	}
 
 	log.Printf("=== Success")
