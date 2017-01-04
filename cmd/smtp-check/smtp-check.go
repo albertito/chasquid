@@ -2,13 +2,16 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"log"
 	"net"
 	"net/smtp"
+	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/spf"
+	"blitiri.com.ar/go/chasquid/internal/sts"
 	"blitiri.com.ar/go/chasquid/internal/tlsconst"
 
 	"golang.org/x/net/idna"
@@ -32,6 +35,21 @@ func main() {
 	domain, err := idna.ToASCII(domain)
 	if err != nil {
 		log.Fatalf("IDNA conversion failed: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	log.Printf("=== STS policy")
+	policy, err := sts.UncheckedFetch(ctx, domain)
+	if err != nil {
+		log.Printf("Not available (%s)", err)
+	} else {
+		log.Printf("Parsed contents:  [%+v]\n", *policy)
+		if err := policy.Check(); err != nil {
+			log.Fatalf("Invalid: %v", err)
+		}
+		log.Printf("OK")
 	}
 
 	mxs, err := net.LookupMX(domain)
@@ -81,6 +99,13 @@ func main() {
 				tlsconst.CipherSuiteName(cstate.CipherSuite))
 
 			c.Close()
+		}
+
+		if policy != nil {
+			if !policy.MXIsAllowed(mx.Host) {
+				log.Fatalf("NOT allowed by STS policy")
+			}
+			log.Printf("Allowed by policy")
 		}
 
 		log.Printf("")
