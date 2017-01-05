@@ -24,10 +24,10 @@ func TestParsePolicy(t *testing.T) {
 
 func TestCheckPolicy(t *testing.T) {
 	validPs := []Policy{
-		{Version: "STSv1", Mode: "enforce", MaxAge: 1 * time.Hour},
-		{Version: "STSv1", Mode: "report", MaxAge: 1 * time.Hour},
-		{Version: "STSv1", Mode: "report", MaxAge: 1 * time.Hour,
+		{Version: "STSv1", Mode: "enforce", MaxAge: 1 * time.Hour,
 			MXs: []string{"mx1", "mx2"}},
+		{Version: "STSv1", Mode: "report", MaxAge: 1 * time.Hour,
+			MXs: []string{"mx1"}},
 	}
 	for i, p := range validPs {
 		if err := p.Check(); err != nil {
@@ -42,6 +42,9 @@ func TestCheckPolicy(t *testing.T) {
 		{Policy{Version: "STSv2"}, ErrUnknownVersion},
 		{Policy{Version: "STSv1"}, ErrInvalidMaxAge},
 		{Policy{Version: "STSv1", MaxAge: 1, Mode: "blah"}, ErrInvalidMode},
+		{Policy{Version: "STSv1", MaxAge: 1, Mode: "enforce"}, ErrInvalidMX},
+		{Policy{Version: "STSv1", MaxAge: 1, Mode: "enforce", MXs: []string{}},
+			ErrInvalidMX},
 	}
 	for i, c := range invalid {
 		if err := c.p.Check(); err != c.expected {

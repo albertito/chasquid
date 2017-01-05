@@ -58,6 +58,7 @@ var (
 	ErrUnknownVersion = errors.New("unknown policy version")
 	ErrInvalidMaxAge  = errors.New("invalid max_age")
 	ErrInvalidMode    = errors.New("invalid mode")
+	ErrInvalidMX      = errors.New("invalid mx")
 )
 
 // Check that the policy contents are valid.
@@ -73,13 +74,18 @@ func (p *Policy) Check() error {
 		return ErrInvalidMode
 	}
 
+	// "mx" field is required, and the policy is invalid if it's not present.
+	// https://mailarchive.ietf.org/arch/msg/uta/Omqo1Bw6rJbrTMl2Zo69IJr35Qo
+	if len(p.MXs) == 0 {
+		return ErrInvalidMX
+	}
+
 	return nil
 }
 
 // MXMatches checks if the given MX is allowed, according to the policy.
 // https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-4.1
 func (p *Policy) MXIsAllowed(mx string) bool {
-	// TODO: Clarify how we should treat an empty MX list.
 	for _, pattern := range p.MXs {
 		if matchDomain(mx, pattern) {
 			return true
