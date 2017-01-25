@@ -9,13 +9,21 @@ import (
 	"syscall"
 )
 
+// Type FileOp represents an operation on a file (passed by its name).
+type FileOp func(fname string) error
+
 // WriteFile writes data to a file named by filename, atomically.
+//
 // It's a wrapper to ioutil.WriteFile, but provides atomicity (and increased
 // safety) by writing to a temporary file and renaming it at the end.
 //
+// Before the final rename, the given ops (if any) are called. They can be
+// used to manipulate the file before it is atomically renamed.
+// If any operation fails, the file is removed and the error is returned.
+//
 // Note this relies on same-directory Rename being atomic, which holds in most
 // reasonably modern filesystems.
-func WriteFile(filename string, data []byte, perm os.FileMode) error {
+func WriteFile(filename string, data []byte, perm os.FileMode, ops ...FileOp) error {
 	// Note we create the temporary file in the same directory, otherwise we
 	// would have no expectation of Rename being atomic.
 	// We make the file names start with "." so there's no confusion with the
@@ -48,6 +56,13 @@ func WriteFile(filename string, data []byte, perm os.FileMode) error {
 	if err = tmpf.Close(); err != nil {
 		os.Remove(tmpf.Name())
 		return err
+	}
+
+	for _, op := range ops {
+		if err = op(tmpf.Name()); err != nil {
+			os.Remove(tmpf.Name())
+			return err
+		}
 	}
 
 	return os.Rename(tmpf.Name(), filename)

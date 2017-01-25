@@ -2,9 +2,11 @@ package safeio
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -24,8 +26,8 @@ func mustTempDir(t *testing.T) string {
 	return dir
 }
 
-func testWriteFile(fname string, data []byte, perm os.FileMode) error {
-	err := WriteFile("file1", data, perm)
+func testWriteFile(fname string, data []byte, perm os.FileMode, ops ...FileOp) error {
+	err := WriteFile("file1", data, perm, ops...)
 	if err != nil {
 		return fmt.Errorf("error writing new file: %v", err)
 	}
@@ -72,6 +74,65 @@ func TestWriteFile(t *testing.T) {
 	content = []byte("content 3")
 	if err := testWriteFile("file1", content, 0600); err != nil {
 		t.Error(err)
+	}
+
+	// Remove the test directory, but only if we have not failed. We want to
+	// keep the failed structure for debugging.
+	if !t.Failed() {
+		os.RemoveAll(dir)
+	}
+}
+
+func TestWriteFileWithOp(t *testing.T) {
+	dir := mustTempDir(t)
+
+	var opFile string
+	op := func(f string) error {
+		opFile = f
+		return nil
+	}
+
+	content := []byte("content 1")
+	if err := testWriteFile("file1", content, 0660, op); err != nil {
+		t.Error(err)
+	}
+
+	if opFile == "" {
+		t.Error("operation was not called")
+	}
+	if !strings.Contains(opFile, "file1") {
+		t.Errorf("operation called with suspicious file: %s", opFile)
+	}
+
+	// Remove the test directory, but only if we have not failed. We want to
+	// keep the failed structure for debugging.
+	if !t.Failed() {
+		os.RemoveAll(dir)
+	}
+}
+
+func TestWriteFileWithFailingOp(t *testing.T) {
+	dir := mustTempDir(t)
+
+	var opFile string
+	opOK := func(f string) error {
+		opFile = f
+		return nil
+	}
+
+	opError := errors.New("operation failed")
+	opFail := func(f string) error {
+		return opError
+	}
+
+	content := []byte("content 1")
+	err := WriteFile("file1", content, 0660, opOK, opOK, opFail)
+	if err != opError {
+		t.Errorf("different error, got %v, expected %v", err, opError)
+	}
+
+	if _, err := os.Stat(opFile); err == nil {
+		t.Errorf("temporary file was not removed after failure (%v)", opFile)
 	}
 
 	// Remove the test directory, but only if we have not failed. We want to
