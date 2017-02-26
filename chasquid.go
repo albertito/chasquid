@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"expvar"
 	"flag"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/smtpsrv"
+	"blitiri.com.ar/go/chasquid/internal/sts"
 	"blitiri.com.ar/go/chasquid/internal/systemd"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 
@@ -135,12 +137,18 @@ func main() {
 
 	dinfo := s.InitDomainInfo(conf.DataDir + "/domaininfo")
 
+	stsCache, err := sts.NewCache(conf.DataDir + "/sts-cache")
+	if err != nil {
+		log.Fatalf("Failed to initialize STS cache: %v", err)
+	}
+	go stsCache.PeriodicallyRefresh(context.Background())
+
 	localC := &courier.Procmail{
 		Binary:  conf.MailDeliveryAgentBin,
 		Args:    conf.MailDeliveryAgentArgs,
 		Timeout: 30 * time.Second,
 	}
-	remoteC := &courier.SMTP{Dinfo: dinfo}
+	remoteC := &courier.SMTP{Dinfo: dinfo, STSCache: stsCache}
 	s.InitQueue(conf.DataDir+"/queue", localC, remoteC)
 
 	// Load the addresses and listeners.
