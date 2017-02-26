@@ -87,7 +87,9 @@ func TestSMTP(t *testing.T) {
 	addr := fakeServer(t, responses)
 	host, port, _ := net.SplitHostPort(addr)
 
-	fakeMX["to"] = host
+	// Put a non-existing host first, so we check that if the first host
+	// doesn't work, we try with the rest.
+	fakeMX["to"] = []string{"nonexistinghost", host}
 	*smtpPort = port
 
 	s, tmpDir := newSMTP(t)
@@ -148,7 +150,7 @@ func TestSMTPErrors(t *testing.T) {
 		addr := fakeServer(t, rs)
 		host, port, _ := net.SplitHostPort(addr)
 
-		fakeMX["to"] = host
+		fakeMX["to"] = []string{host}
 		*smtpPort = port
 
 		s, tmpDir := newSMTP(t)
