@@ -14,7 +14,7 @@ wait_until_ready 1025
 
 
 # Send mail with an empty address (directly, unauthenticated).
-nc localhost 1025 < sendmail > /dev/null
+nc.py localhost 1025 < sendmail > /dev/null
 wait_for_file .mail/user@testserver
 mail_diff content .mail/user@testserver
 rm -f .mail/user@testserver

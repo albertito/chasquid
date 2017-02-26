@@ -61,6 +61,10 @@ function smtpc.py() {
 	${UTILDIR}/smtpc.py "$@"
 }
 
+function nc.py() {
+	${UTILDIR}/nc.py "$@"
+}
+
 function mail_diff() {
 	${UTILDIR}/mail_diff "$@"
 }
@@ -83,7 +87,7 @@ function fail() {
 function wait_until_ready() {
 	PORT=$1
 
-	while ! nc -z localhost $PORT; do
+	while ! nc.py -z localhost $PORT; do
 		sleep 0.1
 	done
 }
