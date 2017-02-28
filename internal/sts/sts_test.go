@@ -3,34 +3,53 @@ package sts
 import (
 	"context"
 	"expvar"
+	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 )
 
-func TestMain(m *testing.M) {
-	// Populate the fake policy contents, used by a few tests.
-	// httpGet will use this data instead of using the network.
-
+// Test policy for each of the requested domains.  Will be served by the test
+// HTTP server.
+var policyForDomain = map[string]string{
 	// domain.com -> valid, with reasonable policy.
-	fakeContent["https://mta-sts.domain.com/.well-known/mta-sts.json"] = `
+	"domain.com": `
 		{
              "version": "STSv1",
              "mode": "enforce",
              "mx": ["*.mail.domain.com"],
              "max_age": 3600
-        }`
+        }`,
 
 	// version99 -> invalid policy (unknown version).
-	fakeContent["https://mta-sts.version99/.well-known/mta-sts.json"] = `
+	"version99": `
 		{
              "version": "STSv99",
              "mode": "enforce",
              "mx": ["*.mail.version99"],
              "max_age": 999
-        }`
+        }`,
+}
 
+func testHTTPHandler(w http.ResponseWriter, r *http.Request) {
+	// For testing, the domain in the path (see urlForDomain).
+	policy, ok := policyForDomain[r.URL.Path[1:]]
+	if !ok {
+		http.Error(w, "not found", 404)
+		return
+	}
+	fmt.Fprintln(w, policy)
+	return
+}
+
+func TestMain(m *testing.M) {
+	// Create a test HTTP server, used by the more end-to-end tests.
+	httpServer := httptest.NewServer(http.HandlerFunc(testHTTPHandler))
+
+	fakeURLForTesting = httpServer.URL
 	os.Exit(m.Run())
 }
 
@@ -112,8 +131,8 @@ func TestMatchDomain(t *testing.T) {
 }
 
 func TestFetch(t *testing.T) {
-	// Note the data "fetched" for each domain comes from fakeContent, defined
-	// in TestMain above. See httpGet for more details.
+	// Note the data "fetched" for each domain comes from policyForDomain,
+	// defined in TestMain above. See httpGet for more details.
 
 	// Normal fetch, all valid.
 	p, err := Fetch(context.Background(), "domain.com")
@@ -170,8 +189,8 @@ func TestCacheBasics(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Note the data "fetched" for each domain comes from fakeContent, defined
-	// in TestMain above. See httpGet for more details.
+	// Note the data "fetched" for each domain comes from policyForDomain,
+	// defined in TestMain above. See httpGet for more details.
 
 	// Reset the expvar counters that we use to validate hits, misses, etc.
 	cacheFetches.Set(0)
@@ -258,7 +277,7 @@ func TestCacheBadData(t *testing.T) {
 		}
 
 		// We now expect Fetch to fall back to getting the policy from the
-		// network (in our case, from fakeContent).
+		// network (in our case, from policyForDomain).
 		p, err = c.Fetch(ctx, "domain.com")
 		if err != nil {
 			t.Fatalf("Fetch failed: %v", err)
@@ -303,7 +322,7 @@ func TestCacheRefresh(t *testing.T) {
 
 	ctx := context.Background()
 
-	fakeContent["https://mta-sts.refresh-test/.well-known/mta-sts.json"] = `
+	policyForDomain["refresh-test"] = `
 		{"version": "STSv1", "mode": "enforce", "mx": ["mx"], "max_age": 100}`
 	p := mustFetch(t, c, ctx, "refresh-test")
 	if p.MaxAge != 100*time.Second {
@@ -312,7 +331,7 @@ func TestCacheRefresh(t *testing.T) {
 
 	// Change the "published" policy, check that we see the old version at
 	// fetch (should be cached), and a new version after a refresh.
-	fakeContent["https://mta-sts.refresh-test/.well-known/mta-sts.json"] = `
+	policyForDomain["refresh-test"] = `
 		{"version": "STSv1", "mode": "enforce", "mx": ["mx"], "max_age": 200}`
 
 	p = mustFetch(t, c, ctx, "refresh-test")
@@ -329,5 +348,19 @@ func TestCacheRefresh(t *testing.T) {
 
 	if !t.Failed() {
 		os.RemoveAll(dir)
+	}
+}
+
+func TestURLForDomain(t *testing.T) {
+	// This function will behave differently if fakeURLForTesting is set, so
+	// temporarily unset it.
+	oldURL := fakeURLForTesting
+	fakeURLForTesting = ""
+	defer func() { fakeURLForTesting = oldURL }()
+
+	got := urlForDomain("a-test-domain")
+	expected := "https://mta-sts.a-test-domain/.well-known/mta-sts.json"
+	if got != expected {
+		t.Errorf("got %q, expected %q", got, expected)
 	}
 }

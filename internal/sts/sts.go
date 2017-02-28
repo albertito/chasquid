@@ -15,6 +15,7 @@ import (
 	"errors"
 	"expvar"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -130,17 +131,28 @@ func UncheckedFetch(ctx context.Context, domain string) (*Policy, error) {
 		return nil, err
 	}
 
-	// URL composed from the domain, as explained in:
-	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-3.3
-	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-3.2
-	url := "https://mta-sts." + domain + "/.well-known/mta-sts.json"
-
+	url := urlForDomain(domain)
 	rawPolicy, err := httpGet(ctx, url)
 	if err != nil {
 		return nil, err
 	}
 
 	return parsePolicy(rawPolicy)
+}
+
+// Fake URL for testing purposes, so we can do more end-to-end tests,
+// including the HTTP fetching code.
+var fakeURLForTesting string
+
+func urlForDomain(domain string) string {
+	if fakeURLForTesting != "" {
+		return fakeURLForTesting + "/" + domain
+	}
+
+	// URL composed from the domain, as explained in:
+	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-3.3
+	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-3.2
+	return "https://mta-sts." + domain + "/.well-known/mta-sts.json"
 }
 
 // Fetch a policy for the given domain. Note this results in various network
@@ -161,9 +173,6 @@ func Fetch(ctx context.Context, domain string) (*Policy, error) {
 	return p, nil
 }
 
-// Fake HTTP content for testing purposes only.
-var fakeContent = map[string]string{}
-
 // httpGet performs an HTTP GET of the given URL, using the context and
 // rejecting redirects, as per the standard.
 func httpGet(ctx context.Context, url string) ([]byte, error) {
@@ -177,16 +186,6 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 	// construct it here.
 	if deadline, ok := ctx.Deadline(); ok {
 		client.Timeout = deadline.Sub(time.Now())
-	}
-
-	if len(fakeContent) > 0 {
-		// If we have fake content for testing, then return the content for
-		// the URL, or an error if it's missing.
-		// This makes sure we don't make actual requests for testing.
-		if d, ok := fakeContent[url]; ok {
-			return []byte(d), nil
-		}
-		return nil, errors.New("error for testing")
 	}
 
 	resp, err := ctxhttp.Get(ctx, client, url)
