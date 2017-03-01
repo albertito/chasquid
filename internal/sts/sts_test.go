@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -191,8 +192,9 @@ func mustTempDir(t *testing.T) string {
 	return dir
 }
 
-func expvarMustEq(t *testing.T, name string, v *expvar.Int, expected int64) {
-	value := v.Value()
+func expvarMustEq(t *testing.T, name string, v *expvar.Int, expected int) {
+	// TODO: Use v.Value once we drop support of Go 1.7.
+	value, _ := strconv.Atoi(v.String())
 	if value != expected {
 		t.Errorf("%s is %d, expected %d", name, value, expected)
 	}
