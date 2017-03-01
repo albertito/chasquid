@@ -157,6 +157,22 @@ func TestFetch(t *testing.T) {
 	t.Logf("version99: got expected error: %v", err)
 }
 
+func TestPolicyTooBig(t *testing.T) {
+	// Construct a valid but very large JSON as a policy.
+	raw := `{"version": "STSv1", "mode": "enforce", "mx": [`
+	for i := 0; i < 2000; i++ {
+		raw += fmt.Sprintf("\"mx%d\", ", i)
+	}
+	raw += `"mxlast"], "max_age": 100}`
+	policyForDomain["toobig"] = raw
+
+	_, err := Fetch(context.Background(), "toobig")
+	if err == nil {
+		t.Errorf("fetch worked, but should have failed")
+	}
+	t.Logf("got error as expected: %v", err)
+}
+
 // Tests for the policy cache.
 
 func mustTempDir(t *testing.T) string {

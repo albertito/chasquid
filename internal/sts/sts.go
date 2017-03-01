@@ -195,7 +195,9 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		return ioutil.ReadAll(resp.Body)
+		// Read but up to 10k; policies should be way smaller than that, and
+		// having a limit prevents abuse/accidents with very large replies.
+		return ioutil.ReadAll(&io.LimitedReader{resp.Body, 10 * 1024})
 	}
 	return nil, fmt.Errorf("HTTP response status code: %v", resp.StatusCode)
 }
