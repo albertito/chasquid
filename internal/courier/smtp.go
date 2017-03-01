@@ -72,7 +72,7 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	a.stsPolicy = s.fetchSTSPolicy(a.tr, a.toDomain)
 
 	mxs, err := lookupMXs(a.tr, a.toDomain, a.stsPolicy)
-	if err != nil {
+	if err != nil || len(mxs) == 0 {
 		// Note this is considered a permanent error.
 		// This is in line with what other servers (Exim) do. However, the
 		// downside is that temporary DNS issues can affect delivery, so we

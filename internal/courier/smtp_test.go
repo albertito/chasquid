@@ -163,4 +163,19 @@ func TestSMTPErrors(t *testing.T) {
 	}
 }
 
+func TestNoMXServer(t *testing.T) {
+	fakeMX["to"] = []string{}
+
+	s, tmpDir := newSMTP(t)
+	defer os.Remove(tmpDir)
+	err, permanent := s.Deliver("me@me", "to@to", []byte("data"))
+	if err == nil {
+		t.Errorf("delivery worked, expected failure")
+	}
+	if !permanent {
+		t.Errorf("expected permanent failure, got transient (%v)", err)
+	}
+	t.Logf("got permanent failure, as expected: %v", err)
+}
+
 // TODO: Test STARTTLS negotiation.
