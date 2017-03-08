@@ -18,7 +18,11 @@ var (
 	errTimeout = fmt.Errorf("Operation timed out")
 )
 
-// Procmail delivers local mail via procmail.
+// Procmail delivers local mail by executing a local binary, like procmail or
+// maildrop.  It is named after procmail just for reference, it works with any
+// binary that:
+//  - Receives the email to deliver via stdin.
+//  - Exits with code EX_TEMPFAIL (75) for transient issues.
 type Procmail struct {
 	Binary  string        // Path to the binary.
 	Args    []string      // Arguments to pass.

@@ -52,7 +52,7 @@ func Load(path string) (*Config, error) {
 	}
 
 	if c.MailDeliveryAgentBin == "" {
-		c.MailDeliveryAgentBin = "procmail"
+		c.MailDeliveryAgentBin = "maildrop"
 	}
 	if len(c.MailDeliveryAgentArgs) == 0 {
 		c.MailDeliveryAgentArgs = append(c.MailDeliveryAgentArgs,

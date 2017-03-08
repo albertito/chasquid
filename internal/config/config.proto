@@ -30,7 +30,7 @@ message Config {
 	// This should point to the binary to use to deliver email to local users.
 	// The content of the email will be passed via stdin.
 	// If it exits unsuccessfully, we assume the mail was not delivered.
-	// Default: "procmail".
+	// Default: "maildrop".
 	string mail_delivery_agent_bin = 6;
 
 	// Command line arguments for the mail delivery agent. One per argument.
