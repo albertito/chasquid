@@ -59,6 +59,9 @@ You can also browse the
 
 ## Installation
 
+If you're using Debian or Ubuntu, chasquid can be installed by running
+`sudo apt install chasquid`.
+
 To get the code and build it, you will need a working [Go](http://golang.org)
 environment.
 
