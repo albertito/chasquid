@@ -50,6 +50,9 @@ func Load(path string) (*Config, error) {
 	if len(c.SubmissionAddress) == 0 {
 		c.SubmissionAddress = append(c.SubmissionAddress, "systemd")
 	}
+	if len(c.SubmissionOverTlsAddress) == 0 {
+		c.SubmissionOverTlsAddress = append(c.SubmissionOverTlsAddress, "systemd")
+	}
 
 	if c.MailDeliveryAgentBin == "" {
 		c.MailDeliveryAgentBin = "maildrop"

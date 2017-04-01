@@ -55,12 +55,31 @@ var (
 
 // Mode for a socket (listening or connection).
 // We keep them distinct, as policies can differ between them.
-type SocketMode string
+type SocketMode struct {
+	// Is this mode submission?
+	IsSubmission bool
+
+	// Is this mode TLS-wrapped? That means that we don't use STARTTLS, the
+	// connection is directly established over TLS (like HTTPS).
+	TLS bool
+}
+
+func (mode SocketMode) String() string {
+	s := "SMTP"
+	if mode.IsSubmission {
+		s = "submission"
+	}
+	if mode.TLS {
+		s += "+TLS"
+	}
+	return s
+}
 
 // Valid socket modes.
-const (
-	ModeSMTP       SocketMode = "SMTP"
-	ModeSubmission SocketMode = "submission"
+var (
+	ModeSMTP          = SocketMode{IsSubmission: false, TLS: false}
+	ModeSubmission    = SocketMode{IsSubmission: true, TLS: false}
+	ModeSubmissionTLS = SocketMode{IsSubmission: true, TLS: true}
 )
 
 // Incoming SMTP connection.
@@ -137,6 +156,7 @@ func (c *Conn) Handle() {
 
 	c.tr = trace.New("SMTP.Conn", c.conn.RemoteAddr().String())
 	defer c.tr.Finish()
+	c.tr.Debugf("Connected, mode: %s", c.mode)
 
 	c.tc.PrintfLine("220 %s ESMTP chasquid", c.hostname)
 
@@ -314,7 +334,7 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 	if !strings.HasPrefix(strings.ToLower(params), "from:") {
 		return 500, "unknown command"
 	}
-	if c.mode == ModeSubmission && !c.completedAuth {
+	if c.mode.IsSubmission && !c.completedAuth {
 		return 550, "mail to submission port must be authenticated"
 	}
 

@@ -31,6 +31,11 @@ if ! run_msmtp -a smtpport someone@testserver < content 2> /dev/null; then
 	fail "failed auth on the SMTP port"
 fi
 
+# Check deliver over the submission-over-TLS port.
+if ! run_msmtp -a subm_tls someone@testserver < content 2> /dev/null; then
+	fail "failed submission over TLS"
+fi
+
 if run_msmtp nobody@testserver < content 2> /dev/null; then
 	fail "successfuly sent an email to a non-existent user"
 fi

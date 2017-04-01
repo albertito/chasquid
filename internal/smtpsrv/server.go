@@ -199,6 +199,11 @@ func (s *Server) ListenAndServe() {
 }
 
 func (s *Server) serve(l net.Listener, mode SocketMode) {
+	// If this mode is expected to be TLS-wrapped, make it so.
+	if mode.TLS {
+		l = tls.NewListener(l, s.tlsConfig)
+	}
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -213,6 +218,7 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 			tc:             textproto.NewConn(conn),
 			mode:           mode,
 			tlsConfig:      s.tlsConfig,
+			onTLS:          mode.TLS,
 			userDBs:        s.userDBs,
 			aliasesR:       s.aliasesR,
 			localDomains:   s.localDomains,

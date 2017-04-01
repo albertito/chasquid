@@ -34,8 +34,9 @@ var (
 	// Server addresses.
 	// We default to internal ones, but may get overridden via flags.
 	// TODO: Don't hard-code the default.
-	smtpAddr       = "127.0.0.1:13444"
-	submissionAddr = "127.0.0.1:13999"
+	smtpAddr          = "127.0.0.1:13444"
+	submissionAddr    = "127.0.0.1:13999"
+	submissionTLSAddr = "127.0.0.1:13777"
 
 	// TLS configuration to use in the clients.
 	// Will contain the generated server certificate as root CA.
@@ -46,14 +47,28 @@ var (
 // === Tests ===
 //
 
-func mustDial(tb testing.TB, mode SocketMode, useTLS bool) *smtp.Client {
+func mustDial(tb testing.TB, mode SocketMode, startTLS bool) *smtp.Client {
 	addr := ""
-	if mode == ModeSMTP {
+	switch mode {
+	case ModeSMTP:
 		addr = smtpAddr
-	} else {
+	case ModeSubmission:
 		addr = submissionAddr
+	case ModeSubmissionTLS:
+		addr = submissionTLSAddr
 	}
-	c, err := smtp.Dial(addr)
+
+	var err error
+	var conn net.Conn
+	if mode.TLS {
+		conn, err = tls.Dial("tcp", addr, tlsConfig)
+	} else {
+		conn, err = net.Dial("tcp", addr)
+	}
+	if err != nil {
+		tb.Fatalf("(net||tls).Dial: %v", err)
+	}
+	c, err := smtp.NewClient(conn, "127.0.0.1")
 	if err != nil {
 		tb.Fatalf("smtp.Dial: %v", err)
 	}
@@ -62,7 +77,7 @@ func mustDial(tb testing.TB, mode SocketMode, useTLS bool) *smtp.Client {
 		tb.Fatalf("c.Hello: %v", err)
 	}
 
-	if useTLS {
+	if startTLS {
 		if ok, _ := c.Extension("STARTTLS"); !ok {
 			tb.Fatalf("STARTTLS not advertised in EHLO")
 		}
@@ -151,6 +166,14 @@ func TestSubmissionWithoutAuth(t *testing.T) {
 	if err := c.Mail("from@from"); err == nil {
 		t.Errorf("Mail not failed as expected")
 	}
+}
+
+func TestAuthOnTLS(t *testing.T) {
+	c := mustDial(t, ModeSubmissionTLS, false)
+	defer c.Close()
+
+	auth := smtp.PlainAuth("", "testuser@localhost", "testpasswd", "127.0.0.1")
+	sendEmailWithAuth(t, c, auth)
 }
 
 func TestAuthOnSMTP(t *testing.T) {
@@ -282,6 +305,16 @@ func TestRepeatedStartTLS(t *testing.T) {
 
 	if err = c.StartTLS(tlsConfig); err == nil {
 		t.Errorf("Second STARTTLS did not fail as expected")
+	}
+}
+
+// Test that STARTTLS fails on a TLS connection.
+func TestStartTLSOnTLS(t *testing.T) {
+	c := mustDial(t, ModeSubmissionTLS, false)
+	defer c.Close()
+
+	if err := c.StartTLS(tlsConfig); err == nil {
+		t.Errorf("STARTTLS did not fail as expected")
 	}
 }
 
@@ -440,6 +473,7 @@ func realMain(m *testing.M) int {
 		s.AddCerts(tmpDir+"/cert.pem", tmpDir+"/key.pem")
 		s.AddAddr(smtpAddr, ModeSMTP)
 		s.AddAddr(submissionAddr, ModeSubmission)
+		s.AddAddr(submissionTLSAddr, ModeSubmissionTLS)
 
 		localC := &courier.Procmail{}
 		remoteC := &courier.SMTP{}

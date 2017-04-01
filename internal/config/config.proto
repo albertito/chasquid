@@ -21,17 +21,22 @@ message Config {
 	// systemd sockets must be named with "FileDescriptorName=submission".
 	repeated string submission_address = 4;
 
+	// Addresses to listen on for submission-over-TLS (usually port 465).
+	// Default: "systemd", which means systemd passes sockets to us.
+	// systemd sockets must be named with "FileDescriptorName=submission_tls".
+	repeated string submission_over_tls_address = 5;
+
 	// Address for the monitoring http server.
 	// Do NOT expose this to the public internet.
 	// Default: no monitoring http server.
-	string monitoring_address = 5;
+	string monitoring_address = 6;
 
 	// Mail delivery agent (MDA, also known as LDA) to use.
 	// This should point to the binary to use to deliver email to local users.
 	// The content of the email will be passed via stdin.
 	// If it exits unsuccessfully, we assume the mail was not delivered.
 	// Default: "maildrop".
-	string mail_delivery_agent_bin = 6;
+	string mail_delivery_agent_bin = 7;
 
 	// Command line arguments for the mail delivery agent. One per argument.
 	// Some replacements will be done.
@@ -45,11 +50,11 @@ message Config {
 	//
 	// Default: "-f", "%from%", "-d", "%to_user%"  (adequate for procmail
 	// and maildrop).
-	repeated string mail_delivery_agent_args = 7;
+	repeated string mail_delivery_agent_args = 8;
 
 	// Directory where we store our persistent data.
 	// Default: "/var/lib/chasquid"
-	string data_dir = 8;
+	string data_dir = 9;
 
 	// Suffix separator, to perform suffix removal of local users.
 	// For example, if you set this to "-+", email to local user
@@ -57,17 +62,17 @@ message Config {
 	// Including "+" is strongly encouraged, as it is assumed for email
 	// forwarding.
 	// Default: "+".
-	string suffix_separators = 9;
+	string suffix_separators = 10;
 
 	// Characters to drop from the user part on local emails.
 	// For example, if you set this to "._", email to local user
 	// "u.se_r" will be delivered to "user".
 	// Default: ".".
-	string drop_characters = 10;
+	string drop_characters = 11;
 
 	// Path where to write the mail log to.
 	// If "<syslog>", log using the syslog (at MAIL|INFO priority).
 	// Default: <syslog>
-	string mail_log_path = 11;
+	string mail_log_path = 12;
 }
 

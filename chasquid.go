@@ -161,6 +161,8 @@ func main() {
 		systemdLs["smtp"], smtpsrv.ModeSMTP)
 	loadAddresses(s, conf.SubmissionAddress,
 		systemdLs["submission"], smtpsrv.ModeSubmission)
+	loadAddresses(s, conf.SubmissionOverTlsAddress,
+		systemdLs["submission_tls"], smtpsrv.ModeSubmissionTLS)
 
 	s.ListenAndServe()
 }

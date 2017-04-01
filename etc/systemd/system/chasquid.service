@@ -1,6 +1,8 @@
 [Unit]
 Description=chasquid mail daemon (service)
-Requires=chasquid-smtp.socket chasquid-submission.socket
+Requires=chasquid-smtp.socket \
+	chasquid-submission.socket \
+	chasquid-submission_tls.socket
 
 [Service]
 ExecStart=/usr/local/bin/chasquid \
