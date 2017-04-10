@@ -82,6 +82,9 @@ func userDBForDomain(domain string) string {
 func userDBFromArgs(create bool) (string, string, *userdb.DB) {
 	username := args["<username>"].(string)
 	user, domain := envelope.Split(username)
+	if domain == "" {
+		Fatalf("Domain missing, username should be of the form 'user@domain'")
+	}
 
 	db, err := userdb.Load(userDBForDomain(domain))
 	if err != nil {
