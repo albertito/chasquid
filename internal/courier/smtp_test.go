@@ -23,7 +23,7 @@ func newSMTP(t *testing.T) (*SMTP, string) {
 		t.Fatal(err)
 	}
 
-	return &SMTP{dinfo, nil}, dir
+	return &SMTP{dinfo}, dir
 }
 
 // Fake server, to test SMTP out.
