@@ -149,35 +149,38 @@ func main() {
 		log.Fatalf("Error getting systemd listeners: %v", err)
 	}
 
-	loadAddresses(s, conf.SmtpAddress,
+	naddr := loadAddresses(s, conf.SmtpAddress,
 		systemdLs["smtp"], smtpsrv.ModeSMTP)
-	loadAddresses(s, conf.SubmissionAddress,
+	naddr += loadAddresses(s, conf.SubmissionAddress,
 		systemdLs["submission"], smtpsrv.ModeSubmission)
-	loadAddresses(s, conf.SubmissionOverTlsAddress,
+	naddr += loadAddresses(s, conf.SubmissionOverTlsAddress,
 		systemdLs["submission_tls"], smtpsrv.ModeSubmissionTLS)
+
+	if naddr == 0 {
+		log.Fatalf("No address to listen on")
+	}
 
 	s.ListenAndServe()
 }
 
-func loadAddresses(srv *smtpsrv.Server, addrs []string, ls []net.Listener, mode smtpsrv.SocketMode) {
-	// Load addresses.
-	acount := 0
+func loadAddresses(srv *smtpsrv.Server, addrs []string, ls []net.Listener, mode smtpsrv.SocketMode) int {
+	naddr := 0
 	for _, addr := range addrs {
 		// The "systemd" address indicates we get listeners via systemd.
 		if addr == "systemd" {
 			srv.AddListeners(ls, mode)
-			acount += len(ls)
+			naddr += len(ls)
 		} else {
 			srv.AddAddr(addr, mode)
-			acount++
+			naddr++
 		}
 	}
 
-	if acount == 0 {
-		log.Errorf("No %v addresses/listeners", mode)
+	if naddr == 0 {
+		log.Errorf("Warning: No %v addresses/listeners", mode)
 		log.Errorf("If using systemd, check that you named the sockets")
-		log.Fatalf("Exiting")
 	}
+	return naddr
 }
 
 func initMailLog(path string) {
