@@ -56,6 +56,7 @@ package aliases
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -269,9 +270,17 @@ func parseFile(domain, path string) (map[string][]Recipient, error) {
 	}
 	defer f.Close()
 
+	aliases, err := parseReader(domain, f)
+	if err != nil {
+		return nil, fmt.Errorf("reading %q: %v", path, err)
+	}
+	return aliases, nil
+}
+
+func parseReader(domain string, r io.Reader) (map[string][]Recipient, error) {
 	aliases := map[string][]Recipient{}
 
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(r)
 	for i := 1; scanner.Scan(); i++ {
 		line := strings.TrimSpace(scanner.Text())
 		if strings.HasPrefix(line, "#") {
@@ -317,11 +326,8 @@ func parseFile(domain, path string) (map[string][]Recipient, error) {
 			aliases[addr] = rs
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("reading %q: %v", path, err)
-	}
 
-	return aliases, nil
+	return aliases, scanner.Err()
 }
 
 // removeAllAfter removes everything from s that comes after the separators,

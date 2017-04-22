@@ -1,0 +1,12 @@
+
+# Easy aliases.
+pepe: jose
+joan: juan
+
+# UTF-8 aliases.
+pitanga: ñangapirí
+añil: azul, índigo
+
+# Pipe aliases.
+tubo: | writemailto ../.data/pipe_alias_worked
+
