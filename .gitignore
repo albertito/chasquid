@@ -26,3 +26,13 @@ chasquid.test
 # Exclude any .pem files, to prevent accidentally including test keys and
 # certificates.
 *.pem
+
+# Ignore the generated corpus: we don't want to commit it to the repository by
+# default, to avoid size blowup.  Manually added corpus will begin with "t-",
+# and thus not ignored.
+# Leave crashers not ignored, to make them easier to spot (and they should be
+# moved to manually-added corpus once detected).
+**/testdata/fuzz/corpus/[0-9a-f]*
+
+# go-fuzz build artifacts.
+*-fuzz.zip
