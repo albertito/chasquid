@@ -33,8 +33,8 @@ package userdb
 //go:generate protoc --go_out=. userdb.proto
 
 import (
-	"bytes"
 	"crypto/rand"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"sync"
@@ -210,5 +210,7 @@ func (s *Scrypt) PasswordMatches(plain string) bool {
 		panic(fmt.Sprintf("scrypt failed: %v", err))
 	}
 
-	return bytes.Equal(dk, []byte(s.Encrypted))
+	// This comparison should be high enough up the stack that it doesn't
+	// matter, but do it in constant time just in case.
+	return subtle.ConstantTimeCompare(dk, []byte(s.Encrypted)) == 1
 }
