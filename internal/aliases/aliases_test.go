@@ -237,6 +237,9 @@ a@dom: x@dom
 o1: a
 o1: b
 
+# Check that we normalize the right hand side.
+aA: bB@dom-B
+
 # Finally one to make the file NOT end in \n:
 y: z`
 
@@ -255,6 +258,8 @@ func TestRichFile(t *testing.T) {
 		{"c@dom", []Recipient{{"d@e", EMAIL}, {"f@dom", EMAIL}}},
 		{"x@dom", []Recipient{{"command", PIPE}}},
 		{"o1@dom", []Recipient{{"b@dom", EMAIL}}},
+		{"aA@dom", []Recipient{{"bb@dom-b", EMAIL}}},
+		{"aa@dom", []Recipient{{"bb@dom-b", EMAIL}}},
 		{"y@dom", []Recipient{{"z@dom", EMAIL}}},
 	}
 	cases.check(t, resolver)

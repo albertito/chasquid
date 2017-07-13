@@ -299,6 +299,7 @@ func parseFile(domain, path string) (map[string][]Recipient, error) {
 				if !strings.Contains(a, "@") {
 					a = a + "@" + domain
 				}
+				a, _ = normalize.Addr(a)
 				rs = append(rs, Recipient{a, EMAIL})
 			}
 			aliases[addr] = rs
