@@ -5,10 +5,10 @@ function init() {
 		set -v
 	fi
 
+	export UTILDIR="$( realpath `dirname "${BASH_SOURCE[0]}"` )"
+
 	export TBASE="$(realpath `dirname ${0}`)"
 	cd ${TBASE}
-
-	export UTILDIR="$(realpath ${TBASE}/../util/)"
 
 	if [ "${RACE}" == "1" ]; then
 		RACE="-race"
@@ -67,6 +67,10 @@ function nc.py() {
 
 function mail_diff() {
 	${UTILDIR}/mail_diff "$@"
+}
+
+function chamuyero() {
+	${UTILDIR}/chamuyero "$@"
 }
 
 function success() {
