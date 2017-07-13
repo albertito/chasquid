@@ -41,4 +41,12 @@ while sleep 0.1; do
 	fi
 done
 
+# Test that A has outgoing domaininfo for srv-b.
+# This is unrelated to the loop itself, but serves as an end-to-end
+# verification that outgoing domaininfo works.
+if ! grep -q "outgoing_sec_level: TLS_INSECURE" ".data-A/domaininfo/s:srv-b";
+then
+	fail "A is missing the domaininfo for srv-b"
+fi
+
 success

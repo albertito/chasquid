@@ -43,11 +43,12 @@ type SMTP struct {
 
 func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	a := &attempt{
-		courier: s,
-		from:    from,
-		to:      to,
-		data:    data,
-		tr:      trace.New("Courier.SMTP", to),
+		courier:  s,
+		from:     from,
+		to:       to,
+		toDomain: envelope.DomainOf(to),
+		data:     data,
+		tr:       trace.New("Courier.SMTP", to),
 	}
 	defer a.tr.Finish()
 	a.tr.Debugf("%s  ->  %s", from, to)
@@ -57,8 +58,7 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 		a.from = ""
 	}
 
-	toDomain := envelope.DomainOf(to)
-	mxs, err := lookupMXs(a.tr, toDomain)
+	mxs, err := lookupMXs(a.tr, a.toDomain)
 	if err != nil || len(mxs) == 0 {
 		// Note this is considered a permanent error.
 		// This is in line with what other servers (Exim) do. However, the
@@ -163,7 +163,7 @@ retry:
 		a.tr.Debugf("Insecure - NOT using TLS")
 	}
 
-	if a.toDomain != "" && !a.courier.Dinfo.OutgoingSecLevel(a.toDomain, secLevel) {
+	if !a.courier.Dinfo.OutgoingSecLevel(a.toDomain, secLevel) {
 		// We consider the failure transient, so transient misconfigurations
 		// do not affect deliveries.
 		slcResults.Add("fail", 1)
