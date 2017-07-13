@@ -12,9 +12,11 @@
 /chasquid-util
 /smtp-check
 /spf-check
+/mda-lmtp
 cmd/chasquid-util/chasquid-util
 cmd/smtp-check/smtp-check
 cmd/spf-check/spf-check
+cmd/mda-lmtp/mda-lmtp
 
 # Exclude any .pem files, to prevent accidentally including test keys and
 # certificates.

@@ -11,7 +11,7 @@ endif
 
 default: chasquid
 
-all: chasquid chasquid-util smtp-check spf-check
+all: chasquid chasquid-util smtp-check spf-check mda-lmtp
 
 
 chasquid:
@@ -30,16 +30,19 @@ smtp-check:
 spf-check:
 	go build ${GOFLAGS} ./cmd/spf-check/
 
+mda-lmtp:
+	go build ${GOFLAGS} ./cmd/mda-lmtp/
 
 test:
 	go test ${GOFLAGS} ./...
 	setsid -w ./test/run.sh
 	setsid -w ./cmd/chasquid-util/test.sh
+	setsid -w ./cmd/mda-lmtp/test.sh
 
 
-install-binaries: chasquid chasquid-util smtp-check
+install-binaries: chasquid chasquid-util smtp-check mda-lmtp
 	mkdir -p /usr/local/bin/
-	cp -a chasquid chasquid-util smtp-check /usr/local/bin/
+	cp -a chasquid chasquid-util smtp-check mda-lmtp /usr/local/bin/
 
 install-config-skeleton:
 	if ! [ -d /etc/chasquid ] ; then cp -arv etc / ; fi
@@ -51,4 +54,4 @@ install-config-skeleton:
 	fi
 
 
-.PHONY: chasquid chasquid-util smtp-check spf-check test
+.PHONY: chasquid chasquid-util smtp-check spf-check mda-lmtp test

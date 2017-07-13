@@ -1,0 +1,33 @@
+
+nc unix_listen .test-sock
+
+mda |= ./mda-lmtp --addr=.test-sock --addr_network=unix \
+        -f from -d to < .data
+
+nc -> 220 Hola desde expect
+
+nc <~ LHLO .*
+nc -> 250-Bienvenido!
+nc -> 250 Contame...
+
+nc <- MAIL FROM:<from>
+nc -> 250 Aja
+
+nc <- RCPT TO:<to>
+nc -> 250 Aja
+
+nc <- DATA
+nc -> 354 Dale
+
+nc <- Subject: test
+nc <-
+nc <- This is a test.
+nc <- .
+
+nc -> 250 Recibido
+
+nc <- QUIT
+nc -> 221 Chauchas
+
+mda wait 0
+
