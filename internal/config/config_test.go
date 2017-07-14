@@ -4,16 +4,14 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
 func mustCreateConfig(t *testing.T, contents string) (string, string) {
-	tmpDir, err := ioutil.TempDir("", "chasquid_config_test:")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v\n", tmpDir)
-	}
-
+	tmpDir := testlib.MustTempDir(t)
 	confStr := []byte(contents)
-	err = ioutil.WriteFile(tmpDir+"/chasquid.conf", confStr, 0600)
+	err := ioutil.WriteFile(tmpDir+"/chasquid.conf", confStr, 0600)
 	if err != nil {
 		t.Fatalf("Failed to write tmp config: %v", err)
 	}
@@ -23,7 +21,7 @@ func mustCreateConfig(t *testing.T, contents string) (string, string) {
 
 func TestEmptyConfig(t *testing.T) {
 	tmpDir, path := mustCreateConfig(t, "")
-	defer os.RemoveAll(tmpDir)
+	defer testlib.RemoveIfOk(t, tmpDir)
 	c, err := Load(path)
 	if err != nil {
 		t.Fatalf("error loading empty config: %v", err)
@@ -64,7 +62,7 @@ func TestFullConfig(t *testing.T) {
 	`
 
 	tmpDir, path := mustCreateConfig(t, confStr)
-	defer os.RemoveAll(tmpDir)
+	defer testlib.RemoveIfOk(t, tmpDir)
 
 	c, err := Load(path)
 	if err != nil {
@@ -99,7 +97,7 @@ func TestErrorLoading(t *testing.T) {
 func TestBrokenConfig(t *testing.T) {
 	tmpDir, path := mustCreateConfig(
 		t, "<invalid> this is not a valid protobuf")
-	defer os.RemoveAll(tmpDir)
+	defer testlib.RemoveIfOk(t, tmpDir)
 
 	c, err := Load(path)
 	if err == nil {

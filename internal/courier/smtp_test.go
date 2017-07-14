@@ -2,22 +2,17 @@ package courier
 
 import (
 	"bufio"
-	"io/ioutil"
 	"net"
 	"net/textproto"
-	"os"
 	"testing"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
+	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
 func newSMTP(t *testing.T) (*SMTP, string) {
-	dir, err := ioutil.TempDir("", "smtp_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	dir := testlib.MustTempDir(t)
 	dinfo, err := domaininfo.New(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -93,7 +88,7 @@ func TestSMTP(t *testing.T) {
 	*smtpPort = port
 
 	s, tmpDir := newSMTP(t)
-	defer os.Remove(tmpDir)
+	defer testlib.RemoveIfOk(t, tmpDir)
 	err, _ := s.Deliver("me@me", "to@to", []byte("data"))
 	if err != nil {
 		t.Errorf("deliver failed: %v", err)
@@ -154,7 +149,7 @@ func TestSMTPErrors(t *testing.T) {
 		*smtpPort = port
 
 		s, tmpDir := newSMTP(t)
-		defer os.Remove(tmpDir)
+		defer testlib.RemoveIfOk(t, tmpDir)
 		err, _ := s.Deliver("me@me", "to@to", []byte("data"))
 		if err == nil {
 			t.Errorf("deliver not failed in case %q: %v", rs["_welcome"], err)
@@ -167,7 +162,7 @@ func TestNoMXServer(t *testing.T) {
 	fakeMX["to"] = []string{}
 
 	s, tmpDir := newSMTP(t)
-	defer os.Remove(tmpDir)
+	defer testlib.RemoveIfOk(t, tmpDir)
 	err, permanent := s.Deliver("me@me", "to@to", []byte("data"))
 	if err == nil {
 		t.Errorf("delivery worked, expected failure")

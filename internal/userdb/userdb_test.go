@@ -160,6 +160,7 @@ func TestWrite(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	fname := fmt.Sprintf("%s/userdb_test-%d", os.TempDir(), os.Getpid())
+	defer os.Remove(fname)
 	db1 := New(fname)
 	db1.AddUser("user", "passwd")
 	db1.Write()

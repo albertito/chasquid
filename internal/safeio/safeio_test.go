@@ -8,23 +8,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
-
-func mustTempDir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "safeio_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = os.Chdir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Logf("test directory: %q", dir)
-
-	return dir
-}
 
 func testWriteFile(fname string, data []byte, perm os.FileMode, ops ...FileOp) error {
 	err := WriteFile("file1", data, perm, ops...)
@@ -56,7 +42,8 @@ func testWriteFile(fname string, data []byte, perm os.FileMode, ops ...FileOp) e
 }
 
 func TestWriteFile(t *testing.T) {
-	dir := mustTempDir(t)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 
 	// Write a new file.
 	content := []byte("content 1")
@@ -75,16 +62,11 @@ func TestWriteFile(t *testing.T) {
 	if err := testWriteFile("file1", content, 0600); err != nil {
 		t.Error(err)
 	}
-
-	// Remove the test directory, but only if we have not failed. We want to
-	// keep the failed structure for debugging.
-	if !t.Failed() {
-		os.RemoveAll(dir)
-	}
 }
 
 func TestWriteFileWithOp(t *testing.T) {
-	dir := mustTempDir(t)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 
 	var opFile string
 	op := func(f string) error {
@@ -103,16 +85,11 @@ func TestWriteFileWithOp(t *testing.T) {
 	if !strings.Contains(opFile, "file1") {
 		t.Errorf("operation called with suspicious file: %s", opFile)
 	}
-
-	// Remove the test directory, but only if we have not failed. We want to
-	// keep the failed structure for debugging.
-	if !t.Failed() {
-		os.RemoveAll(dir)
-	}
 }
 
 func TestWriteFileWithFailingOp(t *testing.T) {
-	dir := mustTempDir(t)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 
 	var opFile string
 	opOK := func(f string) error {
@@ -133,12 +110,6 @@ func TestWriteFileWithFailingOp(t *testing.T) {
 
 	if _, err := os.Stat(opFile); err == nil {
 		t.Errorf("temporary file was not removed after failure (%v)", opFile)
-	}
-
-	// Remove the test directory, but only if we have not failed. We want to
-	// keep the failed structure for debugging.
-	if !t.Failed() {
-		os.RemoveAll(dir)
 	}
 }
 

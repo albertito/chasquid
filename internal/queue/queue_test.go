@@ -10,6 +10,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/set"
+	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
 // Test courier. Delivery is done by sending on a channel, so users have fine
@@ -61,9 +62,11 @@ func newTestCourier() *TestCourier {
 }
 
 func TestBasic(t *testing.T) {
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 	localC := newTestCourier()
 	remoteC := newTestCourier()
-	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
+	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
 		localC, remoteC)
 
 	localC.wg.Add(2)
@@ -116,7 +119,9 @@ func TestBasic(t *testing.T) {
 func TestDSNOnTimeout(t *testing.T) {
 	localC := newTestCourier()
 	remoteC := newTestCourier()
-	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
 		localC, remoteC)
 
 	// Insert an expired item in the queue.
@@ -155,7 +160,9 @@ func TestDSNOnTimeout(t *testing.T) {
 func TestAliases(t *testing.T) {
 	localC := newTestCourier()
 	remoteC := newTestCourier()
-	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
 		localC, remoteC)
 
 	q.aliases.AddDomain("loco")
@@ -206,7 +213,9 @@ func (c DumbCourier) Deliver(from string, to string, data []byte) (error, bool) 
 var dumbCourier = DumbCourier{}
 
 func TestFullQueue(t *testing.T) {
-	q := New("/tmp/queue_test", set.NewString(), aliases.NewResolver(),
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+	q := New(dir, set.NewString(), aliases.NewResolver(),
 		dumbCourier, dumbCourier)
 
 	// Force-insert maxQueueSize items in the queue.
@@ -246,7 +255,9 @@ func TestFullQueue(t *testing.T) {
 }
 
 func TestPipes(t *testing.T) {
-	q := New("/tmp/queue_test", set.NewString("loco"), aliases.NewResolver(),
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
 		dumbCourier, dumbCourier)
 	item := &Item{
 		Message: Message{

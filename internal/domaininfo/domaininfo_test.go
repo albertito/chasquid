@@ -1,24 +1,15 @@
 package domaininfo
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 	"time"
+
+	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
-func mustTempDir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "greylisting_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Logf("test directory: %q", dir)
-	return dir
-}
-
 func TestBasic(t *testing.T) {
-	dir := mustTempDir(t)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 	db, err := New(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -59,14 +50,11 @@ func TestBasic(t *testing.T) {
 	if db2.IncomingSecLevel("d1", SecLevel_TLS_INSECURE) {
 		t.Errorf("decrement to tls-insecure was allowed in new DB")
 	}
-
-	if !t.Failed() {
-		os.RemoveAll(dir)
-	}
 }
 
 func TestNewDomain(t *testing.T) {
-	dir := mustTempDir(t)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 	db, err := New(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -88,13 +76,11 @@ func TestNewDomain(t *testing.T) {
 			t.Errorf("domain %q not allowed (out) at %s", c.domain, c.level)
 		}
 	}
-	if !t.Failed() {
-		os.RemoveAll(dir)
-	}
 }
 
 func TestProgressions(t *testing.T) {
-	dir := mustTempDir(t)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 	db, err := New(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -125,9 +111,5 @@ func TestProgressions(t *testing.T) {
 			t.Errorf("%2d %q out attempt for %s failed: got %v, expected %v",
 				i, c.domain, c.lvl, ok, c.ok)
 		}
-	}
-
-	if !t.Failed() {
-		os.RemoveAll(dir)
 	}
 }

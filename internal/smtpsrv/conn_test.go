@@ -1,25 +1,21 @@
 package smtpsrv
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/spf"
+	"blitiri.com.ar/go/chasquid/internal/testlib"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
 func TestSecLevel(t *testing.T) {
 	// We can't simulate this externally because of the SPF record
 	// requirement, so do a narrow test on Conn.secLevelCheck.
-	tmpDir, err := ioutil.TempDir("", "chasquid_test:")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 
-	dinfo, err := domaininfo.New(tmpDir)
+	dinfo, err := domaininfo.New(dir)
 	if err != nil {
 		t.Fatalf("Failed to create domain info: %v", err)
 	}

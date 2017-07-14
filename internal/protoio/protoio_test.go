@@ -1,31 +1,15 @@
 package protoio
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/protoio/testpb"
+	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
-func mustTempDir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "safeio_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = os.Chdir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Logf("test directory: %q", dir)
-
-	return dir
-}
-
 func TestBin(t *testing.T) {
-	dir := mustTempDir(t)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 	pb := &testpb.M{"hola"}
 
 	if err := WriteMessage("f", pb, 0600); err != nil {
@@ -39,14 +23,11 @@ func TestBin(t *testing.T) {
 	if pb.Content != pb2.Content {
 		t.Errorf("content mismatch, got %q, expected %q", pb2.Content, pb.Content)
 	}
-
-	if !t.Failed() {
-		os.RemoveAll(dir)
-	}
 }
 
 func TestText(t *testing.T) {
-	dir := mustTempDir(t)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 	pb := &testpb.M{"hola"}
 
 	if err := WriteTextMessage("f", pb, 0600); err != nil {
@@ -60,14 +41,11 @@ func TestText(t *testing.T) {
 	if pb.Content != pb2.Content {
 		t.Errorf("content mismatch, got %q, expected %q", pb2.Content, pb.Content)
 	}
-
-	if !t.Failed() {
-		os.RemoveAll(dir)
-	}
 }
 
 func TestStore(t *testing.T) {
-	dir := mustTempDir(t)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 	st, err := NewStore(dir + "/store")
 	if err != nil {
 		t.Fatalf("failed to create store: %v", err)
@@ -97,9 +75,5 @@ func TestStore(t *testing.T) {
 
 	if ids, err := st.ListIDs(); len(ids) != 1 || ids[0] != "f" || err != nil {
 		t.Errorf("expected [f], got %v - %v", ids, err)
-	}
-
-	if !t.Failed() {
-		os.RemoveAll(dir)
 	}
 }

@@ -6,14 +6,13 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
 func TestProcmail(t *testing.T) {
-	dir, err := ioutil.TempDir("", "test-chasquid-courier")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(dir)
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
 
 	p := Procmail{
 		Binary:  "tee",
@@ -21,7 +20,7 @@ func TestProcmail(t *testing.T) {
 		Timeout: 1 * time.Minute,
 	}
 
-	err, _ = p.Deliver("from@x", "to@local", []byte("data"))
+	err, _ := p.Deliver("from@x", "to@local", []byte("data"))
 	if err != nil {
 		t.Fatalf("Deliver: %v", err)
 	}
