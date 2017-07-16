@@ -84,7 +84,11 @@ func TestSMTP(t *testing.T) {
 
 	// Put a non-existing host first, so we check that if the first host
 	// doesn't work, we try with the rest.
-	fakeMX["to"] = []string{"nonexistinghost", host}
+	// The host we use is invalid, to avoid having to do an actual network
+	// lookup whick makes the test more hermetic. This is a hack, ideally we
+	// would be able to override the default resolver, but Go does not
+	// implement that yet.
+	fakeMX["to"] = []string{":::", host}
 	*smtpPort = port
 
 	s, tmpDir := newSMTP(t)
