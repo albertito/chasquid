@@ -84,6 +84,13 @@ func main() {
 		tempExit("Could not get hostname: %v", err)
 	}
 
+	if *fromwhom == "<>" {
+		*fromwhom = ""
+	}
+	if *recipient == "<>" {
+		*recipient = ""
+	}
+
 	cmd(tc, 250, "LHLO %s", hostname)
 	cmd(tc, 250, "MAIL FROM:<%s>", *fromwhom)
 	cmd(tc, 250, "RCPT TO:<%s>", *recipient)
