@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"blitiri.com.ar/go/chasquid/internal/log"
+	"blitiri.com.ar/go/log"
 
 	"github.com/golang/protobuf/proto"
 )

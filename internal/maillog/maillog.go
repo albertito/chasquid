@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"blitiri.com.ar/go/chasquid/internal/log"
 	"blitiri.com.ar/go/chasquid/internal/trace"
+	"blitiri.com.ar/go/log"
 )
 
 // Global event logs.

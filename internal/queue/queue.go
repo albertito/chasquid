@@ -23,11 +23,11 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
-	"blitiri.com.ar/go/chasquid/internal/log"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/protoio"
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/trace"
+	"blitiri.com.ar/go/log"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"

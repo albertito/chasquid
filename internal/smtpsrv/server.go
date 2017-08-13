@@ -11,11 +11,11 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
-	"blitiri.com.ar/go/chasquid/internal/log"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
+	"blitiri.com.ar/go/log"
 )
 
 type Server struct {

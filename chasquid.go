@@ -15,12 +15,12 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
-	"blitiri.com.ar/go/chasquid/internal/log"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/smtpsrv"
-	"blitiri.com.ar/go/chasquid/internal/systemd"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
+	"blitiri.com.ar/go/log"
+	"blitiri.com.ar/go/systemd"
 
 	"net/http"
 	_ "net/http/pprof"

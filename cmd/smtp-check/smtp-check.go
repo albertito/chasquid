@@ -8,8 +8,8 @@ import (
 	"net"
 	"net/smtp"
 
-	"blitiri.com.ar/go/chasquid/internal/spf"
 	"blitiri.com.ar/go/chasquid/internal/tlsconst"
+	"blitiri.com.ar/go/spf"
 
 	"golang.org/x/net/idna"
 )

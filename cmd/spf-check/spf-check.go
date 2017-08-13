@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net"
 
-	"blitiri.com.ar/go/chasquid/internal/spf"
+	"blitiri.com.ar/go/spf"
 )
 
 func main() {

@@ -28,10 +28,10 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
-	"blitiri.com.ar/go/chasquid/internal/spf"
 	"blitiri.com.ar/go/chasquid/internal/tlsconst"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
+	"blitiri.com.ar/go/spf"
 )
 
 // Exported variables.

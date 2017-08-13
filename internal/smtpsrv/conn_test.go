@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
-	"blitiri.com.ar/go/chasquid/internal/spf"
 	"blitiri.com.ar/go/chasquid/internal/testlib"
 	"blitiri.com.ar/go/chasquid/internal/trace"
+	"blitiri.com.ar/go/spf"
 )
 
 func TestSecLevel(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"blitiri.com.ar/go/chasquid/internal/log"
+	"blitiri.com.ar/go/log"
 
 	nettrace "golang.org/x/net/trace"
 )
