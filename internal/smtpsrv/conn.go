@@ -158,6 +158,17 @@ func (c *Conn) Handle() {
 	defer c.tr.Finish()
 	c.tr.Debugf("Connected, mode: %s", c.mode)
 
+	if tc, ok := c.conn.(*tls.Conn); ok {
+		// For TLS connections, complete the handshake and get the state, so
+		// it can be used when we say hello below.
+		tc.Handshake()
+		cstate := tc.ConnectionState()
+		c.tlsConnState = &cstate
+		if name := c.tlsConnState.ServerName; name != "" {
+			c.hostname = name
+		}
+	}
+
 	c.tc.PrintfLine("220 %s ESMTP chasquid", c.hostname)
 
 	var cmd, params string
