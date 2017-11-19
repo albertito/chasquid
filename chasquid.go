@@ -1,3 +1,9 @@
+// chasquid is an SMTP (email) server.
+//
+// It aims to be easy to configure and maintain for a small mail server, at
+// the expense of flexibility and functionality.
+//
+// See https://blitiri.com.ar/p/chasquid for more details.
 package main
 
 import (
