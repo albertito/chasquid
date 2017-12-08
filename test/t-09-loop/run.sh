@@ -34,8 +34,8 @@ run_msmtp aliasB@srv-B < content
 
 # Wait until one of them has noticed and stopped the loop.
 while sleep 0.1; do
-	wget -q -O .data-A/vars http://localhost:1099/debug/vars
-	wget -q -O .data-B/vars http://localhost:2099/debug/vars
+	wget -q -o /dev/null -O .data-A/vars http://localhost:1099/debug/vars
+	wget -q -o /dev/null -O .data-B/vars http://localhost:2099/debug/vars
 	if grep -q '"chasquid/smtpIn/loopsDetected": 1,' .data-?/vars; then
 		break
 	fi
