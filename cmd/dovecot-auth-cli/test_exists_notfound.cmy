@@ -1,0 +1,16 @@
+
+userdb unix_listen .dovecot-userdb
+
+c = ./dovecot-auth-cli .dovecot exists username
+
+userdb -> VERSION	1	1
+userdb -> SPID	12345
+
+userdb <- VERSION	1	1
+userdb <- USER	1	username	service=smtp
+
+userdb -> NOTFOUND	1
+
+c wait 1
+
+c <- no: <nil>

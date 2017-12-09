@@ -1,0 +1,21 @@
+
+client unix_listen .dovecot-client
+
+c = ./dovecot-auth-cli .dovecot auth username password
+
+client -> VERSION	1	1
+client -> SPID	12345
+client -> CUID	12345
+client -> COOKIE	lovelycookie
+client -> MECH	PLAIN
+client -> MECH	LOGIN
+client -> DONE
+
+client <- VERSION	1	1
+client <~ CPID	
+
+client <- AUTH	1	PLAIN	service=smtp	secured	no-penalty	nologin	resp=dXNlcm5hbWUAdXNlcm5hbWUAcGFzc3dvcmQ=
+client -> OK	1
+
+c <- yes
+c wait 0

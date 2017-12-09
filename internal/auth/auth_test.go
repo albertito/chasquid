@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"blitiri.com.ar/go/chasquid/internal/dovecot"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 )
 
@@ -119,6 +120,7 @@ func check(t *testing.T, a *Authenticator, user, domain, passwd string, expect b
 
 func TestInterfaces(t *testing.T) {
 	var _ NoErrorBackend = userdb.New("/dev/null")
+	var _ Backend = dovecot.NewAuth("/dev/null", "/dev/null")
 }
 
 // Backend implementation for testing.

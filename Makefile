@@ -11,7 +11,7 @@ endif
 
 default: chasquid
 
-all: chasquid chasquid-util smtp-check spf-check mda-lmtp
+all: chasquid chasquid-util smtp-check spf-check mda-lmtp dovecot-auth-cli
 
 
 chasquid:
@@ -33,11 +33,15 @@ spf-check:
 mda-lmtp:
 	go build ${GOFLAGS} ./cmd/mda-lmtp/
 
+dovecot-auth-cli:
+	go build ${GOFLAGS} ./cmd/dovecot-auth-cli/
+
 test:
 	go test ${GOFLAGS} ./...
 	setsid -w ./test/run.sh
 	setsid -w ./cmd/chasquid-util/test.sh
 	setsid -w ./cmd/mda-lmtp/test.sh
+	setsid -w ./cmd/dovecot-auth-cli/test.sh
 
 
 install-binaries: chasquid chasquid-util smtp-check mda-lmtp
@@ -54,4 +58,5 @@ install-config-skeleton:
 	fi
 
 
-.PHONY: chasquid chasquid-util smtp-check spf-check mda-lmtp test
+.PHONY: chasquid test \
+	chasquid-util smtp-check spf-check mda-lmtp dovecot-auth-cli
