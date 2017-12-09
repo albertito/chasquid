@@ -2,19 +2,22 @@
 
 language: go
 go_import_path: blitiri.com.ar/go/chasquid
+dist: trusty
+sudo: false
 
 go:
-    - 1.7
-    - 1.8
-    - tip
-
+    - 1.7  # Debian stable.
+    - stable
+    - master
 
 # This is needed because the repository has a Makefile, so travis won't invoke
 # "go get" by default.
 install:
     - go get blitiri.com.ar/go/chasquid
     - go get blitiri.com.ar/go/chasquid/cmd/chasquid-util
-
+    - go get blitiri.com.ar/go/chasquid/cmd/mda-lmtp
+    - go get blitiri.com.ar/go/chasquid/cmd/smtp-check
+    - go get blitiri.com.ar/go/chasquid/cmd/spf-check
 
 script:
     - make all
