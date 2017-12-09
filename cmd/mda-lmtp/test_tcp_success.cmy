@@ -1,7 +1,7 @@
 
 nc tcp_listen localhost:14932
 
-mda |= ./mda-lmtp --addr=localhost:14932 -f from -d to < .data
+mda |= ./mda-lmtp --addr=localhost:14932 -f from -d to < test-email
 
 nc -> 220 Hola desde expect
 

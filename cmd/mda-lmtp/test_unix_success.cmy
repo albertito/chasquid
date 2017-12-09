@@ -2,7 +2,7 @@
 nc unix_listen .test-sock
 
 mda |= ./mda-lmtp --addr=.test-sock --addr_network=unix \
-        -f from -d to < .data
+        -f from -d to < test-email
 
 nc -> 220 Hola desde expect
 
