@@ -178,8 +178,8 @@ func (db *DB) RemoveUser(name string) bool {
 	return present
 }
 
-// HasUser returns true if the user is present, False otherwise.
-func (db *DB) HasUser(name string) bool {
+// Exists returns true if the user is present, False otherwise.
+func (db *DB) Exists(name string) bool {
 	db.mu.Lock()
 	_, present := db.db.Users[name]
 	db.mu.Unlock()

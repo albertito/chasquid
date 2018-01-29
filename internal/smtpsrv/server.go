@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
+	"blitiri.com.ar/go/chasquid/internal/auth"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
@@ -38,7 +39,8 @@ type Server struct {
 	localDomains *set.String
 
 	// User databases (per domain).
-	userDBs map[string]*userdb.DB
+	// Authenticator.
+	authr *auth.Authenticator
 
 	// Aliases resolver.
 	aliasesR *aliases.Resolver
@@ -67,7 +69,7 @@ func NewServer() *Server {
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
 		localDomains:   &set.String{},
-		userDBs:        map[string]*userdb.DB{},
+		authr:          auth.NewAuthenticator(),
 		aliasesR:       aliases.NewResolver(),
 	}
 }
@@ -95,11 +97,15 @@ func (s *Server) AddDomain(d string) {
 }
 
 func (s *Server) AddUserDB(domain string, db *userdb.DB) {
-	s.userDBs[domain] = db
+	s.authr.Register(domain, auth.WrapNoErrorBackend(db))
 }
 
 func (s *Server) AddAliasesFile(domain, f string) error {
 	return s.aliasesR.AddAliasesFile(domain, f)
+}
+
+func (s *Server) SetAuthFallback(be auth.Backend) {
+	s.authr.Fallback = be
 }
 
 func (s *Server) SetAliasesConfig(suffixSep, dropChars string) {
@@ -145,11 +151,9 @@ func (s *Server) periodicallyReload() {
 			log.Errorf("Error reloading aliases: %v", err)
 		}
 
-		for domain, udb := range s.userDBs {
-			err = udb.Reload()
-			if err != nil {
-				log.Errorf("Error reloading %q user db: %v", domain, err)
-			}
+		err = s.authr.Reload()
+		if err != nil {
+			log.Errorf("Error reloading authenticators: %v", err)
 		}
 	}
 }
@@ -219,7 +223,7 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 			mode:           mode,
 			tlsConfig:      s.tlsConfig,
 			onTLS:          mode.TLS,
-			userDBs:        s.userDBs,
+			authr:          s.authr,
 			aliasesR:       s.aliasesR,
 			localDomains:   s.localDomains,
 			dinfo:          s.dinfo,

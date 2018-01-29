@@ -30,7 +30,6 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/tlsconst"
 	"blitiri.com.ar/go/chasquid/internal/trace"
-	"blitiri.com.ar/go/chasquid/internal/userdb"
 	"blitiri.com.ar/go/spf"
 )
 
@@ -120,9 +119,9 @@ type Conn struct {
 	// Are we using TLS?
 	onTLS bool
 
-	// User databases, aliases and local domains, taken from the server at
+	// Authenticator, aliases and local domains, taken from the server at
 	// creation time.
-	userDBs      map[string]*userdb.DB
+	authr        *auth.Authenticator
 	localDomains *set.String
 	aliasesR     *aliases.Resolver
 	dinfo        *domaininfo.DB
@@ -897,7 +896,11 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 		return 535, fmt.Sprintf("error decoding AUTH response: %v", err)
 	}
 
-	if auth.Authenticate(c.userDBs[domain], user, passwd) {
+	authOk, err := c.authr.Authenticate(user, domain, passwd)
+	if err != nil {
+		c.tr.Errorf("error authenticating %q@%q: %v", user, domain, err)
+	}
+	if authOk {
 		c.authUser = user
 		c.authDomain = domain
 		c.completedAuth = true
@@ -929,11 +932,11 @@ func (c *Conn) userExists(addr string) bool {
 	// look up "user" in our databases if the domain is local, which is what
 	// we want.
 	user, domain := envelope.Split(addr)
-	udb := c.userDBs[domain]
-	if udb == nil {
-		return false
+	ok, err := c.authr.Exists(user, domain)
+	if err != nil {
+		c.tr.Errorf("error checking if user %q exists: %v", addr, err)
 	}
-	return udb.HasUser(user)
+	return ok
 }
 
 func (c *Conn) readCommand() (cmd, params string, err error) {

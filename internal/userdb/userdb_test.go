@@ -129,7 +129,7 @@ func TestWrite(t *testing.T) {
 
 	db = mustLoad(t, fname)
 	for _, name := range []string{"user1", "ñoño"} {
-		if !db.HasUser(name) {
+		if !db.Exists(name) {
 			t.Errorf("user %q not in database", name)
 		}
 		if db.db.Users[name].GetScheme() == nil {
@@ -294,12 +294,12 @@ func TestRemoveUser(t *testing.T) {
 	}
 }
 
-func TestHasUser(t *testing.T) {
+func TestExists(t *testing.T) {
 	fname := mustCreateDB(t, "")
 	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
-	if db.HasUser("unknown") {
+	if db.Exists("unknown") {
 		t.Errorf("unknown user exists")
 	}
 
@@ -307,15 +307,15 @@ func TestHasUser(t *testing.T) {
 		t.Fatalf("error adding user: %v", err)
 	}
 
-	if db.HasUser("unknown") {
+	if db.Exists("unknown") {
 		t.Errorf("unknown user exists")
 	}
 
-	if !db.HasUser("user") {
+	if !db.Exists("user") {
 		t.Errorf("known user does not exist")
 	}
 
-	if !db.HasUser("user") {
+	if !db.Exists("user") {
 		t.Errorf("known user does not exist")
 	}
 }
