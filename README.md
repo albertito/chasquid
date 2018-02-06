@@ -24,14 +24,12 @@ It's written in [Go](https://golang.org).
 * SPF checking.
 * Monitoring HTTP server, with exported variables and tracing to help
   debugging.
-
+* Using dovecot for authentication (experimental).
 
 The following are intentionally *not* implemented:
 
 * Custom email routing and transport.
 * DKIM/DMARC checking (although the post-data hook can be used for it).
-* Different backends for domain and user configuration (Dovecot authentication
-  may be implemented in the future).
 
 
 ## Status

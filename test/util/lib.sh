@@ -49,6 +49,10 @@ function add_user() {
 		>> .add_user_logs
 }
 
+function dovecot-auth-cli() {
+	go run ${TBASE}/../../cmd/dovecot-auth-cli/dovecot-auth-cli.go "$@"
+}
+
 function run_msmtp() {
 	# msmtp will check that the rc file is only user readable.
 	chmod 600 msmtprc

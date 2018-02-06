@@ -93,4 +93,6 @@ func LogConfig(c *Config) {
 	log.Infof("  Suffix separators: %s", c.SuffixSeparators)
 	log.Infof("  Drop characters: %s", c.DropCharacters)
 	log.Infof("  Mail log: %s", c.MailLogPath)
+	log.Infof("  Dovecot auth: %v (%q, %q)",
+		c.DovecotAuth, c.DovecotUserdbPath, c.DovecotClientPath)
 }

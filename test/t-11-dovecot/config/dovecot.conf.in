@@ -1,0 +1,45 @@
+base_dir = $ROOT/run/
+log_path = $ROOT/dovecot.log
+ssl = no
+
+default_internal_user = $USER
+default_login_user = $USER
+
+
+passdb {
+	driver = passwd-file
+	args = $ROOT/passwd
+}
+
+userdb {
+	driver = passwd-file
+	args = $ROOT/passwd
+}
+
+service auth {
+	unix_listener auth {
+		mode = 0666
+	}
+}
+
+# Dovecot refuses to start without protocols, so we need to give it one.
+protocols = imap
+
+service imap-login {
+	chroot =
+	inet_listener imap {
+		address = 127.0.0.1
+		port = 0
+	}
+}
+
+service anvil {
+	chroot =
+}
+
+# Turn on debugging information, to help troubleshooting issues.
+auth_verbose = yes
+auth_debug = yes
+auth_debug_passwords = yes
+auth_verbose_passwords = yes
+mail_debug = yes

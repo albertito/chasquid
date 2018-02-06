@@ -21,6 +21,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
+	"blitiri.com.ar/go/chasquid/internal/dovecot"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/smtpsrv"
@@ -94,6 +95,10 @@ func main() {
 	s.PostDataHook = "hooks/post-data"
 
 	s.SetAliasesConfig(conf.SuffixSeparators, conf.DropCharacters)
+
+	if conf.DovecotAuth {
+		loadDovecot(s, conf.DovecotUserdbPath, conf.DovecotClientPath)
+	}
 
 	// Load certificates from "certs/<directory>/{fullchain,privkey}.pem".
 	// The structure matches letsencrypt's, to make it easier for that case.
@@ -225,6 +230,22 @@ func loadDomain(name, dir string, s *smtpsrv.Server) {
 	err := s.AddAliasesFile(name, dir+"/aliases")
 	if err != nil {
 		log.Errorf("      error: %v", err)
+	}
+}
+
+func loadDovecot(s *smtpsrv.Server, userdb, client string) {
+	a := dovecot.Autodetect(userdb, client)
+	if a == nil {
+		log.Errorf("Dovecot autodetection failed, no dovecot fallback")
+		return
+	}
+
+	if a != nil {
+		s.SetAuthFallback(a)
+		log.Infof("Fallback authenticator: %v", a)
+		if err := a.Check(); err != nil {
+			log.Errorf("Failed dovecot authenticator check: %v", err)
+		}
 	}
 }
 
