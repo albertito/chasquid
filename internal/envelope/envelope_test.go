@@ -41,3 +41,29 @@ func TestDomainIn(t *testing.T) {
 		}
 	}
 }
+
+func TestAddHeader(t *testing.T) {
+	cases := []struct {
+		data, k, v, expected string
+	}{
+		{"", "Key", "Value", "Key: Value\n"},
+		{"data", "Key", "Value", "Key: Value\ndata"},
+		{"data", "Key", "Value\n", "Key: Value\ndata"},
+		{"data", "Key", "L1\nL2", "Key: L1\n\tL2\ndata"},
+		{"data", "Key", "L1\nL2\n", "Key: L1\n\tL2\ndata"},
+
+		// Degenerate cases: we don't expect to ever produce these, and the
+		// output is admittedly not nice, but they should at least not cause
+		// chasquid to crash.
+		{"data", "Key", "", "Key: \ndata"},
+		{"data", "", "", ": \ndata"},
+		{"", "", "", ": \n"},
+	}
+	for i, c := range cases {
+		got := string(AddHeader([]byte(c.data), c.k, c.v))
+		if got != c.expected {
+			t.Errorf("%d (%q -> %q): expected %q, got %q",
+				i, c.k, c.v, c.expected, got)
+		}
+	}
+}

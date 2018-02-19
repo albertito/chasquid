@@ -39,11 +39,13 @@ func DomainIn(addr string, locals *set.String) bool {
 }
 
 func AddHeader(data []byte, k, v string) []byte {
-	// If the value contains newlines, indent them properly.
-	if v[len(v)-1] == '\n' {
-		v = v[:len(v)-1]
+	if len(v) > 0 {
+		// If the value contains newlines, indent them properly.
+		if v[len(v)-1] == '\n' {
+			v = v[:len(v)-1]
+		}
+		v = strings.Replace(v, "\n", "\n\t", -1)
 	}
-	v = strings.Replace(v, "\n", "\n\t", -1)
 
 	header := []byte(fmt.Sprintf("%s: %s\n", k, v))
 	return append(header, data...)
