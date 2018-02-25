@@ -40,10 +40,6 @@ func (t *Trace) Debugf(format string, a ...interface{}) {
 		t.family, t.title, quote(fmt.Sprintf(format, a...)))
 }
 
-func (t *Trace) SetError() {
-	t.t.SetError()
-}
-
 func (t *Trace) Errorf(format string, a ...interface{}) error {
 	// Note we can't just call t.Error here, as it breaks caller logging.
 	err := fmt.Errorf(format, a...)
