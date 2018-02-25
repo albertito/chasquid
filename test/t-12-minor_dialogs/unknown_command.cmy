@@ -1,0 +1,9 @@
+
+c tcp_connect localhost:1025
+
+c <~ 220
+c -> EHLO localhost
+c <... 250 HELP
+c -> WHATISTHIS
+c <- 500 unknown command
+

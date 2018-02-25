@@ -1,0 +1,26 @@
+
+c tcp_connect localhost:1025
+
+c <~ 220
+c -> HELO localhost
+c <~ 250
+c -> MAIL FROM:<test@testy.com>
+c <~ 250
+
+c -> RCPT LALA: <>
+c <- 500 unknown command
+
+c -> RCPT TO:
+c <~ 500
+
+c -> RCPT TO:<pepe>
+c <~ 501
+
+c -> RCPT TO:<a@xn--->
+c <- 501 malformed address (IDNA conversion failed)
+
+c -> RCPT TO:<henryⅣ@testserver>
+c <- 550 recipient invalid, please check the address for typos
+
+c -> RCPT TO:<aaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaX@bbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbX>
+c <- 501 address too long

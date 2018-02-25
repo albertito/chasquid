@@ -12,6 +12,7 @@ interactive command-line tools.
 import argparse
 import os
 import re
+import ssl
 import socket
 import subprocess
 import sys
@@ -97,6 +98,19 @@ class TCPSock (Sock):
         self.has_conn.set()
 
 
+class TLSSock (Sock):
+    def __init__(self, addr):
+        host, port = addr.rsplit(":", 1)
+        Sock.__init__(self, (host, int(port)))
+        plain_sock = socket.create_connection(self.addr)
+        self.sock = ssl.wrap_socket(plain_sock)
+
+    def connect(self):
+        self.connr = self.sock.makefile(mode="r")
+        self.connw = self.sock.makefile(mode="w")
+        self.has_conn.set()
+
+
 class Interpreter (object):
     """Interpreter for chamuyero scripts."""
     def __init__(self):
@@ -172,6 +186,11 @@ class Interpreter (object):
 
             elif op == "tcp_connect":
                 sock = TCPSock(params)
+                sock.connect()
+                self.procs[proc] = sock
+
+            elif op == "tls_connect":
+                sock = TLSSock(params)
                 sock.connect()
                 self.procs[proc] = sock
 

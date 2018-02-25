@@ -1,0 +1,11 @@
+
+c tcp_connect localhost:1025
+
+c <~ 220
+c -> HELO
+c <~ 501
+c -> EHLO
+c <~ 501
+c -> HELO localhost
+c <~ 250
+

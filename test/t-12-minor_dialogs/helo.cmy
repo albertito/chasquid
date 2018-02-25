@@ -1,0 +1,9 @@
+
+c tcp_connect localhost:1025
+
+c <~ 220
+c -> HELO localhost
+c <~ 250
+c -> QUIT
+c <~ 221
+

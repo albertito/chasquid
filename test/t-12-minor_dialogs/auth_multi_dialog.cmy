@@ -1,0 +1,27 @@
+
+c tls_connect localhost:1465
+
+c <~ 220
+c -> EHLO localhost
+c <... 250 HELP
+
+c -> AUTH SOMETHINGELSE
+c <~ 534
+
+c -> AUTH PLAIN
+c <~ 334
+c -> dXNlckB0ZXN0c2VydmVyAHlalala==
+c <~ 535 error decoding AUTH response
+
+c -> AUTH PLAIN
+c <~ 334
+c -> dXNlckB0ZXN0c2VydmVyAHVzZXJAdGVzdHNlcnZlcgB3cm9uZ3Bhc3N3b3Jk
+c <~ 535 Incorrect user or password
+
+c -> AUTH PLAIN
+c <~ 334
+c -> dXNlckB0ZXN0c2VydmVyAHVzZXJAdGVzdHNlcnZlcgBzZWNyZXRwYXNzd29yZA==
+c <~ 235
+
+c -> AUTH PLAIN
+c <~ 503 You are already wearing that!

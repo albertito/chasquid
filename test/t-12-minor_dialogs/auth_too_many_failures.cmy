@@ -1,0 +1,18 @@
+
+c tls_connect localhost:1465
+
+c <~ 220
+c -> EHLO localhost
+c <... 250 HELP
+
+c -> AUTH PLAIN something
+c <~ 535
+c -> AUTH PLAIN something
+c <~ 535
+c -> AUTH PLAIN something
+c <~ 535
+c -> AUTH PLAIN something
+c <~ 535
+c -> AUTH PLAIN something
+c <~ 503 Too many attempts - go away
+

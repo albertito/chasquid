@@ -1,0 +1,20 @@
+
+c tcp_connect localhost:1025
+
+c <~ 220
+c -> HELO localhost
+c <~ 250
+c -> MAIL LALA: <>
+c <- 500 unknown command
+
+c -> MAIL FROM:
+c <~ 500
+
+c -> MAIL FROM:<pepe>
+c <~ 501
+
+c -> MAIL FROM:<a@xn--->
+c <- 501 malformed address (IDNA conversion failed)
+
+c -> MAIL FROM:<aaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaX@bbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbX>
+c <- 501 address too long
