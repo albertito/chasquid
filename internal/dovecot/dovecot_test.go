@@ -96,6 +96,14 @@ func TestAutodetect(t *testing.T) {
 	cL.Close()
 }
 
+func TestReload(t *testing.T) {
+	// Make sure Reload does not fail.
+	a := Auth{}
+	if err := a.Reload(); err != nil {
+		t.Errorf("Reload failed")
+	}
+}
+
 func mustListen(t *testing.T, path string) *net.UnixListener {
 	addr, err := net.ResolveUnixAddr("unix", path)
 	if err != nil {

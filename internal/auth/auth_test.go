@@ -269,4 +269,10 @@ func TestReload(t *testing.T) {
 		t.Errorf("unexpected reload counts: %d %d %d != 2 2 2",
 			be1.reloadCount, be2.reloadCount, fallback.reloadCount)
 	}
+
+	a2 := NewAuthenticator()
+	a2.Register("domain", WrapNoErrorBackend(userdb.New("/dev/null")))
+	if err = a2.Reload(); err != nil {
+		t.Errorf("unexpected error reloading wrapped backend: %v", err)
+	}
 }
