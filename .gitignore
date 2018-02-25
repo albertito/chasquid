@@ -13,10 +13,12 @@
 /smtp-check
 /spf-check
 /mda-lmtp
+/dovecot-auth-cli
 cmd/chasquid-util/chasquid-util
 cmd/smtp-check/smtp-check
 cmd/spf-check/spf-check
 cmd/mda-lmtp/mda-lmtp
+cmd/dovecot-auth-cli/dovecot-auth-cli
 
 # Test binary, generated during coverage tests.
 chasquid.test
