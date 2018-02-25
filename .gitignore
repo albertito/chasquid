@@ -18,6 +18,9 @@ cmd/smtp-check/smtp-check
 cmd/spf-check/spf-check
 cmd/mda-lmtp/mda-lmtp
 
+# Test binary, generated during coverage tests.
+chasquid.test
+
 # Exclude any .pem files, to prevent accidentally including test keys and
 # certificates.
 *.pem

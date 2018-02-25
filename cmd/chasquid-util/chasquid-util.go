@@ -1,4 +1,8 @@
 // chasquid-util is a command-line utility for chasquid-related operations.
+//
+// Don't include it in the coverage build.
+// +build !coverage
+
 package main
 
 import (

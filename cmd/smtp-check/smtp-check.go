@@ -1,4 +1,7 @@
 // smtp-check is a command-line too for checking SMTP setups.
+//
+// +build !coverage
+
 package main
 
 import (

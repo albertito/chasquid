@@ -1,6 +1,8 @@
 // Command line tool for playing with the SPF library.
 //
 // Not for use in production, just development and experimentation.
+// +build !coverage
+
 package main
 
 import (

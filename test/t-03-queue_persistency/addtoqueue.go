@@ -3,6 +3,9 @@
 //
 // Note that chasquid does NOT support this, we do it before starting up the
 // daemon for testing purposes only.
+//
+// +build ignore
+
 package main
 
 import (

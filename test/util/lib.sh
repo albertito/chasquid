@@ -29,6 +29,11 @@ function generate_cert() {
 }
 
 function chasquid() {
+	if [ "${COVER_DIR}" != "" ]; then
+		chasquid_cover "$@"
+		return
+	fi
+
 	# HOSTALIASES: so we "fake" hostnames.
 	# PATH: so chasquid can call test-mda without path issues.
 	# MDA_DIR: so our test-mda knows where to deliver emails.
@@ -36,6 +41,24 @@ function chasquid() {
 	PATH=${UTILDIR}:${PATH} \
 	MDA_DIR=${TBASE}/.mail \
 		go run ${RACE} ${TBASE}/../../chasquid.go "$@"
+}
+
+function chasquid_cover() {
+	# Build the coverage-enabled binary.
+	# See coverage_test.go for more details.
+	( cd ${TBASE}/../../;
+	  go test -covermode=count -coverpkg=./... -c -tags coveragebin )
+
+	# Run the coverage-enabled binary, named "chasquid.test" for hacky
+	# reasons.  See the chasquid function above for details on the
+	# environment variables.
+	HOSTALIASES=${TBASE}/hosts \
+	PATH=${UTILDIR}:${PATH} \
+	MDA_DIR=${TBASE}/.mail \
+		${TBASE}/../../chasquid.test \
+			-test.run "^TestRunMain$" \
+			-test.coverprofile="$COVER_DIR/test-`date +%s.%N`.out" \
+			"$@"
 }
 
 function add_user() {
