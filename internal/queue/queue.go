@@ -30,7 +30,6 @@ import (
 	"blitiri.com.ar/go/log"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/idna"
 )
 
@@ -479,12 +478,6 @@ func nextDelay(createdAt time.Time) time.Duration {
 	// exact same time after a restart.
 	delay += time.Duration(rand.Intn(60)) * time.Second
 	return delay
-}
-
-func timestampNow() *timestamp.Timestamp {
-	now := time.Now()
-	ts, _ := ptypes.TimestampProto(now)
-	return ts
 }
 
 func mustIDNAToASCII(s string) string {

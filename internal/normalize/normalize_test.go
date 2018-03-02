@@ -78,11 +78,10 @@ func TestAddr(t *testing.T) {
 		if err != nil {
 			t.Errorf("%q error: %v", c.user, err)
 		}
-
 	}
 
 	invalid := []string{
-		"á é@i", "henry\u2163@throne",
+		"á é@i", "henry\u2163@throne", "a@xn---",
 	}
 	for _, u := range invalid {
 		nu, err := Addr(u)
@@ -91,6 +90,41 @@ func TestAddr(t *testing.T) {
 		}
 		if nu != u {
 			t.Errorf("%+q failed norm, but returned %+q", u, nu)
+		}
+	}
+}
+
+func TestDomainToUnicode(t *testing.T) {
+	valid := []struct{ domain, expected string }{
+		{"<>", "<>"},
+		{"a@b", "a@b"},
+		{"a@Ñ", "a@ñ"},
+		{"xn--lca@xn--lca", "xn--lca@ñ"}, // Punycode is for 'Ñ'.
+		{"a@e\u0301", "a@é"},             // Transform to NFC form.
+
+		// Degenerate case, we don't expect to ever produce this; at least
+		// check it does not crash.
+		{"", "@"},
+	}
+	for _, c := range valid {
+		got, err := DomainToUnicode(c.domain)
+		if got != c.expected {
+			t.Errorf("DomainToUnicode(%q) = %q, expected %q",
+				c.domain, got, c.expected)
+		}
+		if err != nil {
+			t.Errorf("DomainToUnicode(%q) error: %v", c.domain, err)
+		}
+	}
+
+	invalid := []string{"a@xn---", "a@xn--xyz-ñ"}
+	for _, u := range invalid {
+		got, err := DomainToUnicode(u)
+		if err == nil {
+			t.Errorf("expected DomainToUnicode(%+q) to fail, but did not", u)
+		}
+		if got != u {
+			t.Errorf("%+q failed norm, but returned %+q", u, got)
 		}
 	}
 }

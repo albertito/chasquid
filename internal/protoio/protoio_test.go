@@ -1,6 +1,7 @@
 package protoio
 
 import (
+	"os"
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/protoio/testpb"
@@ -71,6 +72,15 @@ func TestStore(t *testing.T) {
 
 	if ok, err := st.Get("notexists", pb2); err != nil || ok {
 		t.Errorf("Get(notexists): %v - %v", ok, err)
+	}
+
+	// Add an extraneous file, which ListIDs should ignore.
+	fd, err := os.Create(dir + "/store/" + "somefile")
+	if fd != nil {
+		fd.Close()
+	}
+	if err != nil {
+		t.Errorf("failed to create extraneous file: %v", err)
 	}
 
 	if ids, err := st.ListIDs(); len(ids) != 1 || ids[0] != "f" || err != nil {

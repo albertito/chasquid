@@ -5,6 +5,10 @@ set -e
 
 init
 
+if ! chasquid --version > /dev/null; then
+	fail "chasquid --version failed"
+fi
+
 # This should fail, as it has no certificates.
 rm -f config/certs/testserver/*.pem
 if chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config; then

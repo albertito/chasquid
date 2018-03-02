@@ -1,11 +1,13 @@
 package config
 
 import (
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/testlib"
+	"blitiri.com.ar/go/log"
 )
 
 func mustCreateConfig(t *testing.T, contents string) (string, string) {
@@ -50,6 +52,7 @@ func TestEmptyConfig(t *testing.T) {
 		t.Errorf("monitoring address is set: %v", c.MonitoringAddress)
 	}
 
+	testLogConfig(c)
 }
 
 func TestFullConfig(t *testing.T) {
@@ -85,6 +88,8 @@ func TestFullConfig(t *testing.T) {
 	if c.MonitoringAddress != ":1111" {
 		t.Errorf("monitoring address %q != ':1111;", c.MonitoringAddress)
 	}
+
+	testLogConfig(c)
 }
 
 func TestErrorLoading(t *testing.T) {
@@ -104,3 +109,17 @@ func TestBrokenConfig(t *testing.T) {
 		t.Fatalf("loaded an invalid config: %v", c)
 	}
 }
+
+// Run LogConfig, overriding the default logger first. This exercises the
+// code, we don't yet validate the output, but it is an useful sanity check.
+func testLogConfig(c *Config) {
+	l := log.New(nopWCloser{ioutil.Discard})
+	log.Default = l
+	LogConfig(c)
+}
+
+type nopWCloser struct {
+	io.Writer
+}
+
+func (nopWCloser) Close() error { return nil }

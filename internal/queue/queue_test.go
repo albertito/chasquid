@@ -141,6 +141,9 @@ func TestDSNOnTimeout(t *testing.T) {
 		t.Errorf("failed to write item: %v", err)
 	}
 
+	// Exercise DumpString while at it.
+	q.DumpString()
+
 	// Launch the sending loop, expect 1 local delivery (the DSN).
 	localC.wg.Add(1)
 	go item.SendLoop(q)
@@ -294,5 +297,45 @@ func TestNextDelay(t *testing.T) {
 					c.since, c.min, max, delay)
 			}
 		}
+	}
+}
+
+func TestSerialization(t *testing.T) {
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+
+	// Save an item in the queue directory.
+	item := &Item{
+		Message: Message{
+			ID:   <-newID,
+			From: fmt.Sprintf("from@loco"),
+			Rcpt: []*Recipient{
+				{"to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to"}},
+			Data: []byte("data"),
+		},
+		CreatedAt: time.Now().Add(-1 * time.Hour),
+	}
+	err := item.WriteTo(dir)
+	if err != nil {
+		t.Errorf("failed to write item: %v", err)
+	}
+
+	// Create the queue; should load the
+	remoteC := newTestCourier()
+	remoteC.wg.Add(1)
+	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
+		dumbCourier, remoteC)
+	q.Load()
+
+	// Launch the sending loop, expect 1 remote delivery for the item we saved.
+	remoteC.wg.Wait()
+
+	req := remoteC.reqFor["to@to"]
+	if req == nil {
+		t.Fatal("email not delivered")
+	}
+
+	if req.from != "from@loco" || req.to != "to@to" {
+		t.Errorf("wrong email: %v", req)
 	}
 }
