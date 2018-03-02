@@ -11,7 +11,7 @@ import (
 func TestBin(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	pb := &testpb.M{"hola"}
+	pb := &testpb.M{Content: "hola"}
 
 	if err := WriteMessage("f", pb, 0600); err != nil {
 		t.Error(err)
@@ -29,7 +29,7 @@ func TestBin(t *testing.T) {
 func TestText(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	pb := &testpb.M{"hola"}
+	pb := &testpb.M{Content: "hola"}
 
 	if err := WriteTextMessage("f", pb, 0600); err != nil {
 		t.Error(err)
@@ -56,7 +56,7 @@ func TestStore(t *testing.T) {
 		t.Errorf("expected no ids, got %v - %v", ids, err)
 	}
 
-	pb := &testpb.M{"hola"}
+	pb := &testpb.M{Content: "hola"}
 
 	if err := st.Put("f", pb); err != nil {
 		t.Error(err)
