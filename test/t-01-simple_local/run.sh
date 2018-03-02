@@ -5,6 +5,8 @@ set -e
 
 init
 
+mkdir -p .logs
+
 if ! chasquid --version > /dev/null; then
 	fail "chasquid --version failed"
 fi
@@ -19,7 +21,6 @@ generate_certs_for testserver
 add_user user@testserver secretpassword
 add_user someone@testserver secretpassword
 
-mkdir -p .logs
 chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025
 
