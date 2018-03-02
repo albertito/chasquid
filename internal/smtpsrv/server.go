@@ -3,6 +3,7 @@ package smtpsrv
 
 import (
 	"crypto/tls"
+	"flag"
 	"net"
 	"net/http"
 	"net/textproto"
@@ -17,6 +18,14 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 	"blitiri.com.ar/go/log"
+)
+
+var (
+	// Reload frequency.
+	// We should consider making this a proper option if there's interest in
+	// changing it, but until then, it's a test-only flag for simplicity.
+	reloadEvery = flag.Duration("testing__reload_every", 30*time.Second,
+		"how often to reload, ONLY FOR TESTING")
 )
 
 type Server struct {
@@ -145,7 +154,7 @@ func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
 // PeriodicallyReload some of the server's information, such as aliases and
 // the user databases.
 func (s *Server) periodicallyReload() {
-	for range time.Tick(30 * time.Second) {
+	for range time.Tick(*reloadEvery) {
 		err := s.aliasesR.Reload()
 		if err != nil {
 			log.Errorf("Error reloading aliases: %v", err)
