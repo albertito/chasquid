@@ -32,6 +32,17 @@ wait_until_ready 2025
 
 run_msmtp aliasB@srv-B < content
 
+# Get some of the debugging pages, for troubleshooting, and to make sure they
+# work reasonably well.
+wget -q -o /dev/null -O .data-A/dbg-root http://localhost:1099/ \
+	|| fail "failed to fetch /"
+wget -q -o /dev/null -O .data-A/dbg-flags http://localhost:1099/debug/flags \
+	|| fail "failed to fetch /debug/flags"
+wget -q -o /dev/null -O .data-A/dbg-queue http://localhost:1099/debug/queue \
+	|| fail "failed to fetch /debug/queue"
+wget -q -o /dev/null -O .data-A/dbg-root http://localhost:1099/404 \
+	&& fail "fetch /404 worked, should have failed"
+
 # Wait until one of them has noticed and stopped the loop.
 while sleep 0.1; do
 	wget -q -o /dev/null -O .data-A/vars http://localhost:1099/debug/vars
