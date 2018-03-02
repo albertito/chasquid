@@ -5,6 +5,10 @@ ssl = no
 default_internal_user = $USER
 default_login_user = $USER
 
+# Before auth checks, rename "u@d" to "u-AT-d". This exercises that chasquid
+# handles well the case where the returned user information does not match the
+# requested user.
+auth_username_format = "%n-AT-%d"
 
 passdb {
 	driver = passwd-file

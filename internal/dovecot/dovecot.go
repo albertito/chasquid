@@ -118,7 +118,7 @@ func (a *Auth) Exists(user string) (bool, error) {
 	resp, err := conn.ReadLine()
 	if err != nil {
 		return false, fmt.Errorf("error receiving response: %v", err)
-	} else if strings.HasPrefix(resp, "USER\t1\t"+user+"\t") {
+	} else if strings.HasPrefix(resp, "USER\t1\t") {
 		return true, nil
 	} else if strings.HasPrefix(resp, "NOTFOUND\t") {
 		return false, nil
