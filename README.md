@@ -55,7 +55,7 @@ still change in backwards-incompatible way, including the configuration format.
 It should be rare and will be avoided if possible.
 
 You can subscribe to the mailing list to get notifications of such changes,
-and they are also documented in the [UPGRADING](UPGRADING.md).
+which are also documented in the [UPGRADING](UPGRADING.md) file.
 
 
 ## Documentation

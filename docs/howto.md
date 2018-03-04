@@ -10,13 +10,13 @@ While a lot of the contents are generic, for simplicity it will use:
  - [Debian] \(testing\) as base operating system ([Ubuntu] also works)
  - [Dovecot] for [POP3]+[IMAP]
  - [chasquid] for [SMTP]
- - [Let's Encrypt](letsencrypt) for [TLS] certificates
+ - [Let's Encrypt] for [TLS] certificates
 
 [Debian]: https://debian.org
 [Ubuntu]: https://ubuntu.com
 [Dovecot]: https://dovecot.org
 [chasquid]: https://blitiri.com.ar/p/chasquid
-[letsencrypt]: https://letsencrypt.org
+[Let's Encrypt]: https://letsencrypt.org
 [POP3]: https://en.wikipedia.org/wiki/Post_Office_Protocol
 [IMAP]: https://en.wikipedia.org/wiki/Internet_Message_Access_Protocol
 [SMTP]: https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
