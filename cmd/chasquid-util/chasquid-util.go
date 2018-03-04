@@ -56,12 +56,12 @@ func main() {
 	}
 
 	commands := map[string]func(){
-		"user-add":        UserAdd,
-		"user-remove":     UserRemove,
-		"authenticate":    Authenticate,
-		"check-userdb":    CheckUserDB,
-		"aliases-resolve": AliasesResolve,
-		"print-config":    PrintConfig,
+		"user-add":        userAdd,
+		"user-remove":     userRemove,
+		"authenticate":    authenticate,
+		"check-userdb":    checkUserDB,
+		"aliases-resolve": aliasesResolve,
+		"print-config":    printConfig,
 	}
 
 	for cmd, f := range commands {
@@ -71,6 +71,7 @@ func main() {
 	}
 }
 
+// Fatalf prints the given message, then exits the program with an error code.
 func Fatalf(s string, arg ...interface{}) {
 	fmt.Printf(s+"\n", arg...)
 	os.Exit(1)
@@ -109,7 +110,7 @@ func userDBFromArgs(create bool) (string, string, *userdb.DB) {
 }
 
 // chasquid-util check-userdb <domain>
-func CheckUserDB() {
+func checkUserDB() {
 	_, err := userdb.Load(userDBForDomain(""))
 	if err != nil {
 		Fatalf("Error loading database: %v", err)
@@ -119,7 +120,7 @@ func CheckUserDB() {
 }
 
 // chasquid-util user-add <username> [--password=<password>]
-func UserAdd() {
+func userAdd() {
 	user, _, db := userDBFromArgs(true)
 	password := getPassword()
 
@@ -137,7 +138,7 @@ func UserAdd() {
 }
 
 // chasquid-util authenticate <username> [--password=<password>]
-func Authenticate() {
+func authenticate() {
 	user, _, db := userDBFromArgs(false)
 
 	password := getPassword()
@@ -177,7 +178,7 @@ func getPassword() string {
 }
 
 // chasquid-util user-remove <username>
-func UserRemove() {
+func userRemove() {
 	user, _, db := userDBFromArgs(false)
 
 	present := db.RemoveUser(user)
@@ -194,7 +195,7 @@ func UserRemove() {
 }
 
 // chasquid-util aliases-resolve <address>
-func AliasesResolve() {
+func aliasesResolve() {
 	conf, err := config.Load(configDir + "/chasquid.conf")
 	if err != nil {
 		Fatalf("Error reading config")
@@ -238,7 +239,7 @@ func AliasesResolve() {
 }
 
 // chasquid-util print-config
-func PrintConfig() {
+func printConfig() {
 	conf, err := config.Load(configDir + "/chasquid.conf")
 	if err != nil {
 		Fatalf("Error reading config")

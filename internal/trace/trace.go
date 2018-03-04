@@ -10,12 +10,14 @@ import (
 	nettrace "golang.org/x/net/trace"
 )
 
+// A Trace represents an active request.
 type Trace struct {
 	family string
 	title  string
 	t      nettrace.Trace
 }
 
+// New trace.
 func New(family, title string) *Trace {
 	t := &Trace{family, title, nettrace.New(family, title)}
 
@@ -26,6 +28,7 @@ func New(family, title string) *Trace {
 	return t
 }
 
+// Printf adds this message to the trace's log.
 func (t *Trace) Printf(format string, a ...interface{}) {
 	t.t.LazyPrintf(format, a...)
 
@@ -33,6 +36,7 @@ func (t *Trace) Printf(format string, a ...interface{}) {
 		quote(fmt.Sprintf(format, a...)))
 }
 
+// Debugf adds this message to the trace's log, with a debugging level.
 func (t *Trace) Debugf(format string, a ...interface{}) {
 	t.t.LazyPrintf(format, a...)
 
@@ -40,6 +44,7 @@ func (t *Trace) Debugf(format string, a ...interface{}) {
 		t.family, t.title, quote(fmt.Sprintf(format, a...)))
 }
 
+// Errorf adds this message to the trace's log, with an error level.
 func (t *Trace) Errorf(format string, a ...interface{}) error {
 	// Note we can't just call t.Error here, as it breaks caller logging.
 	err := fmt.Errorf(format, a...)
@@ -51,6 +56,8 @@ func (t *Trace) Errorf(format string, a ...interface{}) error {
 	return err
 }
 
+// Error marks the trace as having seen an error, and also logs it to the
+// trace's log.
 func (t *Trace) Error(err error) error {
 	t.t.SetError()
 	t.t.LazyPrintf("error: %v", err)
@@ -61,20 +68,24 @@ func (t *Trace) Error(err error) error {
 	return err
 }
 
+// Finish the trace. It should not be changed after this is called.
 func (t *Trace) Finish() {
 	t.t.Finish()
 }
 
+// EventLog is used for tracing long-lived objects.
 type EventLog struct {
 	family string
 	title  string
 	e      nettrace.EventLog
 }
 
+// NewEventLog returns a new EventLog.
 func NewEventLog(family, title string) *EventLog {
 	return &EventLog{family, title, nettrace.NewEventLog(family, title)}
 }
 
+// Printf adds the message to the EventLog.
 func (e *EventLog) Printf(format string, a ...interface{}) {
 	e.e.Printf(format, a...)
 
@@ -82,6 +93,7 @@ func (e *EventLog) Printf(format string, a ...interface{}) {
 		quote(fmt.Sprintf(format, a...)))
 }
 
+// Debugf adds the message to the EventLog, with a debugging level.
 func (e *EventLog) Debugf(format string, a ...interface{}) {
 	e.e.Printf(format, a...)
 
@@ -89,6 +101,7 @@ func (e *EventLog) Debugf(format string, a ...interface{}) {
 		quote(fmt.Sprintf(format, a...)))
 }
 
+// Errorf adds the message to the EventLog, with an error level.
 func (e *EventLog) Errorf(format string, a ...interface{}) error {
 	err := fmt.Errorf(format, a...)
 	e.e.Errorf("error: %v", err)

@@ -28,6 +28,7 @@ var (
 		"how often to reload, ONLY FOR TESTING")
 )
 
+// Server represents an SMTP server instance.
 type Server struct {
 	// Main hostname, used for display only.
 	Hostname string
@@ -70,6 +71,7 @@ type Server struct {
 	PostDataHook string
 }
 
+// NewServer returns a new empty Server.
 func NewServer() *Server {
 	return &Server{
 		addrs:          map[SocketMode][]string{},
@@ -83,6 +85,7 @@ func NewServer() *Server {
 	}
 }
 
+// AddCerts (TLS) to the server.
 func (s *Server) AddCerts(certPath, keyPath string) error {
 	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
@@ -92,36 +95,44 @@ func (s *Server) AddCerts(certPath, keyPath string) error {
 	return nil
 }
 
+// AddAddr adds an address for the server to listen on.
 func (s *Server) AddAddr(a string, m SocketMode) {
 	s.addrs[m] = append(s.addrs[m], a)
 }
 
+// AddListeners adds listeners for the server to listen on.
 func (s *Server) AddListeners(ls []net.Listener, m SocketMode) {
 	s.listeners[m] = append(s.listeners[m], ls...)
 }
 
+// AddDomain adds a local domain to the server.
 func (s *Server) AddDomain(d string) {
 	s.localDomains.Add(d)
 	s.aliasesR.AddDomain(d)
 }
 
+// AddUserDB adds a userdb.DB instance as backend for the domain.
 func (s *Server) AddUserDB(domain string, db *userdb.DB) {
 	s.authr.Register(domain, auth.WrapNoErrorBackend(db))
 }
 
+// AddAliasesFile adds an aliases file for the given domain.
 func (s *Server) AddAliasesFile(domain, f string) error {
 	return s.aliasesR.AddAliasesFile(domain, f)
 }
 
+// SetAuthFallback sets the authentication backend to use as fallback.
 func (s *Server) SetAuthFallback(be auth.Backend) {
 	s.authr.Fallback = be
 }
 
+// SetAliasesConfig sets the aliases configuration options.
 func (s *Server) SetAliasesConfig(suffixSep, dropChars string) {
 	s.aliasesR.SuffixSep = suffixSep
 	s.aliasesR.DropChars = dropChars
 }
 
+// InitDomainInfo initializes the domain info database.
 func (s *Server) InitDomainInfo(dir string) *domaininfo.DB {
 	var err error
 	s.dinfo, err = domaininfo.New(dir)
@@ -137,6 +148,7 @@ func (s *Server) InitDomainInfo(dir string) *domaininfo.DB {
 	return s.dinfo
 }
 
+// InitQueue initializes the queue.
 func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
 	q := queue.New(path, s.localDomains, s.aliasesR, localC, remoteC)
 	err := q.Load()
@@ -151,7 +163,7 @@ func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
 		})
 }
 
-// PeriodicallyReload some of the server's information, such as aliases and
+// periodicallyReload some of the server's information, such as aliases and
 // the user databases.
 func (s *Server) periodicallyReload() {
 	for range time.Tick(*reloadEvery) {
@@ -167,6 +179,8 @@ func (s *Server) periodicallyReload() {
 	}
 }
 
+// ListenAndServe on the addresses and listeners that were previously added.
+// This function will not return.
 func (s *Server) ListenAndServe() {
 	if len(s.tlsConfig.Certificates) == 0 {
 		// chasquid assumes there's at least one valid certificate (for things

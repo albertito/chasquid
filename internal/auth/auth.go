@@ -13,16 +13,16 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 )
 
-// Interface for authentication backends.
+// Backend is the common interface for all authentication backends.
 type Backend interface {
 	Authenticate(user, password string) (bool, error)
 	Exists(user string) (bool, error)
 	Reload() error
 }
 
-// Interface for authentication backends that don't need to emit errors.
-// This allows backends to avoid unnecessary complexity, in exchange for a bit
-// more here.
+// NoErrorBackend is the interface for authentication backends that don't need
+// to emit errors.  This allows backends to avoid unnecessary complexity, in
+// exchange for a bit more here.
 // They can be converted to normal Backend using WrapNoErrorBackend (defined
 // below).
 type NoErrorBackend interface {
@@ -31,6 +31,8 @@ type NoErrorBackend interface {
 	Reload() error
 }
 
+// Authenticator tracks the backends for each domain, and allows callers to
+// query them with a more practical API.
 type Authenticator struct {
 	// Registered backends, map of domain (string) -> Backend.
 	// Backend operations will _not_ include the domain in the username.
@@ -48,6 +50,7 @@ type Authenticator struct {
 	AuthDuration time.Duration
 }
 
+// NewAuthenticator returns a new Authenticator with no backends.
 func NewAuthenticator() *Authenticator {
 	return &Authenticator{
 		backends:     map[string]Backend{},
@@ -55,6 +58,7 @@ func NewAuthenticator() *Authenticator {
 	}
 }
 
+// Register a backend to use for the given domain.
 func (a *Authenticator) Register(domain string, be Backend) {
 	a.backends[domain] = be
 }
@@ -87,6 +91,7 @@ func (a *Authenticator) Authenticate(user, domain, password string) (bool, error
 	return false, nil
 }
 
+// Exists checks that user@domain exists.
 func (a *Authenticator) Exists(user, domain string) (bool, error) {
 	if be, ok := a.backends[domain]; ok {
 		ok, err := be.Exists(user)

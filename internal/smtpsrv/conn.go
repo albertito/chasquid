@@ -52,7 +52,7 @@ var (
 	disableSPFForTesting = false
 )
 
-// Mode for a socket (listening or connection).
+// SocketMode represents the mode for a socket (listening or connection).
 // We keep them distinct, as policies can differ between them.
 type SocketMode struct {
 	// Is this mode submission?
@@ -81,7 +81,7 @@ var (
 	ModeSubmissionTLS = SocketMode{IsSubmission: true, TLS: true}
 )
 
-// Incoming SMTP connection.
+// Conn represents an incoming SMTP connection.
 type Conn struct {
 	// Main hostname, used for display only.
 	hostname string
@@ -146,10 +146,13 @@ type Conn struct {
 	commandTimeout time.Duration
 }
 
+// Close the connection.
 func (c *Conn) Close() {
 	c.conn.Close()
 }
 
+// Handle implements the main protocol loop (reading commands, sending
+// replies).
 func (c *Conn) Handle() {
 	defer c.Close()
 
@@ -265,6 +268,7 @@ loop:
 	}
 }
 
+// HELO SMTP command handler.
 func (c *Conn) HELO(params string) (code int, msg string) {
 	if len(strings.TrimSpace(params)) == 0 {
 		return 501, "Invisible customers are not welcome!"
@@ -282,6 +286,7 @@ func (c *Conn) HELO(params string) (code int, msg string) {
 	return 250, msg
 }
 
+// EHLO SMTP command handler.
 func (c *Conn) EHLO(params string) (code int, msg string) {
 	if len(strings.TrimSpace(params)) == 0 {
 		return 501, "Invisible customers are not welcome!"
@@ -303,10 +308,12 @@ func (c *Conn) EHLO(params string) (code int, msg string) {
 	return 250, buf.String()
 }
 
+// HELP SMTP command handler.
 func (c *Conn) HELP(params string) (code int, msg string) {
 	return 214, "hoy por ti, mañana por mi"
 }
 
+// RSET SMTP command handler.
 func (c *Conn) RSET(params string) (code int, msg string) {
 	c.resetEnvelope()
 
@@ -319,6 +326,7 @@ func (c *Conn) RSET(params string) (code int, msg string) {
 	return 250, msgs[rand.Int()%len(msgs)]
 }
 
+// VRFY SMTP command handler.
 func (c *Conn) VRFY(params string) (code int, msg string) {
 	// 252 can be used for cases like ours, when we don't really want to
 	// confirm or deny anything.
@@ -326,6 +334,7 @@ func (c *Conn) VRFY(params string) (code int, msg string) {
 	return 252, "You have a strange feeling for a moment, then it passes."
 }
 
+// EXPN SMTP command handler.
 func (c *Conn) EXPN(params string) (code int, msg string) {
 	// 252 can be used for cases like ours, when we don't really want to
 	// confirm or deny anything.
@@ -333,10 +342,12 @@ func (c *Conn) EXPN(params string) (code int, msg string) {
 	return 252, "You feel disoriented for a moment."
 }
 
+// NOOP SMTP command handler.
 func (c *Conn) NOOP(params string) (code int, msg string) {
 	return 250, "You hear a faint typing noise."
 }
 
+// MAIL SMTP command handler.
 func (c *Conn) MAIL(params string) (code int, msg string) {
 	// params should be: "FROM:<name@host>", and possibly followed by
 	// options such as "BODY=8BITMIME" (which we ignore).
@@ -466,6 +477,7 @@ func (c *Conn) secLevelCheck(addr string) bool {
 	return ok
 }
 
+// RCPT SMTP command handler.
 func (c *Conn) RCPT(params string) (code int, msg string) {
 	// params should be: "TO:<name@host>", and possibly followed by options
 	// such as "NOTIFY=SUCCESS,DELAY" (which we ignore).
@@ -531,6 +543,7 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 	return 250, "You have an eerie feeling..."
 }
 
+// DATA SMTP command handler.
 func (c *Conn) DATA(params string) (code int, msg string) {
 	if c.ehloAddress == "" {
 		return 503, "Invisible customers are not welcome!"
@@ -796,6 +809,7 @@ func boolToStr(b bool) string {
 	return "0"
 }
 
+// STARTTLS SMTP command handler.
 func (c *Conn) STARTTLS(params string) (code int, msg string) {
 	if c.onTLS {
 		return 503, "You are already wearing that!"
@@ -840,6 +854,7 @@ func (c *Conn) STARTTLS(params string) (code int, msg string) {
 	return 0, ""
 }
 
+// AUTH SMTP command handler.
 func (c *Conn) AUTH(params string) (code int, msg string) {
 	if !c.onTLS {
 		return 503, "You feel vulnerable"

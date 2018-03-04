@@ -146,6 +146,7 @@ func (q *Queue) Load() error {
 	return nil
 }
 
+// Len returns the number of elements in the queue.
 func (q *Queue) Len() int {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -253,7 +254,7 @@ func (q *Queue) DumpString() string {
 	return s
 }
 
-// An item in the queue.
+// An Item in the queue.
 type Item struct {
 	// Base the item on the protobuf message.
 	// We will use this for serialization, so any fields below are NOT
@@ -267,6 +268,7 @@ type Item struct {
 	CreatedAt time.Time
 }
 
+// ItemFromFile loads an item from the given file.
 func ItemFromFile(fname string) (*Item, error) {
 	item := &Item{}
 	err := protoio.ReadTextMessage(fname, &item.Message)
@@ -278,6 +280,7 @@ func ItemFromFile(fname string) (*Item, error) {
 	return item, err
 }
 
+// WriteTo saves an item to the given directory.
 func (item *Item) WriteTo(dir string) error {
 	item.Lock()
 	defer item.Unlock()
@@ -294,6 +297,7 @@ func (item *Item) WriteTo(dir string) error {
 	return protoio.WriteTextMessage(path, &item.Message, 0600)
 }
 
+// SendLoop repeatedly attempts to send the item.
 func (item *Item) SendLoop(q *Queue) {
 	tr := trace.New("Queue.SendLoop", item.ID)
 	defer tr.Finish()

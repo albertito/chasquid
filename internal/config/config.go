@@ -81,6 +81,7 @@ func Load(path string) (*Config, error) {
 	return c, nil
 }
 
+// LogConfig logs the given configuration, in a human-friendly way.
 func LogConfig(c *Config) {
 	log.Infof("Configuration:")
 	log.Infof("  Hostname: %q", c.Hostname)

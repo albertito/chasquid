@@ -72,6 +72,7 @@ type Recipient struct {
 	Type RType
 }
 
+// RType represents a recipient type, see the contants below for valid values.
 type RType string
 
 // Valid recipient types.
@@ -81,6 +82,8 @@ const (
 )
 
 var (
+	// ErrRecursionLimitExceeded is returned when the resolving lookup
+	// exceeded the recursion limit. Usually caused by aliases loops.
 	ErrRecursionLimitExceeded = fmt.Errorf("recursion limit exceeded")
 
 	// How many levels of recursions we allow during lookups.
@@ -109,6 +112,7 @@ type Resolver struct {
 	mu sync.Mutex
 }
 
+// NewResolver returns a new, empty Resolver.
 func NewResolver() *Resolver {
 	return &Resolver{
 		files:   map[string][]string{},
@@ -117,6 +121,8 @@ func NewResolver() *Resolver {
 	}
 }
 
+// Resolve the given address, returning the list of corresponding recipients
+// (if any).
 func (v *Resolver) Resolve(addr string) ([]Recipient, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
@@ -184,14 +190,17 @@ func (v *Resolver) cleanIfLocal(addr string) string {
 	return user + "@" + domain
 }
 
+// AddDomain to the resolver, registering its existence.
 func (v *Resolver) AddDomain(domain string) {
 	v.mu.Lock()
 	v.domains[domain] = true
 	v.mu.Unlock()
 }
 
+// AddAliasesFile to the resolver. The file will be parsed, and an error
+// returned if it does not exist or parse correctly.
 func (v *Resolver) AddAliasesFile(domain, path string) error {
-	// We inconditionally add the domain and file on our list.
+	// We unconditionally add the domain and file on our list.
 	// Even if the file does not exist now, it may later. This makes it be
 	// consider when doing Reload.
 	// Adding it to the domains mean that we will do drop character and suffix
@@ -219,10 +228,13 @@ func (v *Resolver) AddAliasesFile(domain, path string) error {
 	return nil
 }
 
+// AddAliasForTesting adds an alias to the resolver, for testing purposes.
+// Not for use in production code.
 func (v *Resolver) AddAliasForTesting(addr, rcpt string, rType RType) {
 	v.aliases[addr] = append(v.aliases[addr], Recipient{rcpt, rType})
 }
 
+// Reload aliases files for all known domains.
 func (v *Resolver) Reload() error {
 	newAliases := map[string][]Recipient{}
 

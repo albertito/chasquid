@@ -9,7 +9,7 @@ import (
 	"syscall"
 )
 
-// Type FileOp represents an operation on a file (passed by its name).
+// FileOp represents an operation on a file (passed by its name).
 type FileOp func(fname string) error
 
 // WriteFile writes data to a file named by filename, atomically.

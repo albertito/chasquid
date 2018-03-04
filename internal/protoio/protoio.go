@@ -72,10 +72,12 @@ func (s *Store) idToFname(id string) string {
 	return s.dir + "/" + storeIDPrefix + url.QueryEscape(id)
 }
 
+// Put a message into the store.
 func (s *Store) Put(id string, m proto.Message) error {
 	return WriteTextMessage(s.idToFname(id), m, 0660)
 }
 
+// Get a message from the store.
 func (s *Store) Get(id string, m proto.Message) (bool, error) {
 	err := ReadTextMessage(s.idToFname(id), m)
 	if os.IsNotExist(err) {
@@ -84,6 +86,7 @@ func (s *Store) Get(id string, m proto.Message) (bool, error) {
 	return err == nil, err
 }
 
+// ListIDs in the store.
 func (s *Store) ListIDs() ([]string, error) {
 	ids := []string{}
 

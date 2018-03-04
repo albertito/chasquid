@@ -19,16 +19,19 @@ func Split(addr string) (string, string) {
 	return ps[0], ps[1]
 }
 
+// UserOf user@domain returns user.
 func UserOf(addr string) string {
 	user, _ := Split(addr)
 	return user
 }
 
+// DomainOf user@domain returns domain.
 func DomainOf(addr string) string {
 	_, domain := Split(addr)
 	return domain
 }
 
+// DomainIn checks that the domain of the address is on the given set.
 func DomainIn(addr string, locals *set.String) bool {
 	domain := DomainOf(addr)
 	if domain == "" {
@@ -38,6 +41,7 @@ func DomainIn(addr string, locals *set.String) bool {
 	return locals.Has(domain)
 }
 
+// AddHeader adds (prepends) a MIME header to the message.
 func AddHeader(data []byte, k, v string) []byte {
 	if len(v) > 0 {
 		// If the value contains newlines, indent them properly.

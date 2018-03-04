@@ -13,6 +13,7 @@ import (
 // Command to generate domaininfo.pb.go.
 //go:generate protoc --go_out=. domaininfo.proto
 
+// DB represents the persistent domain information database.
 type DB struct {
 	// Persistent store with the list of domains we know.
 	store *protoio.Store
@@ -23,6 +24,8 @@ type DB struct {
 	ev *trace.EventLog
 }
 
+// New opens a domain information database on the given dir, creating it if
+// necessary. The returned database will not be loaded.
 func New(dir string) (*DB, error) {
 	st, err := protoio.NewStore(dir)
 	if err != nil {

@@ -21,12 +21,12 @@ import (
 	"unicode"
 )
 
-// Default timeout to use. We expect Dovecot to be quite fast, but don't want
+// DefaultTimeout to use. We expect Dovecot to be quite fast, but don't want
 // to hang forever if something gets stuck.
 const DefaultTimeout = 5 * time.Second
 
 var (
-	ErrUsernameNotSafe = errors.New("username not safe (contains spaces)")
+	errUsernameNotSafe = errors.New("username not safe (contains spaces)")
 )
 
 var defaultUserdbPaths = []string{
@@ -60,6 +60,7 @@ func NewAuth(userdb, client string) *Auth {
 	}
 }
 
+// String representation of this Auth, for human consumption.
 func (a *Auth) String() string {
 	return fmt.Sprintf("DovecotAuth(%q, %q)", a.userdbAddr, a.clientAddr)
 }
@@ -79,10 +80,10 @@ func (a *Auth) Check() error {
 	return nil
 }
 
-// Does user exist?
+// Exists returns true if the user exists, false otherwise.
 func (a *Auth) Exists(user string) (bool, error) {
 	if !isUsernameSafe(user) {
-		return false, ErrUsernameNotSafe
+		return false, errUsernameNotSafe
 	}
 
 	conn, err := a.dial("unix", a.userdbAddr)
@@ -126,10 +127,11 @@ func (a *Auth) Exists(user string) (bool, error) {
 	return false, fmt.Errorf("invalid response: %q", resp)
 }
 
-// Is the password valud for the user?
+// Authenticate returns true if the password is valid for the user, false
+// otherwise.
 func (a *Auth) Authenticate(user, passwd string) (bool, error) {
 	if !isUsernameSafe(user) {
-		return false, ErrUsernameNotSafe
+		return false, errUsernameNotSafe
 	}
 
 	conn, err := a.dial("unix", a.clientAddr)
@@ -182,6 +184,8 @@ func (a *Auth) Authenticate(user, passwd string) (bool, error) {
 	return false, fmt.Errorf("invalid response: %q", resp)
 }
 
+// Reload the authenticator. It's a no-op for dovecot, but it is needed to
+// conform with the auth.Backend interface.
 func (a *Auth) Reload() error {
 	return nil
 }

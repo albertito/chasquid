@@ -19,12 +19,12 @@ func TestUsernameNotSafe(t *testing.T) {
 		"a b", " ab", "ab ", "a\tb", "a\t", " ", "\t", "\t "}
 	for _, c := range cases {
 		ok, err := a.Authenticate(c, "passwd")
-		if ok || err != ErrUsernameNotSafe {
+		if ok || err != errUsernameNotSafe {
 			t.Errorf("Authenticate(%q, _): got %v, %v", c, ok, err)
 		}
 
 		ok, err = a.Exists(c)
-		if ok || err != ErrUsernameNotSafe {
+		if ok || err != errUsernameNotSafe {
 			t.Errorf("Exists(%q): got %v, %v", c, ok, err)
 		}
 	}

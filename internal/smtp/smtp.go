@@ -22,6 +22,7 @@ type Client struct {
 	*smtp.Client
 }
 
+// NewClient uses the given connection to create a new Client.
 func NewClient(conn net.Conn, host string) (*Client, error) {
 	c, err := smtp.NewClient(conn, host)
 	if err != nil {
@@ -129,7 +130,7 @@ func isASCII(s string) bool {
 	return true
 }
 
-// ErrIsPermanent returns true if the error is permanent, and false otherwise.
+// IsPermanent returns true if the error is permanent, and false otherwise.
 // If it can't tell, it returns false.
 func IsPermanent(err error) bool {
 	terr, ok := err.(*textproto.Error)

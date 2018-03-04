@@ -45,6 +45,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/protoio"
 )
 
+// DB represents a single user database.
 type DB struct {
 	fname string
 	db    *ProtoDB
@@ -53,10 +54,7 @@ type DB struct {
 	mu sync.RWMutex
 }
 
-var (
-	ErrInvalidUsername = errors.New("invalid username")
-)
-
+// New returns a new user database, on the given file name.
 func New(fname string) *DB {
 	return &DB{
 		fname: fname,
@@ -106,7 +104,8 @@ func (db *DB) Write() error {
 	return protoio.WriteTextMessage(db.fname, db.db, 0660)
 }
 
-// Is this password valid for the user?
+// Authenticate returns true if the password is valid for the user, false
+// otherwise.
 func (db *DB) Authenticate(name, plainPassword string) bool {
 	db.mu.RLock()
 	passwd, ok := db.db.Users[name]
@@ -119,6 +118,7 @@ func (db *DB) Authenticate(name, plainPassword string) bool {
 	return passwd.PasswordMatches(plainPassword)
 }
 
+// PasswordMatches returns true if the given password is a match.
 func (p *Password) PasswordMatches(plain string) bool {
 	switch s := p.Scheme.(type) {
 	case nil:
@@ -132,11 +132,11 @@ func (p *Password) PasswordMatches(plain string) bool {
 	}
 }
 
-// Add a user to the database. If the user is already present, override it.
+// AddUser to the database. If the user is already present, override it.
 // Note we enforce that the name has been normalized previously.
 func (db *DB) AddUser(name, plainPassword string) error {
 	if norm, err := normalize.User(name); err != nil || name != norm {
-		return ErrInvalidUsername
+		return errors.New("invalid username")
 	}
 
 	s := &Scrypt{
@@ -178,7 +178,7 @@ func (db *DB) RemoveUser(name string) bool {
 	return present
 }
 
-// Exists returns true if the user is present, False otherwise.
+// Exists returns true if the user is present, false otherwise.
 func (db *DB) Exists(name string) bool {
 	db.mu.Lock()
 	_, present := db.db.Users[name]
@@ -190,7 +190,8 @@ func (db *DB) Exists(name string) bool {
 // Encryption schemes
 //
 
-// Plain text scheme. Useful mostly for testing and debugging.
+// PasswordMatches implementation for the plain text scheme.
+// Useful mostly for testing and debugging.
 // TODO: Do we really need this? Removing it would make accidents less likely
 // to happen. Consider doing so when we add another scheme, so we a least have
 // two and multi-scheme support does not bit-rot.
@@ -198,7 +199,8 @@ func (p *Plain) PasswordMatches(plain string) bool {
 	return plain == string(p.Password)
 }
 
-// scrypt scheme, which we use by default.
+// PasswordMatches implementation for the scrypt scheme, which we use by
+// default.
 func (s *Scrypt) PasswordMatches(plain string) bool {
 	dk, err := scrypt.Key([]byte(plain), s.Salt,
 		1<<s.LogN, int(s.R), int(s.P), int(s.KeyLen))

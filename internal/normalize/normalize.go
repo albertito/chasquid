@@ -41,7 +41,7 @@ func Domain(domain string) (string, error) {
 	return d, nil
 }
 
-// Name normalizes an email address, applying User and Domain to its
+// Addr normalizes an email address, applying User and Domain to its
 // respective components.
 // On error, it will also return the original address to simplify callers.
 func Addr(addr string) (string, error) {
@@ -60,8 +60,8 @@ func Addr(addr string) (string, error) {
 	return user + "@" + domain, nil
 }
 
-// Take an address with an ASCII domain, and convert it to Unicode as per
-// IDNA, including basic normalization.
+// DomainToUnicode takes an address with an ASCII domain, and convert it to
+// Unicode as per IDNA, including basic normalization.
 // The user part is unchanged.
 func DomainToUnicode(addr string) (string, error) {
 	if addr == "<>" {

@@ -29,6 +29,8 @@ type Procmail struct {
 	Timeout time.Duration // Timeout for each invocation.
 }
 
+// Deliver an email. On failures, returns an error, and whether or not it is
+// permanent.
 func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 	tr := trace.New("Courier.Procmail", to)
 	defer tr.Finish()

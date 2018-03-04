@@ -41,6 +41,8 @@ type SMTP struct {
 	Dinfo *domaininfo.DB
 }
 
+// Deliver an email. On failures, returns an error, and whether or not it is
+// permanent.
 func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	a := &attempt{
 		courier:  s,
