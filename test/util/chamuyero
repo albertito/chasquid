@@ -21,8 +21,12 @@ import time
 
 # Command-line flags.
 ap = argparse.ArgumentParser()
-ap.add_argument("script", type=argparse.FileType('r', encoding='UTF-8'))
+ap.add_argument("script", type=argparse.FileType('r', encoding='utf8'))
 args = ap.parse_args()
+
+# Make sure stdout is open in utf8 mode, as we will print our input, which is
+# utf8, and want it to work regardless of the environment.
+sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
 
 
 class Process (object):
@@ -60,8 +64,8 @@ class Sock (object):
 
     def _accept(self):
         conn, _ = self.sock.accept()
-        self.connr = conn.makefile(mode="r")
-        self.connw = conn.makefile(mode="w")
+        self.connr = conn.makefile(mode="r", encoding="utf8")
+        self.connw = conn.makefile(mode="w", encoding="utf8")
         self.has_conn.set()
 
     def write(self, s):
@@ -93,8 +97,8 @@ class TCPSock (Sock):
 
     def connect(self):
         self.sock = socket.create_connection(self.addr)
-        self.connr = self.sock.makefile(mode="r")
-        self.connw = self.sock.makefile(mode="w")
+        self.connr = self.sock.makefile(mode="r", encoding="utf8")
+        self.connw = self.sock.makefile(mode="w", encoding="utf8")
         self.has_conn.set()
 
 
@@ -106,8 +110,8 @@ class TLSSock (Sock):
         self.sock = ssl.wrap_socket(plain_sock)
 
     def connect(self):
-        self.connr = self.sock.makefile(mode="r")
-        self.connw = self.sock.makefile(mode="w")
+        self.connr = self.sock.makefile(mode="r", encoding="utf8")
+        self.connw = self.sock.makefile(mode="w", encoding="utf8")
         self.has_conn.set()
 
 
