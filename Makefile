@@ -39,6 +39,7 @@ dovecot-auth-cli:
 test:
 	go test ${GOFLAGS} ./...
 	setsid -w ./test/run.sh
+	setsid -w ./test/stress.sh
 	setsid -w ./cmd/chasquid-util/test.sh
 	setsid -w ./cmd/mda-lmtp/test.sh
 	setsid -w ./cmd/dovecot-auth-cli/test.sh

@@ -24,15 +24,13 @@ function init() {
 	trap "kill 0" EXIT
 }
 
-function generate_cert() {
-	go run ${UTILDIR}/generate_cert.go "$@"
-}
-
 function chasquid() {
 	if [ "${COVER_DIR}" != "" ]; then
 		chasquid_cover "$@"
 		return
 	fi
+
+	( cd ${TBASE}/../../; go build ${RACE} . )
 
 	# HOSTALIASES: so we "fake" hostnames.
 	# PATH: so chasquid can call test-mda without path issues.
@@ -40,7 +38,7 @@ function chasquid() {
 	HOSTALIASES=${TBASE}/hosts \
 	PATH=${UTILDIR}:${PATH} \
 	MDA_DIR=${TBASE}/.mail \
-		go run ${RACE} ${TBASE}/../../chasquid.go "$@"
+		${TBASE}/../../chasquid "$@"
 }
 
 function chasquid_cover() {
@@ -96,6 +94,18 @@ function chamuyero() {
 	${UTILDIR}/chamuyero "$@"
 }
 
+function generate_cert() {
+	go run ${UTILDIR}/generate_cert.go "$@"
+}
+
+function loadgen() {
+	go run ${UTILDIR}/loadgen.go "$@"
+}
+
+function conngen() {
+	go run ${UTILDIR}/conngen.go "$@"
+}
+
 function success() {
 	echo success
 }
@@ -144,4 +154,12 @@ function skip_if_python_is_too_old() {
 	if ! python3 -c "${check}" > /dev/null 2>&1; then
 		skip "python3 >= 3.5 not available"
 	fi
+}
+
+function chasquid_ram_peak() {
+	# Find the pid of the daemon, which we expect is running on the
+	# background somewhere within our current session.
+	SERVER_PID=`pgrep -s 0 -x chasquid`
+
+	echo $( cat /proc/$SERVER_PID/status | grep VmHWM | cut -d ':' -f 2- )
 }

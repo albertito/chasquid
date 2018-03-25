@@ -2,4 +2,6 @@
 # Ignore the user databases - we create them each time.
 t-*/config/**/users
 t-*/?/**/users
+stress-*/config/**/users
+stress-*/?/**/users
 
