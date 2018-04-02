@@ -1,0 +1,73 @@
+
+=head1 NAME
+
+mda-lmtp - MDA that uses LMTP to do the mail delivery
+
+=head1 SYNOPSIS
+
+mda-lmtp
+[B<-addr_network> I<net>]
+B<-addr> I<addr>
+B<-d> I<recipient>
+B<-f> I<from>
+
+=head1 DESCRIPTION
+
+mda-lmtp is a very basic MDA that uses LMTP to do the mail delivery.
+
+It takes command line arguments similar to maildrop or procmail, reads an
+email via standard input, and sends it over the given LMTP server.  Supports
+connecting to LMTP servers over UNIX sockets and TCP.
+
+It can be used when your mail server does not support LMTP directly.
+
+=head1 EXAMPLE
+
+B<mda-lmtp> I<--addr=localhost:1234> I<-f juan@casa> I<-d jose> < email
+
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-addr> I<address>
+
+LMTP server address to connect to.
+
+=item B<-addr_network> I<network>
+
+Network of the LMTP address (e.g. I<unix> or I<tcp>). If not present, it will
+be autodetected from the address itself.
+
+=item B<-d> I<recipient>
+
+Recipient.
+
+=item B<-f> I<from>
+
+Whom the message is from.
+
+=back
+
+
+=head1 RETURN VALUES
+
+=over 8
+
+=item B<0>
+
+success
+
+=item B<75>
+
+temporary failure
+
+=item I<other>
+
+permanent failures (usually indicate misconfiguration)
+
+=back
+
+=head1 SEE ALSO
+
+chasquid(1)

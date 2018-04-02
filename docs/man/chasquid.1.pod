@@ -1,0 +1,120 @@
+=head1 NAME
+
+chasquid - SMTP (email) server
+
+=head1 SYNOPSIS
+
+B<chasquid> [I<options>...]
+
+=head1 DESCRIPTION
+
+chasquid is an SMTP (email) server.
+
+It aims to be easy to configure and maintain for a small mail server, at the
+expense of flexibility and functionality.
+
+It's written in Go, and distributed under the Apache license 2.0.
+
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-config_dir> I<dir>
+
+configuration directory (default F</etc/chasquid>)
+
+=item B<-alsologtostderr>
+
+also log to stderr, in addition to the file
+
+=item B<-logfile> I<file>
+
+file to log to (enables logtime)
+
+=item B<-logtime>
+
+include the time when writing the log to stderr
+
+=item B<-logtosyslog> I<tag>
+
+log to syslog, with the given tag
+
+=item B<-v> I<level>
+
+verbosity level (1 = debug)
+
+=item B<-version>
+
+show version and exit
+
+=back
+
+
+=head1 FILES
+
+The daemon's configuration is by default in F</etc/chasquid/>, and can be
+changed with the I<-config_dir> flag.
+
+Inside that directory, the daemon expects the following structure:
+
+=over 8
+
+=item F<chasquid.conf>
+
+Main config file, see chasquid.conf(5).
+
+=item F<domains/>
+
+Per-domain configuration.
+
+=item F<domains/example.com/>
+
+Domain-specific configuration. Can be empty.
+
+=item F<domains/example.com/users>
+
+User and password database for this domain.
+
+=item F<domains/example.com/aliases>
+
+Aliases for the domain.
+
+=item F<certs/>
+
+Certificates to use, one directory per pair.
+
+=item F<certs/mx.example.com/>
+
+Certificates for this domain.
+
+=item F<certs/mx.example.com/fullchain.pem>
+
+Certificate (full chain).
+
+=item F<certs/mx.example.com/privkey.pem>
+
+Private key.
+
+=back
+
+Note the F<certs/> directory layout matches the one from certbot(1) (client for
+Let's Encrypt CA), so you can just symlink F<certs/> to
+F</etc/letsencrypt/live>.
+
+Make sure the user you use to run chasquid under ("mail" in the example
+config) can access the certificates and private keys.
+
+
+=head1 CONTACT
+
+L<Main website|https://blitiri.com.ar/p/chasquid>.
+
+If you have any questions, comments or patches please send them to the mailing
+list, C<chasquid@googlegroups.com>.  To subscribe, send an email to
+C<chasquid+subscribe@googlegroups.com>.
+
+
+=head1 SEE ALSO
+
+chasquid-util(1), chasquid.conf(5)

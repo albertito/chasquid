@@ -1,0 +1,102 @@
+=head1 NAME
+
+chasquid.conf(5) -- chasquid configuration file
+
+=head1 SYNOPSIS
+
+chasquid.conf(5) is chasquid(1)'s main configuration file.
+
+
+=head1 DESCRIPTION
+
+The file is in protocol buffers' text format.
+
+Comments start with C<#>. Empty lines are allowed.  Values are of the form
+C<key: value>. Values can be strings (quoted), integers, or booleans (C<true> or
+C<false>).
+
+Some values might be repeated, for example the listening addresses.
+
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<hostname> (string):
+
+Default hostname to use when saying hello. This is used to say hello to
+clients, for aesthetic purposes. Default: the system's hostname.
+
+=item B<max_data_size_mb> (int):
+
+Maximum email size, in megabytes. Default: 50.
+
+=item B<smtp_address> (repeated string):
+
+Addresses to listen on for SMTP. Default: "systemd", which means systemd
+passes sockets to us. systemd sockets must be named with
+B<FileDescriptorName=smtp>.
+
+=item B<submission_address> (repeated string):
+
+Addresses to listen on for submission. Default: "systemd", which means
+systemd passes sockets to us. systemd sockets must be named with
+B<FileDescriptorName=submission>.
+
+=item B<monitoring_address> (string):
+
+Address for the monitoring HTTP server. Do NOT expose this to the public
+internet. Default: no monitoring server.
+
+=item B<mail_delivery_agent_bin> (string):
+
+Mail delivery agent (MDA, also known as LDA) to use. This should point
+to the binary to use to deliver email to local users. The content of the
+email will be passed via stdin. If it exits unsuccessfully, we assume
+the mail was not delivered. Default: F<maildrop>.
+
+=item B<mail_delivery_agent_args> (repeated string):
+
+Command line arguments for the mail delivery agent. One per argument.
+Some replacements will be done.
+
+On an email sent from marsnik@mars to venera@venus:
+
+    %from%        -> from address (marsnik@mars)
+    %from_user%   -> from user (marsnik)
+    %from_domain% -> from domain (mars)
+    %to%          -> to address (venera@venus)
+    %to_user%     -> to user (venera)
+    %to_domain%   -> to domain (venus)
+
+Default: C<"-f", "%from%", "-d", "%to_user%">  (adequate for procmail and
+maildrop).
+
+=item B<data_dir> (string):
+
+Directory where we store our persistent data. Default:
+F</var/lib/chasquid>.
+
+=item B<suffix_separators> (string):
+
+Suffix separator, to perform suffix removal of local users.  For
+example, if you set this to C<-+>, email to local user C<user-blah> and
+C<user+blah> will be delivered to C<user>.  Including C<+> is strongly
+encouraged, as it is assumed for email forwarding.  Default: C<+>.
+
+=item B<drop_characters> (string):
+
+Characters to drop from the user part on local emails.  For example, if
+you set this to C<._>, email to local user C<u.se_r> will be delivered to
+C<user>.  Default: C<.>.
+
+=item B<mail_log_path> (string):
+
+Path where to write the mail log to.  If C<< <syslog> >>, log using the
+syslog (at C<MAIL|INFO> priority).  Default: C<< <syslog> >>.
+
+=back
+
+=head1 SEE ALSO
+
+chasquid(1)

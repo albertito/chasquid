@@ -1,0 +1,61 @@
+=head1 NAME
+
+chasquid-util - chasquid management tool
+
+
+=head1 SYNOPSIS
+
+B<chasquid-util> [I<options>] user-add I<user@domain> [--password=I<password>]
+
+B<chasquid-util> [I<options>] user-remove I<user@domain>
+
+B<chasquid-util> [I<options>] authenticate I<user@domain> [--password=I<password>]
+
+B<chasquid-util> [I<options>] check-userdb I<domain>
+
+B<chasquid-util> [I<options>] aliases-resolve I<addr>
+
+B<chasquid-util> [I<options>] print-config
+
+
+=head1 DESCRIPTION
+
+chasquid-util is a command-line utility for chasquid(1) operations.
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<user-add> I<user@domain> [--password=I<password>]
+
+Add a new user to the domain.
+
+=item B<user-remove> I<user@domain>
+
+Remove the user from the domain.
+
+=item B<authenticate> I<user@domain> [--password=I<password>]
+
+Check the user's password.
+
+=item B<check-userdb> I<domain>
+
+Check the integrity of the domain's users database.
+
+=item B<aliases-resolve> I<addr>
+
+Resolve the given address.
+
+=item B<print-config>
+
+Parse and print the configuration in a human-readable way.
+
+=item B<-C> or B<--configdir=<path>>
+
+Configuration directory.
+
+=back
+
+=head1 SEE ALSO
+
+chasquid(1)
