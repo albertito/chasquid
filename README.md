@@ -9,7 +9,8 @@ expense of flexibility and functionality.
 It's written in [Go](https://golang.org), and distributed under the
 [Apache license 2.0](http://en.wikipedia.org/wiki/Apache_License).
 
-[![Build Status](https://travis-ci.org/albertito/chasquid.svg?branch=master)](https://travis-ci.org/albertito/chasquid)
+[![Travis-CI build status](https://travis-ci.org/albertito/chasquid.svg?branch=master)](https://travis-ci.org/albertito/chasquid)
+[![Codefresh build status](https://g.codefresh.io/api/badges/build?repoOwner=albertito&repoName=chasquid&branch=master&pipelineName=chasquid&accountName=albertito&type=cf-1)](https://g.codefresh.io/repositories/albertito/chasquid/builds?filter=trigger:build;branch:master;service:5abec627df25930001c9940d~chasquid)
 [![Go Report Card](https://goreportcard.com/badge/github.com/albertito/chasquid)](https://goreportcard.com/report/github.com/albertito/chasquid)
 [![Coverage Status](https://coveralls.io/repos/github/albertito/chasquid/badge.svg?branch=next)](https://coveralls.io/github/albertito/chasquid?branch=next)
 [![GoDoc](https://godoc.org/blitiri.com.ar/go/chasquid?status.svg)](https://godoc.org/blitiri.com.ar/go/chasquid)
