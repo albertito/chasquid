@@ -19,9 +19,9 @@ function init() {
 	rm -rf .mail
 
 	# Set traps to kill our subprocesses when we exit (for any reason).
-	# https://stackoverflow.com/questions/360201/
-	trap "exit" INT TERM
-	trap "kill 0" EXIT
+	trap ":" TERM      # Avoid the EXIT handler from killing bash.
+	trap "exit 2" INT  # Ctrl-C, make sure we fail in that case.
+	trap "kill 0" EXIT # Kill children on exit.
 }
 
 function chasquid() {
