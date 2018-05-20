@@ -15,6 +15,8 @@ B<chasquid-util> [I<options>] check-userdb I<domain>
 
 B<chasquid-util> [I<options>] aliases-resolve I<addr>
 
+B<chasquid-util> [I<options>] domaininfo-remove I<domain>
+
 B<chasquid-util> [I<options>] print-config
 
 
@@ -45,6 +47,11 @@ Check the integrity of the domain's users database.
 =item B<aliases-resolve> I<addr>
 
 Resolve the given address.
+
+=item B<domaininfo-remove> I<domain>
+
+Remove the domain information entry. This can be used to manually allow a
+security level downgrade.
 
 =item B<print-config>
 

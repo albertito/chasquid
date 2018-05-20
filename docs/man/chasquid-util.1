@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "chasquid-util 1"
-.TH chasquid-util 1 "2018-04-03" "" ""
+.TH chasquid-util 1 "2018-05-20" "" ""
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -147,6 +147,8 @@ chasquid\-util \- chasquid management tool
 \&\fBchasquid-util\fR [\fIoptions\fR] check-userdb \fIdomain\fR
 .PP
 \&\fBchasquid-util\fR [\fIoptions\fR] aliases-resolve \fIaddr\fR
+.PP
+\&\fBchasquid-util\fR [\fIoptions\fR] domaininfo-remove \fIdomain\fR
 .PP
 \&\fBchasquid-util\fR [\fIoptions\fR] print-config
 .SH "DESCRIPTION"
@@ -169,6 +171,10 @@ Check the integrity of the domain's users database.
 .IP "\fBaliases-resolve\fR \fIaddr\fR" 8
 .IX Item "aliases-resolve addr"
 Resolve the given address.
+.IP "\fBdomaininfo-remove\fR \fIdomain\fR" 8
+.IX Item "domaininfo-remove domain"
+Remove the domain information entry. This can be used to manually allow a
+security level downgrade.
 .IP "\fBprint-config\fR" 8
 .IX Item "print-config"
 Parse and print the configuration in a human-readable way.

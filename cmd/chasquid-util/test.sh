@@ -19,8 +19,9 @@ function check_userdb() {
 }
 
 
-mkdir -p .config/domains/domain
-touch .config/chasquid.conf
+mkdir -p .config/domains/domain/ .data/domaininfo
+rm -f .config/chasquid.conf
+echo 'data_dir: ".data"' >> .config/chasquid.conf
 
 if ! r print-config > /dev/null; then
 	echo print-config failed
@@ -51,6 +52,16 @@ check_userdb
 
 if r authenticate user@domain --password=passwd > /dev/null; then
 	echo authenticate for removed user worked
+	exit 1
+fi
+
+touch '.data/domaininfo/s:dom%C3%A1in'
+if ! r domaininfo-remove domáin; then
+	echo domaininfo-remove failed
+	exit 1
+fi
+if [ -f '.data/domaininfo/s:dom%C3%A1in' ]; then
+	echo domaininfo-remove did not remove file
 	exit 1
 fi
 

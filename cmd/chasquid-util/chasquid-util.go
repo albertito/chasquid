@@ -8,6 +8,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -33,6 +34,7 @@ Usage:
   chasquid-util [options] authenticate <username> [--password=<password>]
   chasquid-util [options] check-userdb <domain>
   chasquid-util [options] aliases-resolve <address>
+  chasquid-util [options] domaininfo-remove <domain>
   chasquid-util [options] print-config
 
 Options:
@@ -56,12 +58,13 @@ func main() {
 	}
 
 	commands := map[string]func(){
-		"user-add":        userAdd,
-		"user-remove":     userRemove,
-		"authenticate":    authenticate,
-		"check-userdb":    checkUserDB,
-		"aliases-resolve": aliasesResolve,
-		"print-config":    printConfig,
+		"user-add":          userAdd,
+		"user-remove":       userRemove,
+		"authenticate":      authenticate,
+		"check-userdb":      checkUserDB,
+		"aliases-resolve":   aliasesResolve,
+		"print-config":      printConfig,
+		"domaininfo-remove": domaininfoRemove,
 	}
 
 	for cmd, f := range commands {
@@ -246,4 +249,23 @@ func printConfig() {
 	}
 
 	fmt.Println(proto.MarshalTextString(conf))
+}
+
+// chasquid-util domaininfo-remove <domain>
+func domaininfoRemove() {
+	domain := args["<domain>"].(string)
+
+	conf, err := config.Load(configDir + "/chasquid.conf")
+	if err != nil {
+		Fatalf("Error reading config")
+	}
+
+	// File for the corresponding domain.
+	// Note this is making some assumptions about the data layout and
+	// protoio's storage structure, so it will need adjustment if they change.
+	file := conf.DataDir + "/domaininfo/s:" + url.QueryEscape(domain)
+	err = os.Remove(file)
+	if err != nil {
+		Fatalf("Error removing file: %v", err)
+	}
 }
