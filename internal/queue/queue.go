@@ -38,7 +38,7 @@ const (
 	maxQueueSize = 200
 
 	// Give up sending attempts after this duration.
-	giveUpAfter = 12 * time.Hour
+	giveUpAfter = 20 * time.Hour
 
 	// Prefix for item file names.
 	// This is for convenience, versioning, and to be able to tell them apart
