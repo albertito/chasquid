@@ -18,21 +18,19 @@ import (
 var policyForDomain = map[string]string{
 	// domain.com -> valid, with reasonable policy.
 	"domain.com": `
-		{
-             "version": "STSv1",
-             "mode": "enforce",
-             "mx": ["*.mail.domain.com"],
-             "max_age": 3600
-        }`,
+             version: STSv1
+             mode: enforce
+             mx: *.mail.domain.com
+             max_age: 3600
+        `,
 
 	// version99 -> invalid policy (unknown version).
 	"version99": `
-		{
-             "version": "STSv99",
-             "mode": "enforce",
-             "mx": ["*.mail.version99"],
-             "max_age": 999
-        }`,
+             version: STSv99
+             mode: enforce
+             mx: *.mail.version99
+             max_age: 999
+        `,
 }
 
 func testHTTPHandler(w http.ResponseWriter, r *http.Request) {
@@ -55,12 +53,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestParsePolicy(t *testing.T) {
-	const pol1 = `{
-  "version": "STSv1",
-  "mode": "enforce",
-  "mx": ["*.mail.example.com"],
-  "max_age": 123456
-}
+	const pol1 = `
+  version: STSv1
+  mode: enforce
+  mx: *.mail.example.com
+  max_age: 123456
 `
 	p, err := parsePolicy([]byte(pol1))
 	if err != nil {
@@ -74,7 +71,9 @@ func TestCheckPolicy(t *testing.T) {
 	validPs := []Policy{
 		{Version: "STSv1", Mode: "enforce", MaxAge: 1 * time.Hour,
 			MXs: []string{"mx1", "mx2"}},
-		{Version: "STSv1", Mode: "report", MaxAge: 1 * time.Hour,
+		{Version: "STSv1", Mode: "testing", MaxAge: 1 * time.Hour,
+			MXs: []string{"mx1"}},
+		{Version: "STSv1", Mode: "none", MaxAge: 1 * time.Hour,
 			MXs: []string{"mx1"}},
 	}
 	for i, p := range validPs {
@@ -115,12 +114,18 @@ func TestMatchDomain(t *testing.T) {
 		{"abc.com", "abc.*.com", false},
 		{"abc.com", "x.abc.com", false},
 		{"x.abc.com", "*.*.com", false},
+		{"abc.def.com", "abc.*.com", false},
 
 		{"ñaca.com", "ñaca.com", true},
 		{"Ñaca.com", "ñaca.com", true},
 		{"ñaca.com", "Ñaca.com", true},
 		{"x.ñaca.com", "x.xn--aca-6ma.com", true},
 		{"x.naca.com", "x.xn--aca-6ma.com", false},
+
+		// Examples from the RFC.
+		{"mail.example.com", "*.example.com", true},
+		{"example.com", "*.example.com", false},
+		{"foo.bar.example.com", "*.example.com", false},
 	}
 
 	for _, c := range cases {
@@ -341,7 +346,10 @@ func TestCacheRefresh(t *testing.T) {
 	ctx := context.Background()
 
 	policyForDomain["refresh-test"] = `
-		{"version": "STSv1", "mode": "enforce", "mx": ["mx"], "max_age": 100}`
+		version: STSv1
+		mode: enforce
+		mx: mx
+		max_age: 100`
 	p := mustFetch(t, c, ctx, "refresh-test")
 	if p.MaxAge != 100*time.Second {
 		t.Fatalf("policy.MaxAge is %v, expected 100s", p.MaxAge)
@@ -350,7 +358,10 @@ func TestCacheRefresh(t *testing.T) {
 	// Change the "published" policy, check that we see the old version at
 	// fetch (should be cached), and a new version after a refresh.
 	policyForDomain["refresh-test"] = `
-		{"version": "STSv1", "mode": "enforce", "mx": ["mx"], "max_age": 200}`
+		version: STSv1
+		mode: enforce
+		mx: mx
+		max_age: 200`
 
 	p = mustFetch(t, c, ctx, "refresh-test")
 	if p.MaxAge != 100*time.Second {
@@ -377,7 +388,7 @@ func TestURLForDomain(t *testing.T) {
 	defer func() { fakeURLForTesting = oldURL }()
 
 	got := urlForDomain("a-test-domain")
-	expected := "https://mta-sts.a-test-domain/.well-known/mta-sts.json"
+	expected := "https://mta-sts.a-test-domain/.well-known/mta-sts.txt"
 	if got != expected {
 		t.Errorf("got %q, expected %q", got, expected)
 	}

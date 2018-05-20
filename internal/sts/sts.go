@@ -1,5 +1,5 @@
 // Package sts implements the MTA-STS (Strict Transport Security), based on
-// the current draft, https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02.
+// the current draft, https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18.
 //
 // This is an EXPERIMENTAL implementation for now.
 //
@@ -10,6 +10,8 @@
 package sts
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -17,8 +19,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -49,7 +53,8 @@ var (
 )
 
 // Policy represents a parsed policy.
-// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-3.2
+// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-3.2
+// The json annotations are used for serializing for caching purposes.
 type Policy struct {
 	Version string        `json:"version"`
 	Mode    Mode          `json:"mode"`
@@ -62,28 +67,55 @@ type Mode string
 // Valid modes.
 const (
 	Enforce = Mode("enforce")
-	Report  = Mode("report")
+	Testing = Mode("testing")
+	None    = Mode("none")
 )
 
-// parsePolicy parses a JSON representation of the policy, and returns the
-// corresponding Policy structure.
+// parsePolicy parses a text representation of the policy (as specified in the
+// RFC), and returns the corresponding Policy structure.
 func parsePolicy(raw []byte) (*Policy, error) {
 	p := &Policy{}
-	if err := json.Unmarshal(raw, p); err != nil {
+
+	scanner := bufio.NewScanner(bytes.NewReader(raw))
+	for scanner.Scan() {
+		sp := strings.SplitN(scanner.Text(), ":", 2)
+		if len(sp) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(sp[0])
+		value := strings.TrimSpace(sp[1])
+
+		// Only care for the keys we recognize.
+		switch key {
+		case "version":
+			p.Version = value
+		case "mode":
+			p.Mode = Mode(value)
+		case "max_age":
+			// On error, p.MaxAge will be 0 which is invalid.
+			max_age, _ := strconv.Atoi(value)
+			p.MaxAge = time.Duration(max_age) * time.Second
+		case "mx":
+			p.MXs = append(p.MXs, value)
+		}
+	}
+	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-
-	// MaxAge is in seconds.
-	p.MaxAge = p.MaxAge * time.Second
 
 	return p, nil
 }
 
 var (
+	// Check errors.
 	ErrUnknownVersion = errors.New("unknown policy version")
 	ErrInvalidMaxAge  = errors.New("invalid max_age")
 	ErrInvalidMode    = errors.New("invalid mode")
 	ErrInvalidMX      = errors.New("invalid mx")
+
+	// Fetch errors.
+	ErrInvalidMediaType = errors.New("invalid HTTP media type")
 )
 
 // Check that the policy contents are valid.
@@ -95,7 +127,7 @@ func (p *Policy) Check() error {
 		return ErrInvalidMaxAge
 	}
 
-	if p.Mode != Enforce && p.Mode != Report {
+	if p.Mode != Enforce && p.Mode != Testing && p.Mode != None {
 		return ErrInvalidMode
 	}
 
@@ -109,7 +141,7 @@ func (p *Policy) Check() error {
 }
 
 // MXMatches checks if the given MX is allowed, according to the policy.
-// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-4.1
+// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-4.1
 func (p *Policy) MXIsAllowed(mx string) bool {
 	for _, pattern := range p.MXs {
 		if matchDomain(mx, pattern) {
@@ -150,9 +182,9 @@ func urlForDomain(domain string) string {
 	}
 
 	// URL composed from the domain, as explained in:
-	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-3.3
-	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-3.2
-	return "https://mta-sts." + domain + "/.well-known/mta-sts.json"
+	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-3.3
+	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-3.2
+	return "https://mta-sts." + domain + "/.well-known/mta-sts.txt"
 }
 
 // Fetch a policy for the given domain. Note this results in various network
@@ -178,7 +210,7 @@ func Fetch(ctx context.Context, domain string) (*Policy, error) {
 func httpGet(ctx context.Context, url string) ([]byte, error) {
 	client := &http.Client{
 		// We MUST NOT follow redirects, see
-		// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-3.3
+		// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-3.3
 		CheckRedirect: rejectRedirect,
 	}
 
@@ -194,12 +226,25 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		// Read but up to 10k; policies should be way smaller than that, and
-		// having a limit prevents abuse/accidents with very large replies.
-		return ioutil.ReadAll(&io.LimitedReader{resp.Body, 10 * 1024})
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP response status code: %v", resp.StatusCode)
 	}
-	return nil, fmt.Errorf("HTTP response status code: %v", resp.StatusCode)
+
+	// Media type must be "text/plain" to guard against cases where webservers
+	// allow untrusted users to host non-text content (like HTML or images) at
+	// a user-defined path.
+	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-3.2
+	mt, _, err := mime.ParseMediaType(resp.Header.Get("Content-type"))
+	if err != nil {
+		return nil, fmt.Errorf("HTTP media type error: %v", err)
+	}
+	if mt != "text/plain" {
+		return nil, ErrInvalidMediaType
+	}
+
+	// Read but up to 10k; policies should be way smaller than that, and
+	// having a limit prevents abuse/accidents with very large replies.
+	return ioutil.ReadAll(&io.LimitedReader{resp.Body, 10 * 1024})
 }
 
 var errRejectRedirect = errors.New("redirects not allowed in MTA-STS")
@@ -209,8 +254,8 @@ func rejectRedirect(req *http.Request, via []*http.Request) error {
 }
 
 // matchDomain checks if the domain matches the given pattern, according to
-// https://tools.ietf.org/html/rfc6125#section-6.4
-// (from https://tools.ietf.org/html/draft-ietf-uta-mta-sts-02#section-4.1).
+// from https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-4.1
+// (based on https://tools.ietf.org/html/rfc6125#section-6.4).
 func matchDomain(domain, pattern string) bool {
 	domain, dErr := domainToASCII(domain)
 	pattern, pErr := domainToASCII(pattern)
@@ -220,27 +265,22 @@ func matchDomain(domain, pattern string) bool {
 		return false
 	}
 
-	domainLabels := strings.Split(domain, ".")
-	patternLabels := strings.Split(pattern, ".")
-
-	if len(domainLabels) != len(patternLabels) {
-		return false
+	// Simplify the case of a literal match.
+	if domain == pattern {
+		return true
 	}
 
-	for i, p := range patternLabels {
-		// Wildcards only apply to the first part, see
-		// https://tools.ietf.org/html/rfc6125#section-6.4.3 #1 and #2.
-		// This also allows us to do the lenght comparison above.
-		if p == "*" && i == 0 {
-			continue
-		}
-
-		if p != domainLabels[i] {
-			return false
+	// For wildcards, skip the first part of the domain and match the rest.
+	// Note that if the pattern is malformed this might fail, but we are ok
+	// with that.
+	if strings.HasPrefix(pattern, "*.") {
+		parts := strings.SplitN(domain, ".", 2)
+		if len(parts) > 1 && parts[1] == pattern[2:] {
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 // domainToASCII converts the domain to ASCII form, similar to idna.ToASCII

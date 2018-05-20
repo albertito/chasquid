@@ -192,7 +192,7 @@ retry:
 
 	if a.stsPolicy != nil && a.stsPolicy.Mode == sts.Enforce {
 		// The connection MUST be validated TLS.
-		// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-03#section-4.2
+		// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-4.2
 		if secLevel != domaininfo.SecLevel_TLS_SECURE {
 			stsSecurityResults.Add("fail", 1)
 			return a.tr.Errorf("invalid security level (%v) for STS policy",
@@ -317,7 +317,7 @@ func filterMXs(tr *trace.Trace, p *sts.Policy, mxs []string) []string {
 
 	// We don't want to return an empty set if the mode is not enforce.
 	// This prevents failures for policies in reporting mode.
-	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-03#section-5.2
+	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-5.1
 	if len(filtered) == 0 && p.Mode != sts.Enforce {
 		filtered = mxs
 	}
