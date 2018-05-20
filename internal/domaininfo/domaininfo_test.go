@@ -2,7 +2,6 @@ package domaininfo
 
 import (
 	"testing"
-	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
@@ -12,10 +11,6 @@ func TestBasic(t *testing.T) {
 	defer testlib.RemoveIfOk(t, dir)
 	db, err := New(dir)
 	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := db.Load(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -29,22 +24,9 @@ func TestBasic(t *testing.T) {
 		t.Errorf("decrement to tls-insecure was allowed")
 	}
 
-	// Wait until it is written to disk.
-	for dl := time.Now().Add(30 * time.Second); time.Now().Before(dl); {
-		d := &Domain{}
-		ok, _ := db.store.Get("d1", d)
-		if ok {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-
 	// Check that it was added to the store and a new db sees it.
 	db2, err := New(dir)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db2.Load(); err != nil {
 		t.Fatal(err)
 	}
 	if db2.IncomingSecLevel("d1", SecLevel_TLS_INSECURE) {
@@ -111,5 +93,32 @@ func TestProgressions(t *testing.T) {
 			t.Errorf("%2d %q out attempt for %s failed: got %v, expected %v",
 				i, c.domain, c.lvl, ok, c.ok)
 		}
+	}
+}
+
+func TestErrors(t *testing.T) {
+	// Non-existent directory.
+	_, err := New("/doesnotexists")
+	if err == nil {
+		t.Error("could create a DB on a non-existent directory")
+	}
+
+	// Corrupt/invalid file.
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+	db, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !db.IncomingSecLevel("d1", SecLevel_TLS_SECURE) {
+		t.Errorf("increment to tls-secure not allowed")
+	}
+
+	testlib.Rewrite(t, dir+"/s:d1", "invalid-text-protobuf-contents")
+
+	err = db.Reload()
+	if err == nil {
+		t.Errorf("no error when reloading db with invalid file")
 	}
 }

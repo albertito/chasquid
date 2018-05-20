@@ -37,3 +37,17 @@ func RemoveIfOk(t *testing.T, dir string) {
 		os.RemoveAll(dir)
 	}
 }
+
+func Rewrite(t *testing.T, path, contents string) error {
+	// Safeguard, to make sure we only mess with test files.
+	if !strings.Contains(path, "testlib_") {
+		panic("invalid/dangerous path")
+	}
+
+	err := ioutil.WriteFile(path, []byte(contents), 0600)
+	if err != nil {
+		t.Errorf("failed to rewrite file: %v", err)
+	}
+
+	return err
+}

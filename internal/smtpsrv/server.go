@@ -140,11 +140,6 @@ func (s *Server) InitDomainInfo(dir string) *domaininfo.DB {
 		log.Fatalf("Error opening domain info database: %v", err)
 	}
 
-	err = s.dinfo.Load()
-	if err != nil {
-		log.Fatalf("Error loading domain info database: %v", err)
-	}
-
 	return s.dinfo
 }
 
@@ -175,6 +170,11 @@ func (s *Server) periodicallyReload() {
 		err = s.authr.Reload()
 		if err != nil {
 			log.Errorf("Error reloading authenticators: %v", err)
+		}
+
+		err = s.dinfo.Reload()
+		if err != nil {
+			log.Errorf("Error reloading domaininfo: %v", err)
 		}
 	}
 }

@@ -38,11 +38,22 @@ func New(dir string) (*DB, error) {
 	}
 	l.ev = trace.NewEventLog("DomainInfo", dir)
 
+	err = l.Reload()
+	if err != nil {
+		return nil, err
+	}
+
 	return l, nil
 }
 
-// Load the database from disk; should be called once at initialization.
-func (db *DB) Load() error {
+// Reload the database from disk.
+func (db *DB) Reload() error {
+	db.Lock()
+	defer db.Unlock()
+
+	// Clear the map, in case it has data.
+	db.info = map[string]*Domain{}
+
 	ids, err := db.store.ListIDs()
 	if err != nil {
 		return err

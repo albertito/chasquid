@@ -52,3 +52,27 @@ func TestLeaveDirOnError(t *testing.T) {
 	// Remove the directory for real this time.
 	RemoveIfOk(t, dir)
 }
+
+func TestRewriteSafeguard(t *testing.T) {
+	myt := &testing.T{}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Logf("recovered: %v", r)
+		} else {
+			t.Fatalf("check did not panic as expected")
+		}
+	}()
+
+	Rewrite(myt, "/something", "test")
+}
+
+func TestRewrite(t *testing.T) {
+	dir := MustTempDir(t)
+	defer RemoveIfOk(t, dir)
+
+	myt := &testing.T{}
+	Rewrite(myt, dir+"/file", "hola")
+	if myt.Failed() {
+		t.Errorf("basic rewrite failed")
+	}
+}
