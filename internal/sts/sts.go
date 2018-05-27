@@ -140,9 +140,13 @@ func (p *Policy) Check() error {
 	return nil
 }
 
-// MXMatches checks if the given MX is allowed, according to the policy.
+// MXIsAllowed checks if the given MX is allowed, according to the policy.
 // https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-4.1
 func (p *Policy) MXIsAllowed(mx string) bool {
+	if p.Mode != Enforce {
+		return true
+	}
+
 	for _, pattern := range p.MXs {
 		if matchDomain(mx, pattern) {
 			return true
