@@ -225,12 +225,6 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 		CheckRedirect: rejectRedirect,
 	}
 
-	// Note that http does not care for the context deadline, so we need to
-	// construct it here.
-	if deadline, ok := ctx.Deadline(); ok {
-		client.Timeout = deadline.Sub(time.Now())
-	}
-
 	resp, err := ctxhttp.Get(ctx, client, url)
 	if err != nil {
 		return nil, err
@@ -458,9 +452,8 @@ func (c *PolicyCache) Fetch(ctx context.Context, domain string) (*Policy, error)
 
 func (c *PolicyCache) PeriodicallyRefresh(ctx context.Context) {
 	for ctx.Err() == nil {
-		cacheRefreshCycles.Add(1)
-
 		c.refresh(ctx)
+		cacheRefreshCycles.Add(1)
 
 		// Wait 10 minutes between passes; this is a background refresh and
 		// there's no need to poke the servers very often.
