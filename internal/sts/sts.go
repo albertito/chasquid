@@ -3,9 +3,7 @@
 //
 // This is an EXPERIMENTAL implementation for now.
 //
-// It lacks (at least) the following:
-// - DNS TXT checking.
-// - Facilities for reporting.
+// Note that "report" mode is not supported.
 //
 package sts
 
@@ -20,6 +18,7 @@ import (
 	"io"
 	"io/ioutil"
 	"mime"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -167,6 +166,14 @@ func UncheckedFetch(ctx context.Context, domain string) (*Policy, error) {
 		return nil, err
 	}
 
+	ok, err := hasSTSRecord(domain)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("MTA-STS TXT record missing")
+	}
+
 	url := urlForDomain(domain)
 	rawPolicy, err := httpGet(ctx, url)
 	if err != nil {
@@ -293,6 +300,29 @@ func domainToASCII(domain string) (string, error) {
 	domain = strings.TrimSuffix(domain, ".")
 	domain = strings.ToLower(domain)
 	return idna.ToASCII(domain)
+}
+
+// Function that we override for testing purposes.
+// In the future we will override net.DefaultResolver, but we don't do that
+// yet for backwards compatibility.
+var lookupTXT = net.LookupTXT
+
+// hasSTSRecord checks if there is a valid MTA-STS TXT record for the domain.
+// We don't do full parsing and don't care about the "id=" field, as it is
+// unused in this implementation.
+func hasSTSRecord(domain string) (bool, error) {
+	txts, err := lookupTXT("_mta-sts." + domain)
+	if err != nil {
+		return false, err
+	}
+
+	for _, txt := range txts {
+		if strings.HasPrefix(txt, "v=STSv1;") {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // PolicyCache is a caching layer for fetching policies.
