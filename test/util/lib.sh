@@ -11,7 +11,7 @@ function init() {
 	cd ${TBASE}
 
 	if [ "${RACE}" == "1" ]; then
-		RACE="-race"
+		GOFLAGS="$GOFLAGS -race"
 	fi
 
 	# Remove the directory where test-mda will deliver mail, so previous
@@ -30,7 +30,7 @@ function chasquid() {
 		return
 	fi
 
-	( cd ${TBASE}/../../; go build ${RACE} . )
+	( cd ${TBASE}/../../; go build $GOFLAGS -tags="$GOTAGS" . )
 
 	# HOSTALIASES: so we "fake" hostnames.
 	# PATH: so chasquid can call test-mda without path issues.
@@ -45,7 +45,8 @@ function chasquid_cover() {
 	# Build the coverage-enabled binary.
 	# See coverage_test.go for more details.
 	( cd ${TBASE}/../../;
-	  go test -covermode=count -coverpkg=./... -c -tags coveragebin )
+	  go test -covermode=count -coverpkg=./... -c \
+		  -tags="coveragebin $GOTAGS" $GOFLAGS )
 
 	# Run the coverage-enabled binary, named "chasquid.test" for hacky
 	# reasons.  See the chasquid function above for details on the

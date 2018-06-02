@@ -29,6 +29,10 @@ RUN apt-get install -y -q gettext-base dovecot-imapd
 RUN apt-get install -y -q exim4-daemon-light
 RUN cd test/t-02-exim && mkdir -p .exim4 && ln -s /usr/sbin/exim4 .exim4/
 
+# Packages for the (optional) TLS tracking test.
+RUN apt-get install -y -q dnsmasq
+
+
 RUN go get -d ./...
 RUN go install ./...
 

@@ -43,6 +43,8 @@ go tool cover -func="$COVER_DIR/all.out" | sort -k 3 -n > "$COVER_DIR/func.txt"
 go tool cover -html="$COVER_DIR/all.out" -o "$COVER_DIR/chasquid.html"
 
 echo
+grep total .coverage/func.txt
+echo
 echo "Coverage report can be found in:"
 echo file://$COVER_DIR/chasquid.html
 
