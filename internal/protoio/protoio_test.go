@@ -87,3 +87,22 @@ func TestStore(t *testing.T) {
 		t.Errorf("expected [f], got %v - %v", ids, err)
 	}
 }
+
+func TestFileErrors(t *testing.T) {
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+	pb := &testpb.M{Content: "hola"}
+
+	if err := WriteMessage("/proc/doesnotexist", pb, 0600); err == nil {
+		t.Errorf("write to /proc/doesnotexist worked, expected error")
+	}
+
+	if err := ReadMessage("/doesnotexist", pb); err == nil {
+		t.Errorf("read from /doesnotexist worked, expected error")
+	}
+
+	s := &Store{dir: "/doesnotexist"}
+	if ids, err := s.ListIDs(); !(ids == nil && err != nil) {
+		t.Errorf("list /doesnotexist worked (%v, %v), expected error", ids, err)
+	}
+}
