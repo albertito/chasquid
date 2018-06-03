@@ -2,14 +2,31 @@ package courier
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"net/textproto"
+	"strings"
 	"testing"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/testlib"
+	"blitiri.com.ar/go/chasquid/internal/trace"
 )
+
+// This domain will cause idna.ToASCII to fail.
+var invalidDomain = "test " + strings.Repeat("x", 65536) + "\uff00"
+
+// Override the netLookupMX function, to return controlled results for
+// testing.
+var testMX = map[string][]*net.MX{}
+var testMXErr = map[string]error{}
+
+func init() {
+	netLookupMX = func(name string) ([]*net.MX, error) {
+		return testMX[name], testMXErr[name]
+	}
+}
 
 func newSMTP(t *testing.T) (*SMTP, string) {
 	dir := testlib.MustTempDir(t)
@@ -88,7 +105,7 @@ func TestSMTP(t *testing.T) {
 	// lookup whick makes the test more hermetic. This is a hack, ideally we
 	// would be able to override the default resolver, but Go does not
 	// implement that yet.
-	fakeMX["to"] = []string{":::", host}
+	testMX["to"] = []*net.MX{{":::", 10}, {host, 20}}
 	*smtpPort = port
 
 	s, tmpDir := newSMTP(t)
@@ -149,7 +166,7 @@ func TestSMTPErrors(t *testing.T) {
 		addr := fakeServer(t, rs)
 		host, port, _ := net.SplitHostPort(addr)
 
-		fakeMX["to"] = []string{host}
+		testMX["to"] = []*net.MX{{Host: host, Pref: 10}}
 		*smtpPort = port
 
 		s, tmpDir := newSMTP(t)
@@ -163,7 +180,7 @@ func TestSMTPErrors(t *testing.T) {
 }
 
 func TestNoMXServer(t *testing.T) {
-	fakeMX["to"] = []string{}
+	testMX["to"] = []*net.MX{}
 
 	s, tmpDir := newSMTP(t)
 	defer testlib.RemoveIfOk(t, tmpDir)
@@ -175,6 +192,73 @@ func TestNoMXServer(t *testing.T) {
 		t.Errorf("expected permanent failure, got transient (%v)", err)
 	}
 	t.Logf("got permanent failure, as expected: %v", err)
+}
+
+func TestTooManyMX(t *testing.T) {
+	tr := trace.New("test", "test")
+	testMX["domain"] = []*net.MX{
+		{Host: "h1", Pref: 10}, {Host: "h2", Pref: 20},
+		{Host: "h3", Pref: 30}, {Host: "h4", Pref: 40},
+		{Host: "h5", Pref: 50}, {Host: "h5", Pref: 60},
+	}
+	mxs, err := lookupMXs(tr, "domain")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(mxs) != 5 {
+		t.Errorf("expected len(mxs) == 5, got: %v", mxs)
+	}
+}
+
+func TestFallbackToA(t *testing.T) {
+	tr := trace.New("test", "test")
+	testMX["domain"] = nil
+	testMXErr["domain"] = &net.DNSError{
+		Err:         "no such host (test)",
+		IsTemporary: false,
+	}
+
+	mxs, err := lookupMXs(tr, "domain")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !(len(mxs) == 1 && mxs[0] == "domain") {
+		t.Errorf("expected mxs == [domain], got: %v", mxs)
+	}
+}
+
+func TestTemporaryDNSerror(t *testing.T) {
+	tr := trace.New("test", "test")
+	testMX["domain"] = nil
+	testMXErr["domain"] = &net.DNSError{
+		Err:         "temp error (test)",
+		IsTemporary: true,
+	}
+
+	mxs, err := lookupMXs(tr, "domain")
+	if !(mxs == nil && err == testMXErr["domain"]) {
+		t.Errorf("expected mxs == nil, err == test error, got: %v, %v", mxs, err)
+	}
+}
+
+func TestMXLookupError(t *testing.T) {
+	tr := trace.New("test", "test")
+	testMX["domain"] = nil
+	testMXErr["domain"] = fmt.Errorf("test error")
+
+	mxs, err := lookupMXs(tr, "domain")
+	if !(mxs == nil && err == testMXErr["domain"]) {
+		t.Errorf("expected mxs == nil, err == test error, got: %v, %v", mxs, err)
+	}
+}
+
+func TestLookupInvalidDomain(t *testing.T) {
+	tr := trace.New("test", "test")
+
+	mxs, err := lookupMXs(tr, invalidDomain)
+	if !(mxs == nil && err != nil) {
+		t.Errorf("expected err != nil, got: %v, %v", mxs, err)
+	}
 }
 
 // TODO: Test STARTTLS negotiation.

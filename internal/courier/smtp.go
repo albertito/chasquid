@@ -26,8 +26,10 @@ var (
 	smtpPort = flag.String("testing__outgoing_smtp_port", "25",
 		"port to use for outgoing SMTP connections, ONLY FOR TESTING")
 
-	// Fake MX records, used for testing only.
-	fakeMX = map[string][]string{}
+	// Allow overriding of net.LookupMX for testing purposes.
+	// TODO: replace this with proper lookup interception once it is supported
+	// by Go.
+	netLookupMX = net.LookupMX
 )
 
 // Exported variables.
@@ -198,10 +200,6 @@ retry:
 }
 
 func lookupMXs(tr *trace.Trace, domain string) ([]string, error) {
-	if v, ok := fakeMX[domain]; ok {
-		return v, nil
-	}
-
 	domain, err := idna.ToASCII(domain)
 	if err != nil {
 		return nil, err
@@ -209,7 +207,7 @@ func lookupMXs(tr *trace.Trace, domain string) ([]string, error) {
 
 	mxs := []string{}
 
-	mxRecords, err := net.LookupMX(domain)
+	mxRecords, err := netLookupMX(domain)
 	if err != nil {
 		// There was an error. It could be that the domain has no MX, in which
 		// case we have to fall back to A, or a bigger problem.
