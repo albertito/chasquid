@@ -38,6 +38,7 @@ func RemoveIfOk(t *testing.T, dir string) {
 	}
 }
 
+// Rewrite a file with the given contents.
 func Rewrite(t *testing.T, path, contents string) error {
 	// Safeguard, to make sure we only mess with test files.
 	if !strings.Contains(path, "testlib_") {
