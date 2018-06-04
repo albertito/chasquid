@@ -25,6 +25,7 @@ nav:
     - hooks.md
     - dovecot.md
     - dkim.md
+    - docker.md
     - flow.md
     - monitoring.md
     - sec-levels.md

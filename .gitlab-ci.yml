@@ -1,6 +1,7 @@
 
 stages:
   - test
+  - docker_image
 
 integration_test:
   stage: test
@@ -12,3 +13,14 @@ integration_test:
     - docker build -t chasquid-test -f test/Dockerfile .
     - docker run chasquid-test  env
     - docker run chasquid-test  make test
+
+image_build:
+  stage: docker_image
+  image: docker:stable
+  services:
+    - docker:dind
+  script:
+    - docker info
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_BUILD_REF_NAME -f docker/Dockerfile .
+    - docker push $CI_REGISTRY_IMAGE:$CI_BUILD_REF_NAME
