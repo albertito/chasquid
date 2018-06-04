@@ -1,0 +1,32 @@
+
+# Invalid version
+userdb unix_listen .dovecot-userdb
+c = ./dovecot-auth-cli .dovecot exists username
+
+userdb -> VERSION	0
+c <~ no: error receiving version
+c wait 0
+
+
+# No SPID (send "NOSPID" instead
+userdb unix_listen .dovecot-userdb
+c = ./dovecot-auth-cli .dovecot exists username
+
+userdb -> VERSION	1	1
+userdb -> NOSPID
+c <~ no: error receiving SPID:
+c wait 0
+
+# Break before sending the final response.
+userdb unix_listen .dovecot-userdb
+c = ./dovecot-auth-cli .dovecot exists username
+
+userdb -> VERSION	1	1
+userdb -> SPID	12345
+userdb <- VERSION	1	1
+userdb <- USER	1	username	service=smtp
+
+userdb close
+
+c <- no: error receiving response: EOF
+c wait 0

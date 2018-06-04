@@ -117,3 +117,9 @@ func mustListen(t *testing.T, path string) *net.UnixListener {
 
 	return l
 }
+
+func TestNotASocket(t *testing.T) {
+	if isUnixSocket("/doesnotexist") {
+		t.Errorf("isUnixSocket(/doesnotexist) returned true")
+	}
+}

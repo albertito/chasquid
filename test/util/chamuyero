@@ -42,6 +42,8 @@ class Process (object):
     def wait(self):
         return self.cmd.wait()
 
+    def close(self):
+        return self.cmd.terminate()
 
 class Sock (object):
     """A (generic) socket.
@@ -77,6 +79,10 @@ class Sock (object):
         self.has_conn.wait()
         return self.connr.readline()
 
+    def close(self):
+        self.connr.close()
+        self.connw.close()
+        self.sock.close()
 
 class UnixSock (Sock):
     def __init__(self, addr):
@@ -238,6 +244,10 @@ class Interpreter (object):
                 if params and retcode != int(params):
                     self.runtime_error("return code did not match:\n"
                             + "  expected %s, got %d" % (params, retcode))
+
+            # close  Close the process.
+            elif op == "close":
+                self.procs[proc].close()
 
             else:
                 self.syntax_error("unknown syntax")
