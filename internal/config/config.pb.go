@@ -90,15 +90,15 @@ type Config struct {
 	// If "<syslog>", log using the syslog (at MAIL|INFO priority).
 	// Default: <syslog>
 	MailLogPath string `protobuf:"bytes,12,opt,name=mail_log_path,json=mailLogPath" json:"mail_log_path,omitempty"`
-	// EXPERIMENTAL - Enable dovecot authentication.
+	// Enable dovecot authentication.
 	// Domains that don't have an user database will be authenticated via
 	// dovecot.
 	DovecotAuth bool `protobuf:"varint,13,opt,name=dovecot_auth,json=dovecotAuth" json:"dovecot_auth,omitempty"`
-	// EXPERIMENTAL - Dovecot userdb path. If dovecot_auth is set and this
+	// Dovecot userdb path. If dovecot_auth is set and this
 	// is not, we will try to autodetect it.
 	// Example: /var/run/dovecot/auth-userdb
 	DovecotUserdbPath string `protobuf:"bytes,14,opt,name=dovecot_userdb_path,json=dovecotUserdbPath" json:"dovecot_userdb_path,omitempty"`
-	// EXPERIMENTAL - Dovecot client path. If dovecot_auth is set and this
+	// Dovecot client path. If dovecot_auth is set and this
 	// is not, we will try to autodetect it.
 	// Example: /var/run/dovecot/auth-client
 	DovecotClientPath string `protobuf:"bytes,15,opt,name=dovecot_client_path,json=dovecotClientPath" json:"dovecot_client_path,omitempty"`

@@ -24,7 +24,7 @@ It's written in [Go](https://golang.org), and distributed under the
     * Monitoring HTTP server, with exported variables and tracing to help
       debugging.
     * Integrated with [Debian] and [Ubuntu].
-    * Supports using [Dovecot] for authentication (experimental).
+    * Supports using [Dovecot] for authentication.
 * Useful
     * Multiple/virtual domains, with per-domain users and aliases.
     * Suffix dropping (`user+something@domain` → `user@domain`).

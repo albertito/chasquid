@@ -1,15 +1,11 @@
 
 # Dovecot integration
 
-As of version 0.04 (2018-02), [chasquid] has _experimental_ integration with
-[dovecot] for authenticating users.
+As of version 0.04 (2018-02), [chasquid] has integration with [dovecot] for
+authenticating users.
 
 This means that chasquid can ask dovecot to authenticate users, instead/in
 addition to having its own per-domain user databases.
-
-It is experimental because it was added recently, and the semantics and
-options are prone to be changed in the future. If you use this feature, please
-let the authors know, at chasquid@googlegroups.com.
 
 
 ## Configuring dovecot

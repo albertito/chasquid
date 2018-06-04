@@ -75,17 +75,17 @@ message Config {
 	// Default: <syslog>
 	string mail_log_path = 12;
 
-	// EXPERIMENTAL - Enable dovecot authentication.
+	// Enable dovecot authentication.
 	// Domains that don't have an user database will be authenticated via
 	// dovecot.
 	bool dovecot_auth = 13;
 
-	// EXPERIMENTAL - Dovecot userdb path. If dovecot_auth is set and this
+	// Dovecot userdb path. If dovecot_auth is set and this
 	// is not, we will try to autodetect it.
 	// Example: /var/run/dovecot/auth-userdb
 	string dovecot_userdb_path = 14;
 
-	// EXPERIMENTAL - Dovecot client path. If dovecot_auth is set and this
+	// Dovecot client path. If dovecot_auth is set and this
 	// is not, we will try to autodetect it.
 	// Example: /var/run/dovecot/auth-client
 	string dovecot_client_path = 15;
