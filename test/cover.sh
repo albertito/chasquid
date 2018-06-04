@@ -32,6 +32,10 @@ go test -tags coverage \
 # Will run in coverage mode due to $COVER_DIR being set.
 setsid -w ./test/run.sh
 
+# dovecot tests are also coverage-aware.
+echo "dovecot cli ..."
+setsid -w ./cmd/dovecot-auth-cli/test.sh
+
 # Merge all coverage output into a single file.
 # Ignore protocol buffer-generated files, as they are not relevant.
 go run "${UTILDIR}/gocovcat.go" .coverage/*.out \

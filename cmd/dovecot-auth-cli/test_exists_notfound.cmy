@@ -11,6 +11,5 @@ userdb <- USER	1	username	service=smtp
 
 userdb -> NOTFOUND	1
 
-c wait 1
-
 c <- no: <nil>
+c wait 0

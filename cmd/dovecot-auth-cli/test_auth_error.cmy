@@ -18,4 +18,4 @@ client <- AUTH	1	PLAIN	service=smtp	secured	no-penalty	nologin	resp=dXNlcm5hbWUA
 client -> OTHER
 
 c <~ no: invalid response
-c wait 1
+c wait 0

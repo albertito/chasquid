@@ -18,4 +18,4 @@ client <- AUTH	1	PLAIN	service=smtp	secured	no-penalty	nologin	resp=dXNlcm5hbWUA
 client -> FAIL	1
 
 c <- no: <nil>
-c wait 1
+c wait 0

@@ -1,8 +1,8 @@
 
 c = ./dovecot-auth-cli .missingsocket exists username
 c <~ no: dial unix .missingsocket-userdb
-c wait 1
+c wait 0
 
 c = ./dovecot-auth-cli .missingsocket auth username password
 c <~ no: dial unix .missingsocket-client
-c wait 1
+c wait 0
