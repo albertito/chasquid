@@ -101,7 +101,7 @@ Enable dovecot authentication. If true, users that are not found in chasquid's
 databases will be authenticated via dovecot.  Default: C<false>.
 
 The path to dovecot's auth sockets is autodetected, but can be manually
-overriden using the C<dovecot_userdb_path> and C<dovecot_client_path> if
+overridden using the C<dovecot_userdb_path> and C<dovecot_client_path> if
 needed.
 
 =back
