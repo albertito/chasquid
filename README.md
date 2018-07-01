@@ -35,7 +35,7 @@ It's written in [Go](https://golang.org), and distributed under the
     * Tracking of per-domain TLS support, prevents connection downgrading.
     * Multiple TLS certificates.
     * Easy integration with [Let's Encrypt].
-    * [SPF] checking.
+    * [SPF] and [MTA-STS] checking.
 
 
 [SMTPUTF8]: https://en.wikipedia.org/wiki/Extended_SMTP#SMTPUTF8
@@ -43,6 +43,7 @@ It's written in [Go](https://golang.org), and distributed under the
 [Let's Encrypt]: https://letsencrypt.org
 [Dovecot]: https://dovecot.org
 [SPF]: https://en.wikipedia.org/wiki/Sender_Policy_Framework
+[MTA-STS]: https://datatracker.ietf.org/doc/draft-ietf-uta-mta-sts/
 [Debian]: https://debian.org
 [Ubuntu]: https://ubuntu.com
 
