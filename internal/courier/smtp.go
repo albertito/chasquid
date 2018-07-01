@@ -32,11 +32,6 @@ var (
 	// TODO: replace this with proper lookup interception once it is supported
 	// by Go.
 	netLookupMX = net.LookupMX
-
-	// Enable STS policy checking; this is an experimental flag and will be
-	// removed in the future, once this is made the default.
-	enableSTS = flag.Bool("experimental__enable_sts", false,
-		"enable STS policy checking; EXPERIMENTAL")
 )
 
 // Exported variables.
@@ -232,9 +227,6 @@ retry:
 }
 
 func (s *SMTP) fetchSTSPolicy(tr *trace.Trace, domain string) *sts.Policy {
-	if !*enableSTS {
-		return nil
-	}
 	if s.STSCache == nil {
 		return nil
 	}
