@@ -61,6 +61,8 @@ type Policy struct {
 	MaxAge  time.Duration `json:"max_age"`
 }
 
+// The Mode of a policy. Valid values (according to the standard) are
+// constants below.
 type Mode string
 
 // Valid modes.
@@ -93,8 +95,8 @@ func parsePolicy(raw []byte) (*Policy, error) {
 			p.Mode = Mode(value)
 		case "max_age":
 			// On error, p.MaxAge will be 0 which is invalid.
-			max_age, _ := strconv.Atoi(value)
-			p.MaxAge = time.Duration(max_age) * time.Second
+			maxAge, _ := strconv.Atoi(value)
+			p.MaxAge = time.Duration(maxAge) * time.Second
 		case "mx":
 			p.MXs = append(p.MXs, value)
 		}
@@ -106,14 +108,16 @@ func parsePolicy(raw []byte) (*Policy, error) {
 	return p, nil
 }
 
+// Check errors.
 var (
-	// Check errors.
 	ErrUnknownVersion = errors.New("unknown policy version")
 	ErrInvalidMaxAge  = errors.New("invalid max_age")
 	ErrInvalidMode    = errors.New("invalid mode")
 	ErrInvalidMX      = errors.New("invalid mx")
+)
 
-	// Fetch errors.
+// Fetch errors.
+var (
 	ErrInvalidMediaType = errors.New("invalid HTTP media type")
 )
 
@@ -333,6 +337,8 @@ type PolicyCache struct {
 	sync.Mutex
 }
 
+// NewCache creates an instance of PolicyCache using the given directory as
+// backing storage. The directory will be created if it does not exist.
 func NewCache(dir string) (*PolicyCache, error) {
 	c := &PolicyCache{
 		dir: dir,
@@ -352,7 +358,7 @@ func (c *PolicyCache) domainPath(domain string) string {
 	return c.dir + "/" + pathPrefix + domain
 }
 
-var ErrExpired = errors.New("cache entry expired")
+var errExpired = errors.New("cache entry expired")
 
 func (c *PolicyCache) load(domain string) (*Policy, error) {
 	fname := c.domainPath(domain)
@@ -363,7 +369,7 @@ func (c *PolicyCache) load(domain string) (*Policy, error) {
 	}
 	if time.Since(fi.ModTime()) > 0 {
 		cacheExpired.Add(1)
-		return nil, ErrExpired
+		return nil, errExpired
 	}
 
 	data, err := ioutil.ReadFile(fname)
@@ -414,6 +420,7 @@ func (c *PolicyCache) store(domain string, p *Policy) error {
 	return err
 }
 
+// Fetch a policy for the given domain, using the cache.
 func (c *PolicyCache) Fetch(ctx context.Context, domain string) (*Policy, error) {
 	cacheFetches.Add(1)
 	tr := trace.New("STSCache.Fetch", domain)
@@ -450,6 +457,7 @@ func (c *PolicyCache) Fetch(ctx context.Context, domain string) (*Policy, error)
 	return p, nil
 }
 
+// PeriodicallyRefresh the cache, by re-fetching all entries.
 func (c *PolicyCache) PeriodicallyRefresh(ctx context.Context) {
 	for ctx.Err() == nil {
 		c.refresh(ctx)

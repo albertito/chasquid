@@ -27,9 +27,9 @@ var txtResults = map[string][]string{
 	"_mta-sts.policy404":  {"v=STSv1; id=blah;"},
 	"_mta-sts.version99":  {"v=STSv1; id=blah;"},
 }
-var testError = fmt.Errorf("error for testing purposes")
+var errTest = fmt.Errorf("error for testing purposes")
 var txtErrors = map[string]error{
-	"_mta-sts.domErr": testError,
+	"_mta-sts.domErr": errTest,
 }
 
 func testLookupTXT(domain string) ([]string, error) {
@@ -217,9 +217,9 @@ func TestFetch(t *testing.T) {
 
 	// Error fetching TXT record for this domain.
 	p, err = Fetch(context.Background(), "domErr")
-	if err != testError {
+	if err != errTest {
 		t.Errorf("expected error %v, got %v (and policy: %v)",
-			testError, err, p)
+			errTest, err, p)
 	}
 	t.Logf("domErr: got expected error: %v", err)
 }
@@ -508,7 +508,7 @@ func TestHasSTSRecord(t *testing.T) {
 		{"dom2", false, nil},
 		{"dom3", false, nil},
 		{"dom4", true, nil},
-		{"domErr", false, testError},
+		{"domErr", false, errTest},
 	}
 	for _, c := range cases {
 		ok, err := hasSTSRecord(c.domain)
