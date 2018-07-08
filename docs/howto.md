@@ -194,7 +194,7 @@ With this configuration, chasquid will use dovecot to manage users, so refer
 to the [dovecot documentation](https://wiki.dovecot.org/BasicConfiguration)
 for the details.
 
-You can also add chasquid-specific users with `chasquid-util add-user`.
+You can also add chasquid-specific users with `chasquid-util user-add`.
 
 
 ## Additional domains
