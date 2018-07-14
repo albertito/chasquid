@@ -253,7 +253,7 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 
 	// Read but up to 10k; policies should be way smaller than that, and
 	// having a limit prevents abuse/accidents with very large replies.
-	return ioutil.ReadAll(&io.LimitedReader{resp.Body, 10 * 1024})
+	return ioutil.ReadAll(&io.LimitedReader{R: resp.Body, N: 10 * 1024})
 }
 
 var errRejectRedirect = errors.New("redirects not allowed in MTA-STS")
