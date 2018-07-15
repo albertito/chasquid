@@ -41,6 +41,35 @@ service anvil {
 	chroot =
 }
 
+# In dovecot 2.3 these services want to change the group owner of the files,
+# so override it manually to our effective group.
+# This is backwards-compatible with dovecot 2.2.
+# TODO: once we stop supporting dovecot 2.2 for tests, we can set
+# default_internal_group and remove these settings.
+service imap-hibernate {
+	unix_listener imap-hibernate {
+		group = $GROUP
+	}
+}
+service stats {
+	unix_listener stats {
+		group = $GROUP
+	}
+	unix_listener stats-writer {
+		group = $GROUP
+	}
+}
+service dict {
+	unix_listener dict {
+		group = $GROUP
+	}
+}
+service dict-async {
+	unix_listener dict-async {
+		group = $GROUP
+	}
+}
+
 # Turn on debugging information, to help troubleshooting issues.
 auth_verbose = yes
 auth_debug = yes

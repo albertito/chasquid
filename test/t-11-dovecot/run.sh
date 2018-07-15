@@ -25,6 +25,7 @@ export ROOT="/tmp/chasquid-dovecot-test"
 mkdir -p $ROOT $ROOT/run
 rm -f $ROOT/dovecot.log
 
+export GROUP=$(id -g -n)
 envsubst < config/dovecot.conf.in > $ROOT/dovecot.conf
 cp -f config/passwd $ROOT/passwd
 
