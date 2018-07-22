@@ -8,10 +8,8 @@ B<chasquid> [I<options>...]
 
 =head1 DESCRIPTION
 
-chasquid is an SMTP (email) server.
-
-It aims to be easy to configure and maintain for a small mail server, at the
-expense of flexibility and functionality.
+chasquid is an SMTP (email) server with a focus on simplicity, security, and
+ease of operation.
 
 It's written in Go, and distributed under the Apache license 2.0.
 
