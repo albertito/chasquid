@@ -1,9 +1,8 @@
-// Package sts implements the MTA-STS (Strict Transport Security), based on
-// the current draft, https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18.
-//
-// This is an EXPERIMENTAL implementation for now.
+// Package sts implements the MTA-STS (Strict Transport Security), RFC 8461.
 //
 // Note that "report" mode is not supported.
+//
+// Reference: https://tools.ietf.org/html/rfc8461
 //
 package sts
 
@@ -52,7 +51,7 @@ var (
 )
 
 // Policy represents a parsed policy.
-// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-3.2
+// https://tools.ietf.org/html/rfc8461#section-3.2
 // The json annotations are used for serializing for caching purposes.
 type Policy struct {
 	Version string        `json:"version"`
@@ -144,7 +143,7 @@ func (p *Policy) Check() error {
 }
 
 // MXIsAllowed checks if the given MX is allowed, according to the policy.
-// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-4.1
+// https://tools.ietf.org/html/rfc8461#section-4.1
 func (p *Policy) MXIsAllowed(mx string) bool {
 	if p.Mode != Enforce {
 		return true
@@ -197,8 +196,8 @@ func urlForDomain(domain string) string {
 	}
 
 	// URL composed from the domain, as explained in:
-	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-3.3
-	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-3.2
+	// https://tools.ietf.org/html/rfc8461#section-3.3
+	// https://tools.ietf.org/html/rfc8461#section-3.2
 	return "https://mta-sts." + domain + "/.well-known/mta-sts.txt"
 }
 
@@ -225,7 +224,7 @@ func Fetch(ctx context.Context, domain string) (*Policy, error) {
 func httpGet(ctx context.Context, url string) ([]byte, error) {
 	client := &http.Client{
 		// We MUST NOT follow redirects, see
-		// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-3.3
+		// https://tools.ietf.org/html/rfc8461#section-3.3
 		CheckRedirect: rejectRedirect,
 	}
 
@@ -242,7 +241,7 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 	// Media type must be "text/plain" to guard against cases where webservers
 	// allow untrusted users to host non-text content (like HTML or images) at
 	// a user-defined path.
-	// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-3.2
+	// https://tools.ietf.org/html/rfc8461#section-3.2
 	mt, _, err := mime.ParseMediaType(resp.Header.Get("Content-type"))
 	if err != nil {
 		return nil, fmt.Errorf("HTTP media type error: %v", err)
@@ -263,7 +262,7 @@ func rejectRedirect(req *http.Request, via []*http.Request) error {
 }
 
 // matchDomain checks if the domain matches the given pattern, according to
-// from https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-4.1
+// from https://tools.ietf.org/html/rfc8461#section-4.1
 // (based on https://tools.ietf.org/html/rfc6125#section-6.4).
 func matchDomain(domain, pattern string) bool {
 	domain, dErr := domainToASCII(domain)

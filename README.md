@@ -43,7 +43,7 @@ It's written in [Go](https://golang.org), and distributed under the
 [Let's Encrypt]: https://letsencrypt.org
 [Dovecot]: https://dovecot.org
 [SPF]: https://en.wikipedia.org/wiki/Sender_Policy_Framework
-[MTA-STS]: https://datatracker.ietf.org/doc/draft-ietf-uta-mta-sts/
+[MTA-STS]: https://tools.ietf.org/html/rfc8461
 [Debian]: https://debian.org
 [Ubuntu]: https://ubuntu.com
 

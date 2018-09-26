@@ -191,8 +191,8 @@ retry:
 	slcResults.Add("pass", 1)
 
 	if a.stsPolicy != nil && a.stsPolicy.Mode == sts.Enforce {
-		// The connection MUST be validated TLS.
-		// https://tools.ietf.org/html/draft-ietf-uta-mta-sts-18#section-4.2
+		// The connection MUST be validated by TLS.
+		// https://tools.ietf.org/html/rfc8461#section-4.2
 		if secLevel != domaininfo.SecLevel_TLS_SECURE {
 			stsSecurityResults.Add("fail", 1)
 			return a.tr.Errorf("invalid security level (%v) for STS policy",
