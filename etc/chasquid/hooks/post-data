@@ -6,6 +6,7 @@
 #  - greylist (from greylistd) to do greylisting.
 #  - spamc (from Spamassassin) to filter spam.
 #  - clamdscan (from ClamAV) to filter virus.
+#  - dkimsign (from driusan/dkim) to do DKIM signing.
 #
 # If it exits with code 20, it will be considered a permanent error.
 # Otherwise, temporary.
@@ -53,3 +54,23 @@ if command -v clamdscan >/dev/null; then
         echo "X-Virus-Scanned: pass"
 fi
 
+# DKIM sign with https://github.com/driusan/dkim.
+#
+# Do it only if all the following are true:
+#  - User has authenticated.
+#  - dkimsign binary exists.
+#  - domains/$DOMAIN/dkim_selector file exists.
+#  - certs/$DOMAIN/dkim_privkey.pem file exists.
+#
+# Note this has not been thoroughly tested, so might need further adjustments.
+if [ "$AUTH_AS" != "" ] && command -v dkimsign; then
+	DOMAIN=$( echo "$MAIL_FROM" | cut -d '@' -f 2 )
+	if [ -f "domains/$DOMAIN/dkim_selector" ] \
+			&& [ -f "certs/$DOMAIN/dkim_privkey.pem" ]; then
+		dkimsign -n -hd \
+			-key "certs/$DOMAIN/dkim_privkey.pem" \
+			-s $(cat "domains/$DOMAIN/dkim_selector") \
+			-d "$DOMAIN" \
+			< "$TF"
+	fi
+fi

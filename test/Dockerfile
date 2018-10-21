@@ -32,9 +32,15 @@ RUN cd test/t-02-exim && mkdir -p .exim4 && ln -s /usr/sbin/exim4 .exim4/
 # Packages for the (optional) TLS tracking test.
 RUN apt-get install -y -q dnsmasq
 
+# Packages for the (optional) DKIM integration test.
+RUN go get github.com/driusan/dkim/... \
+	&& go install github.com/driusan/dkim/cmd/dkimsign \
+	&& go install github.com/driusan/dkim/cmd/dkimverify \
+	&& go install github.com/driusan/dkim/cmd/dkimkeygen
 
-RUN go get -d ./...
-RUN go install ./...
+# Install chasquid and its dependencies.
+RUN go get -d -v ./...
+RUN go install -v ./...
 
 # Don't run the tests as root: it makes some integration tests more difficult,
 # as for example Exim has hard-coded protections against running as root.

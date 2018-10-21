@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# If authenticated, sign; otherwise, verify.
+#
+# It is not recommended that we fail delivery on dkim verification failures,
+# but leave it to the MUA to handle verifications.
+# https://tools.ietf.org/html/rfc6376#section-2.2
+#
+# We do a verification here so we have a stronger integration test (check
+# encodings/dot-stuffing/etc. works ok), but it's not recommended for general
+# purposes.
+
+if [ "$AUTH_AS" != "" ]; then
+	DOMAIN=$( echo "$MAIL_FROM" | cut -d '@' -f 2 )
+	exec dkimsign -n -hd -key ../.dkimcerts/private.pem \
+		-s $(cat "domains/$DOMAIN/dkim_selector") -d "$DOMAIN"
+fi
+
+exec dkimverify -txt ../.dkimcerts/dns.txt
