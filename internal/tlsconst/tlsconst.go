@@ -11,6 +11,7 @@ var versionName = map[uint16]string{
 	0x0301: "TLS-1.0",
 	0x0302: "TLS-1.1",
 	0x0303: "TLS-1.2",
+	0x0304: "TLS-1.3",
 }
 
 // VersionName returns a human-readable TLS version name.
