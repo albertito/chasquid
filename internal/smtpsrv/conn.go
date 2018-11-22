@@ -119,6 +119,9 @@ type Conn struct {
 	// Are we using TLS?
 	onTLS bool
 
+	// Have we used EHLO?
+	isESMTP bool
+
 	// Authenticator, aliases and local domains, taken from the server at
 	// creation time.
 	authr        *auth.Authenticator
@@ -292,6 +295,7 @@ func (c *Conn) EHLO(params string) (code int, msg string) {
 		return 501, "Invisible customers are not welcome!"
 	}
 	c.ehloAddress = strings.Fields(params)[0]
+	c.isESMTP = true
 
 	buf := bytes.NewBuffer(nil)
 	fmt.Fprintf(buf, c.hostname+" - Your hour of destiny has come.\n")
@@ -628,26 +632,47 @@ func (c *Conn) addReceivedHeader() {
 	// https://tools.ietf.org/html/rfc5321#section-4.4
 
 	if c.completedAuth {
-		v += fmt.Sprintf("from %s (authenticated as %s@%s)\n",
-			c.ehloAddress, c.authUser, c.authDomain)
+		// For authenticated users, only show the EHLO address they gave;
+		// explicitly hide their network address.
+		v += fmt.Sprintf("from %s\n", c.ehloAddress)
 	} else {
-		v += fmt.Sprintf("from %s (%s)\n",
-			c.ehloAddress, c.conn.RemoteAddr().String())
+		// For non-authenticated users we show the real address as canonical,
+		// and then the given EHLO address for convenience and
+		// troubleshooting.
+		v += fmt.Sprintf("from [%s] (%s)\n",
+			addrLiteral(c.conn.RemoteAddr()), c.ehloAddress)
 	}
 
-	v += fmt.Sprintf("by %s (chasquid)\n", c.hostname)
+	v += fmt.Sprintf("by %s (chasquid) ", c.hostname)
 
-	v += fmt.Sprintf("(over %s ", c.mode)
+	// https://www.iana.org/assignments/mail-parameters/mail-parameters.xhtml#mail-parameters-7
+	with := "SMTP"
+	if c.isESMTP {
+		with = "ESMTP"
+	}
+	if c.onTLS {
+		with += "S"
+	}
+	if c.completedAuth {
+		with += "A"
+	}
+	v += fmt.Sprintf("with %s\n", with)
+
 	if c.tlsConnState != nil {
-		v += fmt.Sprintf("%s-%s)\n",
-			tlsconst.VersionName(c.tlsConnState.Version),
+		// https://tools.ietf.org/html/rfc8314#section-4.3
+		v += fmt.Sprintf("tls %s\n",
 			tlsconst.CipherSuiteName(c.tlsConnState.CipherSuite))
+	}
+
+	v += fmt.Sprintf("(over %s, ", c.mode)
+	if c.tlsConnState != nil {
+		v += fmt.Sprintf("%s, ", tlsconst.VersionName(c.tlsConnState.Version))
 	} else {
-		v += "plain text!)\n"
+		v += "plain text!, "
 	}
 
 	// Note we must NOT include c.rcptTo, that would leak BCCs.
-	v += fmt.Sprintf("(envelope from %q)\n", c.mailFrom)
+	v += fmt.Sprintf("envelope from %q)\n", c.mailFrom)
 
 	// This should be the last part in the Received header, by RFC.
 	// The ";" is a mandatory separator. The date format is not standard but
@@ -661,6 +686,27 @@ func (c *Conn) addReceivedHeader() {
 		v = fmt.Sprintf("%s (%v)", c.spfResult, c.spfError)
 		c.data = envelope.AddHeader(c.data, "Received-SPF", v)
 	}
+}
+
+// addrLiteral converts a net.Addr (must be TCP) into a string for use as
+// address literal, compliant with
+// https://tools.ietf.org/html/rfc5321#section-4.1.3.
+func addrLiteral(addr net.Addr) string {
+	tcp, ok := addr.(*net.TCPAddr)
+	if !ok {
+		// Fall back to Go's string representation; non-compliant but
+		// better than anything for our purposes.
+		return addr.String()
+	}
+
+	// IPv6 addresses take the "IPv6:" prefix.
+	// IPv4 addresses are used literally.
+	s := tcp.IP.String()
+	if strings.Contains(s, ":") {
+		return "IPv6:" + s
+	}
+
+	return s
 }
 
 // checkData performs very basic checks on the body of the email, to help

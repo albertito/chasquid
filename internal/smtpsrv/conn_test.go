@@ -1,6 +1,7 @@
 package smtpsrv
 
 import (
+	"net"
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
@@ -74,6 +75,44 @@ func TestIsHeader(t *testing.T) {
 	for _, s := range yes {
 		if !isHeader([]byte(s)) {
 			t.Errorf("%q rejected as header, should be accepted", s)
+		}
+	}
+}
+
+func TestAddrLiteral(t *testing.T) {
+	// TCP addresses.
+	casesTCP := []struct {
+		addr     net.IP
+		expected string
+	}{
+		{net.IPv4(1, 2, 3, 4), "1.2.3.4"},
+		{net.IPv4(0, 0, 0, 0), "0.0.0.0"},
+		{net.ParseIP("1.2.3.4"), "1.2.3.4"},
+		{net.ParseIP("2001:db8::68"), "IPv6:2001:db8::68"},
+		{net.ParseIP("::1"), "IPv6:::1"},
+	}
+	for _, c := range casesTCP {
+		tcp := &net.TCPAddr{
+			IP:   c.addr,
+			Port: 12345,
+		}
+		s := addrLiteral(tcp)
+		if s != c.expected {
+			t.Errorf("%v: expected %q, got %q", tcp, c.expected, s)
+		}
+	}
+
+	// Non-TCP addresses. We expect these to match addr.String().
+	casesOther := []net.Addr{
+		&net.UDPAddr{
+			IP:   net.ParseIP("1.2.3.4"),
+			Port: 12345,
+		},
+	}
+	for _, addr := range casesOther {
+		s := addrLiteral(addr)
+		if s != addr.String() {
+			t.Errorf("%v: expected %q, got %q", addr, addr.String(), s)
 		}
 	}
 }

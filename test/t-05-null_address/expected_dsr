@@ -20,10 +20,10 @@ Delivery to the following recipient(s) failed permanently:
 
 ----- Original message -----
 
-Received: from localhost (authenticated as user@testserver)
-	by testserver (chasquid)
+Received: from localhost
+	by testserver (chasquid) with ESMTPSA
+	tls *
 	(over *
-	(envelope from "user@testserver")
 	; *
 Date: *
 From: Mailer daemon <somewhere@horns.com>
