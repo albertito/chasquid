@@ -107,6 +107,10 @@ function conngen() {
 	go run ${UTILDIR}/conngen.go "$@"
 }
 
+function minidns() {
+	go run ${UTILDIR}/minidns.go "$@"
+}
+
 function success() {
 	echo success
 }
