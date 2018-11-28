@@ -25,8 +25,7 @@ RUN apt-get install -y -q python3 msmtp
 # Install the optional packages for the integration tests.
 RUN apt-get install -y -q \
 	gettext-base dovecot-imapd \
-	exim4-daemon-light \
-	dnsmasq
+	exim4-daemon-light
 
 # Prepare exim.
 RUN mkdir -p test/t-02-exim/.exim4 \

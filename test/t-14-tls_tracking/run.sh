@@ -7,11 +7,6 @@ set -e
 
 init
 
-if ! dnsmasq --version > /dev/null; then
-        skip "dnsmasq binary is not functional"
-        exit 0
-fi
-
 # To fake SPF we need to override the resolver, which is only supported in Go
 # >= 1.8, so this test depends on that version.
 # TODO: remove this once we only support go >= 1.8.
@@ -25,11 +20,8 @@ fi
 # Build with the DNS override, so we can fake DNS records.
 export GOTAGS="dnsoverride"
 
-# Launch dnsmasq in the background using our configuration.
-# We run with -d as it takes care of a lot of options (log file, pid file,
-# etc.) for our use case.
-# It listens on localhost:9053 as  configuration.
-dnsmasq --conf-file=dnsmasq.conf -d >> .dnsmasq.log 2>&1 &
+# Launch minidns in the background using our configuration.
+minidns --addr=":9053" -zones=zones >> .minidns.log 2>&1 &
 
 
 # Two chasquid servers:
