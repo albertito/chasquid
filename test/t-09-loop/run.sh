@@ -47,7 +47,9 @@ wget -q -o /dev/null -O .data-A/dbg-root http://localhost:1099/404 \
 while sleep 0.1; do
 	wget -q -o /dev/null -O .data-A/vars http://localhost:1099/debug/vars
 	wget -q -o /dev/null -O .data-B/vars http://localhost:2099/debug/vars
-	if grep -q '"chasquid/smtpIn/loopsDetected": 1,' .data-?/vars; then
+	# Allow for up to 2 loops to be detected, because if chasquid is fast
+	# enough the DSN will also loop before this check notices it.
+	if grep -q '"chasquid/smtpIn/loopsDetected": [12],' .data-?/vars; then
 		break
 	fi
 done
