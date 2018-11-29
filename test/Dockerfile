@@ -27,6 +27,9 @@ RUN apt-get install -y -q \
 	gettext-base dovecot-imapd \
 	exim4-daemon-light
 
+# Install sudo, needed for the docker entrypoint.
+RUN apt-get install -y -q sudo
+
 # Prepare exim.
 RUN mkdir -p test/t-02-exim/.exim4 \
 	&& ln -s /usr/sbin/exim4 test/t-02-exim/.exim4
@@ -43,10 +46,13 @@ COPY . .
 # Install chasquid and its dependencies.
 RUN go get -d -v ./... && go install -v ./...
 
+# Custom entry point, which uses our own DNS server.
+ENTRYPOINT ["./test/util/docker_entrypoint.sh"]
+
 # Don't run the tests as root: it makes some integration tests more difficult,
 # as for example Exim has hard-coded protections against running as root.
 RUN useradd -m chasquid && chown -R chasquid:chasquid .
-USER chasquid
+#USER chasquid
 
 # Tests expect the $USER variable set.
-ENV USER chasquid
+#ENV USER chasquid
