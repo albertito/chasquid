@@ -1,0 +1,14 @@
+
+stages:
+  - test
+
+integration_test:
+  stage: test
+  image: docker:stable
+  services:
+    - docker:dind
+  script:
+    - docker info
+    - docker build -t chasquid-test -f test/Dockerfile .
+    - docker run chasquid-test  env
+    - docker run chasquid-test  make test
