@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/textproto"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -39,13 +40,17 @@ func newSMTP(t *testing.T) (*SMTP, string) {
 }
 
 // Fake server, to test SMTP out.
-func fakeServer(t *testing.T, responses map[string]string) string {
+func fakeServer(t *testing.T, responses map[string]string) (string, *sync.WaitGroup) {
 	l, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatalf("fake server listen: %v", err)
 	}
 
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
 	go func() {
+		defer wg.Done()
 		defer l.Close()
 
 		c, err := l.Accept()
@@ -79,7 +84,7 @@ func fakeServer(t *testing.T, responses map[string]string) string {
 		}
 	}()
 
-	return l.Addr().String()
+	return l.Addr().String(), wg
 }
 
 func TestSMTP(t *testing.T) {
@@ -96,7 +101,7 @@ func TestSMTP(t *testing.T) {
 		"_DATA":             "250 data ok\n",
 		"QUIT":              "250 quit ok\n",
 	}
-	addr := fakeServer(t, responses)
+	addr, wg := fakeServer(t, responses)
 	host, port, _ := net.SplitHostPort(addr)
 
 	// Put a non-existing host first, so we check that if the first host
@@ -114,6 +119,8 @@ func TestSMTP(t *testing.T) {
 	if err != nil {
 		t.Errorf("deliver failed: %v", err)
 	}
+
+	wg.Wait()
 }
 
 func TestSMTPErrors(t *testing.T) {
@@ -163,7 +170,7 @@ func TestSMTPErrors(t *testing.T) {
 	}
 
 	for _, rs := range responses {
-		addr := fakeServer(t, rs)
+		addr, wg := fakeServer(t, rs)
 		host, port, _ := net.SplitHostPort(addr)
 
 		testMX["to"] = []*net.MX{{Host: host, Pref: 10}}
@@ -176,6 +183,8 @@ func TestSMTPErrors(t *testing.T) {
 			t.Errorf("deliver not failed in case %q: %v", rs["_welcome"], err)
 		}
 		t.Logf("failed as expected: %v", err)
+
+		wg.Wait()
 	}
 }
 
