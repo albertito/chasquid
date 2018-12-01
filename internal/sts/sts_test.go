@@ -385,7 +385,7 @@ func TestCacheBadData(t *testing.T) {
 	}
 }
 
-func mustFetch(t *testing.T, c *PolicyCache, ctx context.Context, d string) *Policy {
+func (c *PolicyCache) mustFetch(ctx context.Context, t *testing.T, d string) *Policy {
 	p, err := c.Fetch(ctx, d)
 	if err != nil {
 		t.Fatalf("Fetch %q failed: %v", d, err)
@@ -421,7 +421,7 @@ func TestCacheRefresh(t *testing.T) {
 		mode: enforce
 		mx: mx
 		max_age: 100`
-	p := mustFetch(t, c, ctx, "refresh-test")
+	p := c.mustFetch(ctx, t, "refresh-test")
 	if p.MaxAge != 100*time.Second {
 		t.Fatalf("policy.MaxAge is %v, expected 100s", p.MaxAge)
 	}
@@ -434,7 +434,7 @@ func TestCacheRefresh(t *testing.T) {
 		mx: mx
 		max_age: 200`
 
-	p = mustFetch(t, c, ctx, "refresh-test")
+	p = c.mustFetch(ctx, t, "refresh-test")
 	if p.MaxAge != 100*time.Second {
 		t.Fatalf("policy.MaxAge is %v, expected 100s", p.MaxAge)
 	}
@@ -450,7 +450,7 @@ func TestCacheRefresh(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 
-	p = mustFetch(t, c, ctx, "refresh-test")
+	p = c.mustFetch(ctx, t, "refresh-test")
 	if p.MaxAge != 200*time.Second {
 		t.Fatalf("policy.MaxAge is %v, expected 200s", p.MaxAge)
 	}

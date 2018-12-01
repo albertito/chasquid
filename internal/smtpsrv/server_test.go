@@ -374,7 +374,7 @@ func generateCert(path string) error {
 			x509.KeyUsageCertSign,
 
 		BasicConstraintsValid: true,
-		IsCA: true,
+		IsCA:                  true,
 	}
 
 	priv, err := rsa.GenerateKey(rand.Reader, 1024)

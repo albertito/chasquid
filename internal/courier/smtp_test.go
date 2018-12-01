@@ -110,7 +110,10 @@ func TestSMTP(t *testing.T) {
 	// lookup whick makes the test more hermetic. This is a hack, ideally we
 	// would be able to override the default resolver, but Go does not
 	// implement that yet.
-	testMX["to"] = []*net.MX{{":::", 10}, {host, 20}}
+	testMX["to"] = []*net.MX{
+		{Host: ":::", Pref: 10},
+		{Host: host, Pref: 20},
+	}
 	*smtpPort = port
 
 	s, tmpDir := newSMTP(t)
