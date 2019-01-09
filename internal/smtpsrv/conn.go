@@ -232,14 +232,14 @@ loop:
 		case "AUTH":
 			code, msg = c.AUTH(params)
 		case "QUIT":
-			c.writeResponse(221, "Be seeing you...")
+			c.writeResponse(221, "2.0.0 Be seeing you...")
 			break loop
 		default:
 			// Sanitize it a bit to avoid filling the logs and events with
 			// noisy data. Keep the first 6 bytes for debugging.
 			cmd = fmt.Sprintf("unknown<%.6s>", cmd)
 			code = 500
-			msg = "unknown command"
+			msg = "5.5.1 Unknown command"
 		}
 
 		commandCount.Add(cmd, 1)
@@ -254,7 +254,7 @@ loop:
 				if errCount > 10 {
 					// https://tools.ietf.org/html/rfc5321#section-4.3.2
 					c.tr.Errorf("too many errors, breaking connection")
-					c.writeResponse(421, "too many errors, bye")
+					c.writeResponse(421, "4.5.0 Too many errors, bye")
 					break
 				}
 			}
@@ -302,6 +302,7 @@ func (c *Conn) EHLO(params string) (code int, msg string) {
 	fmt.Fprintf(buf, "8BITMIME\n")
 	fmt.Fprintf(buf, "PIPELINING\n")
 	fmt.Fprintf(buf, "SMTPUTF8\n")
+	fmt.Fprintf(buf, "ENHANCEDSTATUSCODES\n")
 	fmt.Fprintf(buf, "SIZE %d\n", c.maxDataSize)
 	if c.onTLS {
 		fmt.Fprintf(buf, "AUTH PLAIN\n")
@@ -314,7 +315,7 @@ func (c *Conn) EHLO(params string) (code int, msg string) {
 
 // HELP SMTP command handler.
 func (c *Conn) HELP(params string) (code int, msg string) {
-	return 214, "hoy por ti, mañana por mi"
+	return 214, "2.0.0 Hoy por ti, mañana por mi"
 }
 
 // RSET SMTP command handler.
@@ -327,28 +328,24 @@ func (c *Conn) RSET(params string) (code int, msg string) {
 		"Your mind releases itself from mundane concerns.",
 		"As your mind turns inward on itself, you forget everything else.",
 	}
-	return 250, msgs[rand.Int()%len(msgs)]
+	return 250, "2.0.0 " + msgs[rand.Int()%len(msgs)]
 }
 
 // VRFY SMTP command handler.
 func (c *Conn) VRFY(params string) (code int, msg string) {
-	// 252 can be used for cases like ours, when we don't really want to
-	// confirm or deny anything.
-	// See https://tools.ietf.org/html/rfc2821#section-3.5.3.
-	return 252, "You have a strange feeling for a moment, then it passes."
+	// We intentionally don't implement this command.
+	return 502, "5.5.1 You have a strange feeling for a moment, then it passes."
 }
 
 // EXPN SMTP command handler.
 func (c *Conn) EXPN(params string) (code int, msg string) {
-	// 252 can be used for cases like ours, when we don't really want to
-	// confirm or deny anything.
-	// See https://tools.ietf.org/html/rfc2821#section-3.5.3.
-	return 252, "You feel disoriented for a moment."
+	// We intentionally don't implement this command.
+	return 502, "5.5.1 You feel disoriented for a moment."
 }
 
 // NOOP SMTP command handler.
 func (c *Conn) NOOP(params string) (code int, msg string) {
-	return 250, "You hear a faint typing noise."
+	return 250, "2.0.0 You hear a faint typing noise."
 }
 
 // MAIL SMTP command handler.
@@ -357,16 +354,16 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 	// options such as "BODY=8BITMIME" (which we ignore).
 	// Check that it begins with "FROM:" first, it's mandatory.
 	if !strings.HasPrefix(strings.ToLower(params), "from:") {
-		return 500, "unknown command"
+		return 500, "5.5.2 Unknown command"
 	}
 	if c.mode.IsSubmission && !c.completedAuth {
-		return 550, "mail to submission port must be authenticated"
+		return 550, "5.7.9 Mail to submission port must be authenticated"
 	}
 
 	rawAddr := ""
 	_, err := fmt.Sscanf(params[5:], "%s ", &rawAddr)
 	if err != nil {
-		return 500, "malformed command - " + err.Error()
+		return 500, "5.5.4 Malformed command: " + err.Error()
 	}
 
 	// Note some servers check (and fail) if we had a previous MAIL command,
@@ -383,17 +380,17 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 	} else {
 		e, err := mail.ParseAddress(rawAddr)
 		if err != nil || e.Address == "" {
-			return 501, "malformed address"
+			return 501, "5.1.7 Sender address malformed"
 		}
 		addr = e.Address
 
 		if !strings.Contains(addr, "@") {
-			return 501, "sender address must contain a domain"
+			return 501, "5.1.8 Sender address must contain a domain"
 		}
 
 		// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.3
 		if len(addr) > 256 {
-			return 501, "address too long"
+			return 501, "5.1.7 Sender address too long"
 		}
 
 		// SPF check - https://tools.ietf.org/html/rfc7208#section-2.4
@@ -405,25 +402,25 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 			maillog.Rejected(c.conn.RemoteAddr(), addr, nil,
 				fmt.Sprintf("failed SPF: %v", c.spfError))
 			return 550, fmt.Sprintf(
-				"SPF check failed: %v", c.spfError)
+				"5.7.23 SPF check failed: %v", c.spfError)
 		}
 
 		if !c.secLevelCheck(addr) {
 			maillog.Rejected(c.conn.RemoteAddr(), addr, nil,
 				"security level check failed")
-			return 550, "security level check failed"
+			return 550, "5.7.3 Security level check failed"
 		}
 
 		addr, err = normalize.DomainToUnicode(addr)
 		if err != nil {
 			maillog.Rejected(c.conn.RemoteAddr(), addr, nil,
 				fmt.Sprintf("malformed address: %v", err))
-			return 501, "malformed address (IDNA conversion failed)"
+			return 501, "5.1.8 Malformed sender domain (IDNA conversion failed)"
 		}
 	}
 
 	c.mailFrom = addr
-	return 250, "You feel like you are being watched"
+	return 250, "2.1.5 You feel like you are being watched"
 }
 
 // checkSPF for the given address, based on the current connection.
@@ -487,45 +484,45 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 	// such as "NOTIFY=SUCCESS,DELAY" (which we ignore).
 	// Check that it begins with "TO:" first, it's mandatory.
 	if !strings.HasPrefix(strings.ToLower(params), "to:") {
-		return 500, "unknown command"
+		return 500, "5.5.2 Unknown command"
 	}
 
 	if c.mailFrom == "" {
-		return 503, "sender not yet given"
+		return 503, "5.5.1 Sender not yet given"
 	}
 
 	rawAddr := ""
 	_, err := fmt.Sscanf(params[3:], "%s ", &rawAddr)
 	if err != nil {
-		return 500, "malformed command - " + err.Error()
+		return 500, "5.5.4 Malformed command: " + err.Error()
 	}
 
 	// RFC says 100 is the minimum limit for this, but it seems excessive.
 	// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.8
 	if len(c.rcptTo) > 100 {
-		return 452, "too many recipients"
+		return 452, "4.5.3 Too many recipients"
 	}
 
 	e, err := mail.ParseAddress(rawAddr)
 	if err != nil || e.Address == "" {
-		return 501, "malformed address"
+		return 501, "5.1.3 Malformed destination address"
 	}
 
 	addr, err := normalize.DomainToUnicode(e.Address)
 	if err != nil {
-		return 501, "malformed address (IDNA conversion failed)"
+		return 501, "5.1.2 Malformed destination domain (IDNA conversion failed)"
 	}
 
 	// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.3
 	if len(addr) > 256 {
-		return 501, "address too long"
+		return 501, "5.1.3 Destination address too long"
 	}
 
 	localDst := envelope.DomainIn(addr, c.localDomains)
 	if !localDst && !c.completedAuth {
 		maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, []string{addr},
 			"relay not allowed")
-		return 503, "relay not allowed"
+		return 503, "5.7.1 Relay not allowed"
 	}
 
 	if localDst {
@@ -533,36 +530,36 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 		if err != nil {
 			maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, []string{addr},
 				fmt.Sprintf("invalid address: %v", err))
-			return 550, "recipient invalid, please check the address for typos"
+			return 550, "5.1.3 Destination address is invalid"
 		}
 
 		if !c.userExists(addr) {
 			maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, []string{addr},
 				"local user does not exist")
-			return 550, "recipient unknown, please check the address for typos"
+			return 550, "5.1.1 Destination address is unknown (user does not exist)"
 		}
 	}
 
 	c.rcptTo = append(c.rcptTo, addr)
-	return 250, "You have an eerie feeling..."
+	return 250, "2.1.5 You have an eerie feeling..."
 }
 
 // DATA SMTP command handler.
 func (c *Conn) DATA(params string) (code int, msg string) {
 	if c.ehloAddress == "" {
-		return 503, "Invisible customers are not welcome!"
+		return 503, "5.5.1 Invisible customers are not welcome!"
 	}
 	if c.mailFrom == "" {
-		return 503, "sender not yet given"
+		return 503, "5.5.1 Sender not yet given"
 	}
 	if len(c.rcptTo) == 0 {
-		return 503, "need an address to send to"
+		return 503, "5.5.1 Need an address to send to"
 	}
 
 	// We're going ahead.
 	err := c.writeResponse(354, "You suddenly realize it is unnaturally quiet")
 	if err != nil {
-		return 554, fmt.Sprintf("error writing DATA response: %v", err)
+		return 554, fmt.Sprintf("5.4.0 Error writing DATA response: %v", err)
 	}
 
 	c.tr.Debugf("<- 354  You experience a strange sense of peace")
@@ -579,7 +576,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	dotr := io.LimitReader(c.tc.DotReader(), c.maxDataSize)
 	c.data, err = ioutil.ReadAll(dotr)
 	if err != nil {
-		return 554, fmt.Sprintf("error reading DATA: %v", err)
+		return 554, fmt.Sprintf("5.4.0 Error reading DATA: %v", err)
 	}
 
 	c.tr.Debugf("-> ... %d bytes of data", len(c.data))
@@ -605,7 +602,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	// individual deliveries fail, we report via email.
 	msgID, err := c.queue.Put(c.mailFrom, c.rcptTo, c.data)
 	if err != nil {
-		return 554, fmt.Sprintf("Failed to enqueue message: %v", err)
+		return 554, fmt.Sprintf("5.3.0 Failed to queue message: %v", err)
 	}
 
 	c.tr.Printf("Queued from %s to %s - %s", c.mailFrom, c.rcptTo, msgID)
@@ -622,7 +619,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 		"In return to thy service, I grant thee the gift of Immortality!",
 		"You ascend to the status of Demigod(dess)...",
 	}
-	return 250, msgs[rand.Int()%len(msgs)]
+	return 250, "2.0.0 " + msgs[rand.Int()%len(msgs)]
 }
 
 func (c *Conn) addReceivedHeader() {
@@ -715,7 +712,7 @@ func addrLiteral(addr net.Addr) string {
 func checkData(data []byte) error {
 	msg, err := mail.ReadMessage(bytes.NewBuffer(data))
 	if err != nil {
-		return fmt.Errorf("error parsing message: %v", err)
+		return fmt.Errorf("5.6.0 Error parsing message: %v", err)
 	}
 
 	// This serves as a basic form of loop prevention. It's not infallible but
@@ -723,7 +720,7 @@ func checkData(data []byte) error {
 	// https://tools.ietf.org/html/rfc5321#section-6.3
 	if len(msg.Header["Received"]) > *maxReceivedHeaders {
 		loopsDetected.Add(1)
-		return fmt.Errorf("email passed through more than %d MTAs, looping?",
+		return fmt.Errorf("5.4.6 Loop detected (%d hops)",
 			*maxReceivedHeaders)
 	}
 
@@ -858,12 +855,12 @@ func boolToStr(b bool) string {
 // STARTTLS SMTP command handler.
 func (c *Conn) STARTTLS(params string) (code int, msg string) {
 	if c.onTLS {
-		return 503, "You are already wearing that!"
+		return 503, "5.5.1 You are already wearing that!"
 	}
 
-	err := c.writeResponse(220, "You experience a strange sense of peace")
+	err := c.writeResponse(220, "2.0.0 You experience a strange sense of peace")
 	if err != nil {
-		return 554, fmt.Sprintf("error writing STARTTLS response: %v", err)
+		return 554, fmt.Sprintf("5.4.0 Error writing STARTTLS response: %v", err)
 	}
 
 	c.tr.Debugf("<- 220  You experience a strange sense of peace")
@@ -871,7 +868,7 @@ func (c *Conn) STARTTLS(params string) (code int, msg string) {
 	server := tls.Server(c.conn, c.tlsConfig)
 	err = server.Handshake()
 	if err != nil {
-		return 554, fmt.Sprintf("error in TLS handshake: %v", err)
+		return 554, fmt.Sprintf("5.5.0 Error in TLS handshake: %v", err)
 	}
 
 	c.tr.Debugf("<> ...  jump to TLS was successful")
@@ -903,18 +900,18 @@ func (c *Conn) STARTTLS(params string) (code int, msg string) {
 // AUTH SMTP command handler.
 func (c *Conn) AUTH(params string) (code int, msg string) {
 	if !c.onTLS {
-		return 503, "You feel vulnerable"
+		return 503, "5.7.10 You feel vulnerable"
 	}
 
 	if c.completedAuth {
 		// After a successful AUTH command completes, a server MUST reject
 		// any further AUTH commands with a 503 reply.
 		// https://tools.ietf.org/html/rfc4954#section-4
-		return 503, "You are already wearing that!"
+		return 503, "5.5.1 You are already wearing that!"
 	}
 
 	if c.authAttempts > 3 {
-		return 503, "Too many attempts - go away"
+		return 503, "5.7.8 Too many attempts, go away"
 	}
 	c.authAttempts++
 
@@ -926,7 +923,7 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 	sp := strings.SplitN(params, " ", 2)
 	if len(sp) < 1 || sp[0] != "PLAIN" {
 		// As we only offer plain, this should not really happen.
-		return 534, "Asmodeus demands 534 zorkmids for safe passage"
+		return 534, "5.7.9 Asmodeus demands 534 zorkmids for safe passage"
 	}
 
 	// Note we use more "serious" error messages from now own, as these may
@@ -943,18 +940,19 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 		// https://tools.ietf.org/html/rfc4954#section-4
 		err := c.writeResponse(334, "")
 		if err != nil {
-			return 554, fmt.Sprintf("error writing AUTH 334: %v", err)
+			return 554, fmt.Sprintf("5.4.0 Error writing AUTH 334: %v", err)
 		}
 
 		response, err = c.readLine()
 		if err != nil {
-			return 554, fmt.Sprintf("error reading AUTH response: %v", err)
+			return 554, fmt.Sprintf("5.4.0 Error reading AUTH response: %v", err)
 		}
 	}
 
 	user, domain, passwd, err := auth.DecodeResponse(response)
 	if err != nil {
-		return 535, fmt.Sprintf("error decoding AUTH response: %v", err)
+		// https://tools.ietf.org/html/rfc4954#section-4
+		return 501, fmt.Sprintf("5.5.2 Error decoding AUTH response: %v", err)
 	}
 
 	authOk, err := c.authr.Authenticate(user, domain, passwd)
@@ -966,11 +964,11 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 		c.authDomain = domain
 		c.completedAuth = true
 		maillog.Auth(c.conn.RemoteAddr(), user+"@"+domain, true)
-		return 235, ""
+		return 235, "2.7.0 Authentication successful"
 	}
 
 	maillog.Auth(c.conn.RemoteAddr(), user+"@"+domain, false)
-	return 535, "Incorrect user or password"
+	return 535, "5.7.8 Incorrect user or password"
 }
 
 func (c *Conn) resetEnvelope() {

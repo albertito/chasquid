@@ -4,12 +4,12 @@ c tcp_connect localhost:1025
 c <~ 220
 
 c -> DATA
-c <- 503 Invisible customers are not welcome!
+c <- 503 5.5.1 Invisible customers are not welcome!
 
 c -> HELO localhost
 c <~ 250
 c -> DATA
-c <- 503 sender not yet given
+c <- 503 5.5.1 Sender not yet given
 
 c -> MAIL FROM:<a@b>
 c <~ 250
@@ -25,7 +25,7 @@ c -> Muahahahaha
 c -> 
 c -> 
 c -> .
-c <~ 554 error parsing message
+c <~ 554 5.6.0 Error parsing message
 
 c -> QUIT
 c <~ 221

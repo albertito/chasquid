@@ -11,17 +11,17 @@ c <~ 534
 c -> AUTH PLAIN
 c <~ 334
 c -> dXNlckB0ZXN0c2VydmVyAHlalala==
-c <~ 535 error decoding AUTH response
+c <~ 501 5.5.2 Error decoding AUTH response
 
 c -> AUTH PLAIN
 c <~ 334
 c -> dXNlckB0ZXN0c2VydmVyAHVzZXJAdGVzdHNlcnZlcgB3cm9uZ3Bhc3N3b3Jk
-c <~ 535 Incorrect user or password
+c <~ 535 5.7.8 Incorrect user or password
 
 c -> AUTH PLAIN
 c <~ 334
 c -> dXNlckB0ZXN0c2VydmVyAHVzZXJAdGVzdHNlcnZlcgBzZWNyZXRwYXNzd29yZA==
-c <~ 235
+c <~ 235 2.7.0 Authentication successful
 
 c -> AUTH PLAIN
-c <~ 503 You are already wearing that!
+c <~ 503 5.5.1 You are already wearing that!

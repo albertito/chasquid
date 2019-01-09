@@ -5,4 +5,4 @@ c <~ 220
 c -> EHLO localhost
 c <... 250 HELP
 c -> AUTH PLAIN
-c <- 503 You feel vulnerable
+c <- 503 5.7.10 You feel vulnerable

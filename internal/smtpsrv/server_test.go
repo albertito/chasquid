@@ -272,8 +272,8 @@ func TestSimpleCommands(t *testing.T) {
 	defer c.Close()
 	simpleCmd(t, c, "HELP", 214)
 	simpleCmd(t, c, "NOOP", 250)
-	simpleCmd(t, c, "VRFY", 252)
-	simpleCmd(t, c, "EXPN", 252)
+	simpleCmd(t, c, "VRFY", 502)
+	simpleCmd(t, c, "EXPN", 502)
 }
 
 func TestReset(t *testing.T) {

@@ -6,13 +6,13 @@ c -> EHLO localhost
 c <... 250 HELP
 
 c -> AUTH PLAIN something
-c <~ 535
+c <~ 501
 c -> AUTH PLAIN something
-c <~ 535
+c <~ 501
 c -> AUTH PLAIN something
-c <~ 535
+c <~ 501
 c -> AUTH PLAIN something
-c <~ 535
+c <~ 501
 c -> AUTH PLAIN something
-c <~ 503 Too many attempts - go away
+c <~ 503 5.7.8 Too many attempts, go away
 
