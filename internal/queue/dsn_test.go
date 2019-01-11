@@ -12,12 +12,12 @@ func TestDSN(t *testing.T) {
 		Message: Message{
 			ID:   <-newID,
 			From: "from@from.org",
-			To:   []string{"toto@africa.org", "negra@sosa.org"},
+			To:   []string{"ñaca@africa.org", "negra@sosa.org"},
 			Rcpt: []*Recipient{
 				{"poe@rcpt", Recipient_EMAIL, Recipient_FAILED,
-					"oh! horror!", "toto@africa.org"},
+					"oh! horror!", "ñaca@africa.org"},
 				{"newman@rcpt", Recipient_EMAIL, Recipient_PENDING,
-					"oh! the humanity!", "toto@africa.org"},
+					"oh! the humanity!", "ñaca@africa.org"},
 				{"ant@rcpt", Recipient_EMAIL, Recipient_SENT,
 					"", "negra@sosa.org"},
 			},
@@ -42,27 +42,60 @@ To: <from@from.org>
 Subject: Mail delivery failed: returning message to sender
 Message-ID: <chasquid-dsn-???????????@dsnDomain>
 Date: *
-X-Failed-Recipients: toto@africa.org, 
+In-Reply-To: *
+References: *
+X-Failed-Recipients: ñaca@africa.org, 
 Auto-Submitted: auto-replied
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status;
+    boundary="???????????"
 
-Delivery to the following recipient(s) failed permanently:
 
-  - toto@africa.org
+--???????????
+Content-Type: text/plain; charset="utf-8"
+Content-Disposition: inline
+Content-Description: Notification
+Content-Transfer-Encoding: 8bit
 
+Delivery of your message to the following recipient(s) failed permanently:
 
------ Technical details -----
+  - ñaca@africa.org
 
+Technical details:
 - "poe@rcpt" (EMAIL) failed permanently with error:
     oh! horror!
-
 - "newman@rcpt" (EMAIL) failed repeatedly and timed out, last error:
     oh! the humanity!
 
 
------ Original message -----
+--???????????
+Content-Type: message/global-delivery-status
+Content-Description: Delivery Report
+Content-Transfer-Encoding: 8bit
+
+Reporting-MTA: dns; dsnDomain
+
+Original-Recipient: utf-8; ñaca@africa.org
+Final-Recipient: utf-8; poe@rcpt
+Action: failed
+Status: 5.0.0
+Diagnostic-Code: smtp; oh! horror!
+
+Original-Recipient: utf-8; ñaca@africa.org
+Final-Recipient: utf-8; newman@rcpt
+Action: failed
+Status: 4.0.0
+Diagnostic-Code: smtp; oh! the humanity!
+
+
+--???????????
+Content-Type: message/rfc822
+Content-Description: Undelivered Message
+Content-Transfer-Encoding: 8bit
 
 data ñaca
 
+--???????????--
 `
 
 // flexibleEq compares two strings, supporting wildcards.

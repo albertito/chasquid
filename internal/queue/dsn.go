@@ -2,19 +2,23 @@ package queue
 
 import (
 	"bytes"
+	"net/mail"
 	"text/template"
 	"time"
 )
 
 // Maximum length of the original message to include in the DSN.
+// The receiver of the DSN might have a smaller message size than what we
+// accepted, so we truncate to a value that should be large enough to be
+// useful, but not problematic for modern deployments.
 const maxOrigMsgLen = 256 * 1024
 
 // deliveryStatusNotification creates a delivery status notification (DSN) for
 // the given item, and puts it in the queue.
 //
-// There is a standard, https://tools.ietf.org/html/rfc3464, although most
-// MTAs seem to use a plain email and include an X-Failed-Recipients header.
-// We're going with the latter for now, may extend it to the former later.
+// References:
+// - https://tools.ietf.org/html/rfc3464 (DSN)
+// - https://tools.ietf.org/html/rfc6533 (Internationalized DSN)
 func deliveryStatusNotification(domainFrom string, item *Item) ([]byte, error) {
 	info := dsnInfo{
 		OurDomain:   domainFrom,
@@ -44,9 +48,21 @@ func deliveryStatusNotification(domainFrom string, item *Item) ([]byte, error) {
 		info.OriginalMessage = string(item.Data)
 	}
 
+	info.OriginalMessageID = getMessageID(item.Data)
+
+	info.Boundary = <-newID
+
 	buf := &bytes.Buffer{}
 	err := dsnTemplate.Execute(buf, info)
 	return buf.Bytes(), err
+}
+
+func getMessageID(data []byte) string {
+	msg, err := mail.ReadMessage(bytes.NewBuffer(data))
+	if err != nil {
+		return ""
+	}
+	return msg.Header.Get("Message-ID")
 }
 
 type dsnInfo struct {
@@ -60,35 +76,80 @@ type dsnInfo struct {
 	FailedRecipients  []*Recipient
 	PendingRecipients []*Recipient
 	OriginalMessage   string
+
+	// Message-ID of the original message.
+	OriginalMessageID string
+
+	// MIME boundary to use to form the message.
+	Boundary string
 }
 
-var dsnTemplate = template.Must(template.New("dsn").Parse(
-	`From: Mail Delivery System <postmaster-dsn@{{.OurDomain}}>
+var dsnTemplate = template.Must(
+	template.New("dsn").Parse(
+		`From: Mail Delivery System <postmaster-dsn@{{.OurDomain}}>
 To: <{{.Destination}}>
 Subject: Mail delivery failed: returning message to sender
 Message-ID: <{{.MessageID}}>
 Date: {{.Date}}
+In-Reply-To: {{.OriginalMessageID}}
+References: {{.OriginalMessageID}}
 X-Failed-Recipients: {{range .FailedTo}}{{.}}, {{end}}
 Auto-Submitted: auto-replied
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status;
+    boundary="{{.Boundary}}"
 
-Delivery to the following recipient(s) failed permanently:
+
+--{{.Boundary}}
+Content-Type: text/plain; charset="utf-8"
+Content-Disposition: inline
+Content-Description: Notification
+Content-Transfer-Encoding: 8bit
+
+Delivery of your message to the following recipient(s) failed permanently:
 
   {{range .FailedTo -}} - {{.}}
   {{- end}}
 
-
------ Technical details -----
-{{range .FailedRecipients}}
+Technical details:
+{{- range .FailedRecipients}}
 - "{{.Address}}" ({{.Type}}) failed permanently with error:
     {{.LastFailureMessage}}
-{{end}}
+{{- end}}
 {{- range .PendingRecipients}}
 - "{{.Address}}" ({{.Type}}) failed repeatedly and timed out, last error:
     {{.LastFailureMessage}}
+{{- end}}
+
+
+--{{.Boundary}}
+Content-Type: message/global-delivery-status
+Content-Description: Delivery Report
+Content-Transfer-Encoding: 8bit
+
+Reporting-MTA: dns; {{.OurDomain}}
+
+{{range .FailedRecipients -}}
+Original-Recipient: utf-8; {{.OriginalAddress}}
+Final-Recipient: utf-8; {{.Address}}
+Action: failed
+Status: 5.0.0
+Diagnostic-Code: smtp; {{.LastFailureMessage}}
+{{end}}
+{{range .PendingRecipients -}}
+Original-Recipient: utf-8; {{.OriginalAddress}}
+Final-Recipient: utf-8; {{.Address}}
+Action: failed
+Status: 4.0.0
+Diagnostic-Code: smtp; {{.LastFailureMessage}}
 {{end}}
 
------ Original message -----
+--{{.Boundary}}
+Content-Type: message/rfc822
+Content-Description: Undelivered Message
+Content-Transfer-Encoding: 8bit
 
 {{.OriginalMessage}}
 
+--{{.Boundary}}--
 `))

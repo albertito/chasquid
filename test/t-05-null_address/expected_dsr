@@ -4,21 +4,49 @@ To: <user@testserver>
 Subject: Mail delivery failed: returning message to sender
 Message-ID: *
 Date: *
+In-Reply-To: <booooo>
+References: <booooo>
 X-Failed-Recipients: fail@testserver, 
 Auto-Submitted: auto-replied
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status;
+    boundary="???????????"
 
-Delivery to the following recipient(s) failed permanently:
+
+--???????????
+Content-Type: text/plain; charset="utf-8"
+Content-Disposition: inline
+Content-Description: Notification
+Content-Transfer-Encoding: 8bit
+
+Delivery of your message to the following recipient(s) failed permanently:
 
   - fail@testserver
 
-
------ Technical details -----
-
+Technical details:
 - "false" (PIPE) failed permanently with error:
     exit status 1
 
 
------ Original message -----
+--???????????
+Content-Type: message/global-delivery-status
+Content-Description: Delivery Report
+Content-Transfer-Encoding: 8bit
+
+Reporting-MTA: dns; testserver
+
+Original-Recipient: utf-8; fail@testserver
+Final-Recipient: utf-8; false
+Action: failed
+Status: 5.0.0
+Diagnostic-Code: smtp; exit status 1
+
+
+
+--???????????
+Content-Type: message/rfc822
+Content-Description: Undelivered Message
+Content-Transfer-Encoding: 8bit
 
 Received: from localhost
 	by testserver (chasquid) with ESMTPSA
@@ -26,9 +54,12 @@ Received: from localhost
 	(over *
 	; *
 Date: *
-From: Mailer daemon <somewhere@horns.com>
+From: Mailer daemon <somewhere@báratro>
 Subject: I've come to haunt you
+Message-Id: <booooo>
 
-Muahahahaha
+Ñañañañaña!
 
 
+
+--???????????--
