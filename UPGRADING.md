@@ -5,6 +5,11 @@ As chasquid is still in beta, it is possible that some things change in
 backwards-incompatible ways. This should be rare and will be avoided if
 possible.
 
+## 0.06 → 0.07
+
+No backwards-incompatible changes.
+
+
 ## 0.05 → 0.06
 
 No backwards-incompatible changes.
