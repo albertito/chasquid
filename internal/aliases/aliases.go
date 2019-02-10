@@ -246,7 +246,7 @@ func (v *Resolver) Reload() error {
 				continue
 			}
 			if err != nil {
-				return fmt.Errorf("Error parsing %q: %v", path, err)
+				return fmt.Errorf("error parsing %q: %v", path, err)
 			}
 
 			// Add the aliases to the resolver, overriding any previous values.

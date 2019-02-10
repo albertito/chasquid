@@ -13,28 +13,10 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
-// Test courier. Delivery is done by sending on a channel, so users have fine
-// grain control over the results.
-type ChanCourier struct {
-	requests chan deliverRequest
-	results  chan error
-}
-
 type deliverRequest struct {
 	from string
 	to   string
 	data []byte
-}
-
-func (cc *ChanCourier) Deliver(from string, to string, data []byte) (error, bool) {
-	cc.requests <- deliverRequest{from, to, data}
-	return <-cc.results, false
-}
-func newChanCourier() *ChanCourier {
-	return &ChanCourier{
-		requests: make(chan deliverRequest),
-		results:  make(chan error),
-	}
 }
 
 // Courier for test purposes. Never fails, and always remembers everything.

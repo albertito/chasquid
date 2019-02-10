@@ -213,7 +213,7 @@ func expect(conn *textproto.Conn, prefix string) error {
 }
 
 func write(conn *textproto.Conn, msg string) error {
-	_, err := fmt.Fprintf(conn.W, msg)
+	_, err := conn.W.Write([]byte(msg))
 	if err != nil {
 		return err
 	}

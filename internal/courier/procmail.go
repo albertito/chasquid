@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	errTimeout = fmt.Errorf("Operation timed out")
+	errTimeout = fmt.Errorf("operation timed out")
 )
 
 // Procmail delivers local mail by executing a local binary, like procmail or
@@ -79,7 +79,7 @@ func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 				permanent = status.ExitStatus() != 75
 			}
 		}
-		err = tr.Errorf("Procmail failed: %v - %q", err, string(output))
+		err = tr.Errorf("procmail failed: %v - %q", err, string(output))
 		return err, permanent
 	}
 

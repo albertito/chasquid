@@ -64,7 +64,6 @@ func testHTTPHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintln(w, policy)
-	return
 }
 
 func TestMain(m *testing.M) {

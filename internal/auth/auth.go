@@ -148,7 +148,7 @@ func DecodeResponse(response string) (user, domain, passwd string, err error) {
 
 	bufsp := bytes.SplitN(buf, []byte{0}, 3)
 	if len(bufsp) != 3 {
-		err = fmt.Errorf("Response pieces != 3, as per RFC")
+		err = fmt.Errorf("response pieces != 3, as per RFC")
 		return
 	}
 
@@ -163,7 +163,7 @@ func DecodeResponse(response string) (user, domain, passwd string, err error) {
 
 		// If neither is empty, then they must be the same.
 		if (z != "" && c != "") && (z != c) {
-			err = fmt.Errorf("Auth IDs do not match")
+			err = fmt.Errorf("auth IDs do not match")
 			return
 		}
 
@@ -176,7 +176,7 @@ func DecodeResponse(response string) (user, domain, passwd string, err error) {
 	}
 
 	if identity == "" {
-		err = fmt.Errorf("Empty identity, must be in the form user@domain")
+		err = fmt.Errorf("empty identity, must be in the form user@domain")
 		return
 	}
 
@@ -184,7 +184,7 @@ func DecodeResponse(response string) (user, domain, passwd string, err error) {
 	// This is NOT an RFC requirement, it's our own.
 	idsp := strings.SplitN(identity, "@", 2)
 	if len(idsp) != 2 {
-		err = fmt.Errorf("Identity must be in the form user@domain")
+		err = fmt.Errorf("identity must be in the form user@domain")
 		return
 	}
 
