@@ -3,6 +3,7 @@ package queue
 import (
 	"bytes"
 	"net/mail"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -84,8 +85,18 @@ type dsnInfo struct {
 	Boundary string
 }
 
+// indent s with the given number of spaces.
+func indent(sp int, s string) string {
+	pad := strings.Repeat(" ", sp)
+	return strings.Replace(s, "\n", "\n"+pad, -1)
+}
+
 var dsnTemplate = template.Must(
-	template.New("dsn").Parse(
+	template.New("dsn").Funcs(
+		template.FuncMap{
+			"indent": indent,
+			"trim":   strings.TrimSpace,
+		}).Parse(
 		`From: Mail Delivery System <postmaster-dsn@{{.OurDomain}}>
 To: <{{.Destination}}>
 Subject: Mail delivery failed: returning message to sender
@@ -108,17 +119,17 @@ Content-Transfer-Encoding: 8bit
 
 Delivery of your message to the following recipient(s) failed permanently:
 
-  {{range .FailedTo -}} - {{.}}
-  {{- end}}
+{{range .FailedTo}}  - {{.}}
+{{end}}
 
 Technical details:
 {{- range .FailedRecipients}}
 - "{{.Address}}" ({{.Type}}) failed permanently with error:
-    {{.LastFailureMessage}}
+    {{.LastFailureMessage | trim | indent 4}}
 {{- end}}
 {{- range .PendingRecipients}}
 - "{{.Address}}" ({{.Type}}) failed repeatedly and timed out, last error:
-    {{.LastFailureMessage}}
+    {{.LastFailureMessage | trim | indent 4}}
 {{- end}}
 
 
@@ -134,14 +145,16 @@ Original-Recipient: utf-8; {{.OriginalAddress}}
 Final-Recipient: utf-8; {{.Address}}
 Action: failed
 Status: 5.0.0
-Diagnostic-Code: smtp; {{.LastFailureMessage}}
-{{end}}
+Diagnostic-Code: smtp; {{.LastFailureMessage | trim | indent 4}}
+
+{{end -}}
 {{range .PendingRecipients -}}
 Original-Recipient: utf-8; {{.OriginalAddress}}
 Final-Recipient: utf-8; {{.Address}}
 Action: failed
 Status: 4.0.0
-Diagnostic-Code: smtp; {{.LastFailureMessage}}
+Diagnostic-Code: smtp; {{.LastFailureMessage | trim | indent 4}}
+
 {{end}}
 
 --{{.Boundary}}

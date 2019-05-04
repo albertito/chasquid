@@ -23,6 +23,7 @@ Delivery of your message to the following recipient(s) failed permanently:
 
   - fail@testserver
 
+
 Technical details:
 - "false" (PIPE) failed permanently with error:
     exit status 1

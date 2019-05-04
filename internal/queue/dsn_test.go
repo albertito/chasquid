@@ -7,6 +7,17 @@ import (
 	"testing"
 )
 
+const multilineErr = `550 5.7.1 [11:22:33:44::1] Our system has detected that this
+5.7.1 message is likely unsolicited mail. To reduce the amount of spam sent
+5.7.1 to BlahMail, this message has been blocked. Please visit
+5.7.1  https://support.blah/mail/?p=UnsolicitedMessageError
+5.7.1  for more information. a1b2c3a1b2c3a1b.123 - bsmtp`
+
+const data = `Message-ID: <msgid-123@zaraza>
+
+Data ñaca.
+`
+
 func TestDSN(t *testing.T) {
 	item := &Item{
 		Message: Message{
@@ -16,12 +27,14 @@ func TestDSN(t *testing.T) {
 			Rcpt: []*Recipient{
 				{"poe@rcpt", Recipient_EMAIL, Recipient_FAILED,
 					"oh! horror!", "ñaca@africa.org"},
+				{"muchos@rcpt", Recipient_EMAIL, Recipient_FAILED,
+					multilineErr, "pepe@africa.org"},
 				{"newman@rcpt", Recipient_EMAIL, Recipient_PENDING,
 					"oh! the humanity!", "ñaca@africa.org"},
 				{"ant@rcpt", Recipient_EMAIL, Recipient_SENT,
 					"", "negra@sosa.org"},
 			},
-			Data: []byte("data ñaca"),
+			Data: []byte(data),
 		},
 	}
 
@@ -42,9 +55,9 @@ To: <from@from.org>
 Subject: Mail delivery failed: returning message to sender
 Message-ID: <chasquid-dsn-???????????@dsnDomain>
 Date: *
-In-Reply-To: *
-References: *
-X-Failed-Recipients: ñaca@africa.org, 
+In-Reply-To: <msgid-123@zaraza>
+References: <msgid-123@zaraza>
+X-Failed-Recipients: pepe@africa.org, ñaca@africa.org, 
 Auto-Submitted: auto-replied
 MIME-Version: 1.0
 Content-Type: multipart/report; report-type=delivery-status;
@@ -59,11 +72,19 @@ Content-Transfer-Encoding: 8bit
 
 Delivery of your message to the following recipient(s) failed permanently:
 
+  - pepe@africa.org
   - ñaca@africa.org
+
 
 Technical details:
 - "poe@rcpt" (EMAIL) failed permanently with error:
     oh! horror!
+- "muchos@rcpt" (EMAIL) failed permanently with error:
+    550 5.7.1 [11:22:33:44::1] Our system has detected that this
+    5.7.1 message is likely unsolicited mail. To reduce the amount of spam sent
+    5.7.1 to BlahMail, this message has been blocked. Please visit
+    5.7.1  https://support.blah/mail/?p=UnsolicitedMessageError
+    5.7.1  for more information. a1b2c3a1b2c3a1b.123 - bsmtp
 - "newman@rcpt" (EMAIL) failed repeatedly and timed out, last error:
     oh! the humanity!
 
@@ -81,6 +102,16 @@ Action: failed
 Status: 5.0.0
 Diagnostic-Code: smtp; oh! horror!
 
+Original-Recipient: utf-8; pepe@africa.org
+Final-Recipient: utf-8; muchos@rcpt
+Action: failed
+Status: 5.0.0
+Diagnostic-Code: smtp; 550 5.7.1 [11:22:33:44::1] Our system has detected that this
+    5.7.1 message is likely unsolicited mail. To reduce the amount of spam sent
+    5.7.1 to BlahMail, this message has been blocked. Please visit
+    5.7.1  https://support.blah/mail/?p=UnsolicitedMessageError
+    5.7.1  for more information. a1b2c3a1b2c3a1b.123 - bsmtp
+
 Original-Recipient: utf-8; ñaca@africa.org
 Final-Recipient: utf-8; newman@rcpt
 Action: failed
@@ -88,12 +119,16 @@ Status: 4.0.0
 Diagnostic-Code: smtp; oh! the humanity!
 
 
+
 --???????????
 Content-Type: message/rfc822
 Content-Description: Undelivered Message
 Content-Transfer-Encoding: 8bit
 
-data ñaca
+Message-ID: <msgid-123@zaraza>
+
+Data ñaca.
+
 
 --???????????--
 `
