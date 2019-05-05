@@ -6,7 +6,9 @@ dist: trusty
 sudo: false
 
 go:
-    - 1.7  # Debian stable.
+    # Normally we'd want to support the version in Debian stable, but
+    # golang.org/x/crypto requires math/bits which appeared in 1.9.
+    - 1.9
     - stable
     - master
 
