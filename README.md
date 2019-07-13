@@ -4,6 +4,8 @@
 [chasquid](https://blitiri.com.ar/p/chasquid) is an SMTP (email) server with a
 focus on simplicity, security, and ease of operation.
 
+It is designed mainly for individuals and small groups.
+
 It's written in [Go](https://golang.org), and distributed under the
 [Apache license 2.0](http://en.wikipedia.org/wiki/Apache_License).
 
@@ -45,18 +47,6 @@ It's written in [Go](https://golang.org), and distributed under the
 [MTA-STS]: https://tools.ietf.org/html/rfc8461
 [Debian]: https://debian.org
 [Ubuntu]: https://ubuntu.com
-
-
-## Status
-
-chasquid is in beta.
-
-It's functional and has had some production exposure, but some things may
-still change in backwards-incompatible way, including the configuration format.
-It should be rare and will be avoided if possible.
-
-You can subscribe to the mailing list to get notifications of such changes,
-which are also documented in the [UPGRADING](UPGRADING.md) file.
 
 
 ## Documentation
