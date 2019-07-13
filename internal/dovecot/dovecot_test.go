@@ -73,12 +73,22 @@ func TestAutodetect(t *testing.T) {
 			userdb, client, a.userdbAddr, a.clientAddr)
 	}
 
-	// TODO: Close the two sockets, and re-do the test from above: Autodetect
-	// should work fine against closed sockets.
-	// To implement this test, we should call SetUnlinkOnClose, but
-	// unfortunately that is only available in Go >= 1.8.
-	// We want to support Go 1.7 for a while as it is in Debian stable; once
-	// Debian stable moves on, we can implement this test easily.
+	// Close the two sockets, and re-do the test from above: Autodetect should
+	// work fine against closed sockets.
+	// We need to tell Go to keep the socket files around explicitly, as the
+	// default is to delete them since they were creeated by the net library.
+	uL.SetUnlinkOnClose(false)
+	uL.Close()
+	cL.SetUnlinkOnClose(false)
+	cL.Close()
+
+	a = Autodetect("", "")
+	if a == nil {
+		t.Errorf("Autodetection failed (closed sockets)")
+	} else if a.userdbAddr != userdb || a.clientAddr != client {
+		t.Errorf("Expected autodetect to pick {%q, %q}, but got {%q, %q}",
+			userdb, client, a.userdbAddr, a.clientAddr)
+	}
 
 	// Autodetect should pick the suggestions passed as parameters (if
 	// possible).
@@ -91,9 +101,6 @@ func TestAutodetect(t *testing.T) {
 		t.Errorf("Expected autodetect to pick {%q, %q}, but got {%q, %q}",
 			userdb, client, a.userdbAddr, a.clientAddr)
 	}
-
-	uL.Close()
-	cL.Close()
 }
 
 func TestReload(t *testing.T) {
