@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -241,11 +240,9 @@ func TestPolicyTooBig(t *testing.T) {
 
 // Tests for the policy cache.
 
-func expvarMustEq(t *testing.T, name string, v *expvar.Int, expected int) {
-	// TODO: Use v.Value once we drop support of Go 1.7.
-	value, _ := strconv.Atoi(v.String())
-	if value != expected {
-		t.Errorf("%s is %d, expected %d", name, value, expected)
+func expvarMustEq(t *testing.T, name string, v *expvar.Int, expected int64) {
+	if v.Value() != expected {
+		t.Errorf("%s is %d, expected %d", name, v.Value(), expected)
 	}
 }
 
@@ -439,13 +436,11 @@ func TestCacheRefresh(t *testing.T) {
 	}
 
 	// Launch background refreshes, and wait for one to complete.
-	// TODO: change to cacheRefreshCycles.Value once we drop support for Go
-	// 1.7.
 	cacheRefreshCycles.Set(0)
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	go c.PeriodicallyRefresh(ctx)
-	for cacheRefreshCycles.String() == "0" {
+	for cacheRefreshCycles.Value() == 0 {
 		time.Sleep(5 * time.Millisecond)
 	}
 
