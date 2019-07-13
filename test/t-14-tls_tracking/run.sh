@@ -7,16 +7,6 @@ set -e
 
 init
 
-# To fake SPF we need to override the resolver, which is only supported in Go
-# >= 1.8, so this test depends on that version.
-# TODO: remove this once we only support go >= 1.8.
-MAJOR=$(go version | sed 's/.*go\([0-9]\)\..*/\1/')
-MINOR=$(go version | sed 's/.*go[0-9]\.\([0-9]\+\).*/\1/')
-DEVEL=$(go version | sed 's/.* devel .*/devel/g')
-if [ "$DEVEL" != "devel" ] && [ "$MAJOR" -eq 1 ] && [ "$MINOR" -le 7 ]; then
-	skip "go version ($MAJOR.$MINOR) too old to run this test"
-fi
-
 # Build with the DNS override, so we can fake DNS records.
 export GOTAGS="dnsoverride"
 
