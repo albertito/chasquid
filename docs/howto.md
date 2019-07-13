@@ -7,7 +7,7 @@ detailed references where possible.
 
 While a lot of the contents are generic, for simplicity it will use:
 
- - [Debian] \(testing\) as base operating system ([Ubuntu] also works)
+ - [Debian] as base operating system ([Ubuntu] also works)
  - [Dovecot] for [POP3]+[IMAP]
  - [chasquid] for [SMTP]
  - [Let's Encrypt] for [TLS] certificates
@@ -183,7 +183,7 @@ mail_delivery_agent_args: "%from%"
 mail_delivery_agent_args: "-d"
 mail_delivery_agent_args: "%to_user%"
 
-# Use dovecot authentication (only available in chasquid >= 0.04).
+# Use dovecot authentication.
 dovecot_auth: true
 EOF
 ```
@@ -209,7 +209,6 @@ following records to `otherdomain.com`:
 
 Then, tell chasquid about it by running `mkdir
 /etc/chasquid/domains/otherdomain.com`. Don't forget to restart it afterwards.
-
 
 Alternatively, you can use a different MX record, as long as you can get
 chasquid a certificate for it.
