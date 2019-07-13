@@ -58,8 +58,7 @@ func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 	}
 	tr.Debugf("%s %q", p.Binary, args)
 
-	ctx, cancel := context.WithDeadline(context.Background(),
-		time.Now().Add(p.Timeout))
+	ctx, cancel := context.WithTimeout(context.Background(), p.Timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, p.Binary, args...)
 	cmd.Stdin = bytes.NewReader(data)

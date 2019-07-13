@@ -381,8 +381,7 @@ func (item *Item) deliver(q *Queue, rcpt *Recipient) (err error, permanent bool)
 		if len(c) == 0 {
 			return fmt.Errorf("empty pipe"), true
 		}
-		ctx, cancel := context.WithDeadline(context.Background(),
-			time.Now().Add(30*time.Second))
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, c[0], c[1:]...)
 		cmd.Stdin = bytes.NewReader(item.Data)

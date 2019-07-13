@@ -743,8 +743,7 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 	defer tr.Finish()
 	tr.Debugf("running")
 
-	ctx, cancel := context.WithDeadline(context.Background(),
-		time.Now().Add(1*time.Minute))
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, c.postDataHook)
 	cmd.Stdin = bytes.NewReader(data)
