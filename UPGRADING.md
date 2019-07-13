@@ -1,9 +1,12 @@
 
 This file contains notes for upgrading between different versions.
 
-As chasquid is still in beta, it is possible that some things change in
-backwards-incompatible ways. This should be rare and will be avoided if
-possible.
+
+## 0.07 → 1.0
+
+No backwards-incompatible changes. No more are expected within this major
+version.
+
 
 ## 0.06 → 0.07
 
@@ -34,5 +37,4 @@ No backwards-incompatible changes.
 * chasquid now listens on a third port, submission-on-TLS.
   If using systemd, copy the `etc/systemd/system/chasquid-submission_tls.socket`
   file to `/etc/systemd/system/`, and start it.
-
 
