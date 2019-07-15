@@ -33,15 +33,21 @@ Maximum email size, in megabytes. Default: 50.
 
 =item B<smtp_address> (repeated string):
 
-Addresses to listen on for SMTP. Default: "systemd", which means systemd
-passes sockets to us. systemd sockets must be named with
+Addresses to listen on for SMTP (usually port 25). Default: "systemd", which
+means systemd passes sockets to us. systemd sockets must be named with
 B<FileDescriptorName=smtp>.
 
 =item B<submission_address> (repeated string):
 
-Addresses to listen on for submission. Default: "systemd", which means
-systemd passes sockets to us. systemd sockets must be named with
+Addresses to listen on for submission (usually port 587). Default: "systemd",
+which means systemd passes sockets to us. systemd sockets must be named with
 B<FileDescriptorName=submission>.
+
+=item B<submission_over_tls_address> (repeated string):
+
+Addresses to listen on for submission-over-TLS (usually port 465). Default:
+"systemd", which means systemd passes sockets to us. systemd sockets must be
+named with B<FileDescriptorName=submission_tls>.
 
 =item B<monitoring_address> (string):
 

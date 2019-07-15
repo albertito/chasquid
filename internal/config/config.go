@@ -88,6 +88,7 @@ func LogConfig(c *Config) {
 	log.Infof("  Max data size (MB): %d", c.MaxDataSizeMb)
 	log.Infof("  SMTP Addresses: %v", c.SmtpAddress)
 	log.Infof("  Submission Addresses: %v", c.SubmissionAddress)
+	log.Infof("  Submission+TLS Addresses: %v", c.SubmissionOverTlsAddress)
 	log.Infof("  Monitoring address: %s", c.MonitoringAddress)
 	log.Infof("  MDA: %s %v", c.MailDeliveryAgentBin, c.MailDeliveryAgentArgs)
 	log.Infof("  Data directory: %s", c.DataDir)
