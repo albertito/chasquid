@@ -34,6 +34,9 @@ RUN apt-get install -y -q sudo
 RUN mkdir -p test/t-02-exim/.exim4 \
 	&& ln -s /usr/sbin/exim4 test/t-02-exim/.exim4
 
+# Prepare msmtp: remove setuid, otherwise HOSTALIASES doesn't work.
+RUN chmod g-s /usr/bin/msmtp
+
 # Install binaries for the (optional) DKIM integration test.
 RUN go get github.com/driusan/dkim/... \
 	&& go install github.com/driusan/dkim/cmd/dkimsign \
