@@ -37,6 +37,9 @@ start-stop-daemon --start --background \
 echo "nameserver 127.0.0.1" > /etc/resolv.conf
 echo "nameserver ::1" >> /etc/resolv.conf
 
+# Wait until the minidns resolver comes up.
+wait_until_ready 53
+
 # Launch arguments, which come from docker CMD, as "chasquid" user.
 # Running tests as root makes some integration tests more difficult, as for
 # example Exim has hard-coded protections against running as root.
