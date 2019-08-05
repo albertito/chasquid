@@ -1,5 +1,5 @@
 
-# Setting up an email server with Debian, dovecot and chasquid
+# chasquid how-to guide
 
 This is a practical guide for setting up an email server for personal or small
 groups use. It does not contain many explanations, but includes links to more

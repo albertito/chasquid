@@ -31,7 +31,7 @@ endpoint for expvars).
 
 *Note these are still subject to change, although breaking changes will be
 avoided whenever possible, and will be noted in the [upgrading
-notes](../UPGRADING.md).*
+notes](upgrading.md).*
 
 List of exported variables:
 

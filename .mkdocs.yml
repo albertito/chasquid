@@ -1,0 +1,29 @@
+# mkdocs configuration
+#
+# To test changes locally, run:
+#   mkdocs serve -f .mkdocs.yml
+
+site_name: chasquid documentation
+
+# Point the repo to github to make it easier for users to do edits, even if
+# it's not the canonical location.
+repo_url: https://github.com/albertito/chasquid
+
+markdown_extensions:
+  - codehilite:
+      guess_lang: false
+
+theme: readthedocs
+
+nav:
+- Home: index.md
+- How-to: howto.md
+- Install: install.md
+- Manpages: man/index.md
+- All:
+    - hooks.md
+    - dovecot.md
+    - dkim.md
+    - flow.md
+    - monitoring.md
+

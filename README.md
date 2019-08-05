@@ -14,6 +14,7 @@ It's written in [Go](https://golang.org), and distributed under the
 [![Go Report Card](https://goreportcard.com/badge/github.com/albertito/chasquid)](https://goreportcard.com/report/github.com/albertito/chasquid)
 [![Coverage Status](https://coveralls.io/repos/github/albertito/chasquid/badge.svg?branch=next)](https://coveralls.io/github/albertito/chasquid?branch=next)
 [![GoDoc](https://godoc.org/blitiri.com.ar/go/chasquid?status.svg)](https://godoc.org/blitiri.com.ar/go/chasquid)
+[![Documentation Status](https://readthedocs.org/projects/chasquid/badge/?version=latest)](https://chasquid.readthedocs.io/en/latest/?badge=latest)
 [![Freenode](https://img.shields.io/badge/chat-freenode-brightgreen.svg)](https://webchat.freenode.net?channels=%23chasquid)
 
 
@@ -52,9 +53,11 @@ It's written in [Go](https://golang.org), and distributed under the
 
 ## Documentation
 
-The [Debian+Dovecot+chasquid how-to](docs/howto.md) and the
-[installation guide](INSTALL.md)
-are the best starting points on how to install, configure and run chasquid.
+The [how-to guide](docs/howto.md) and the [installation
+guide](docs/install.md) are the best starting points on how to install,
+configure and run chasquid.
+
+You will find [all documentation here](https://chasquid.readthedocs.io).
 
 
 ## Contact
