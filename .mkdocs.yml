@@ -12,6 +12,7 @@ repo_url: https://github.com/albertito/chasquid
 markdown_extensions:
   - codehilite:
       guess_lang: false
+  - attr_list
 
 theme: readthedocs
 
@@ -26,4 +27,5 @@ nav:
     - dkim.md
     - flow.md
     - monitoring.md
+    - sec-levels.md
 

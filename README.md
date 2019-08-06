@@ -35,7 +35,7 @@ It's written in [Go](https://golang.org), and distributed under the
       DKIM/DMARC.
     * International usernames ([SMTPUTF8]) and domain names ([IDNA]).
 * Secure
-    * Tracking of per-domain TLS support, prevents connection downgrading.
+    * [Tracking] of per-domain TLS support, prevents connection downgrading.
     * Multiple TLS certificates.
     * Easy integration with [Let's Encrypt].
     * [SPF] and [MTA-STS] checking.
@@ -49,6 +49,7 @@ It's written in [Go](https://golang.org), and distributed under the
 [MTA-STS]: https://tools.ietf.org/html/rfc8461
 [Debian]: https://debian.org
 [Ubuntu]: https://ubuntu.com
+[Tracking]: https://chasquid.readthedocs.io/en/latest/sec-levels/
 
 
 ## Documentation
