@@ -1,6 +1,6 @@
 
 This directory holds end to end tests, written usually in a combination of
-shell and some Python.
+shell and some Python 3.
 
 They're not expected to be portable, as that gets impractical very quickly.
 They also have some dependencies, listed below.
