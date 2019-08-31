@@ -79,8 +79,13 @@ function run_msmtp() {
 	# msmtp will check that the rc file is only user readable.
 	chmod 600 msmtprc
 
+	# msmtp binary is often g+s, which causes $HOSTALIASES to not be
+	# honoured, which breaks the tests. Copy the binary to remove the
+	# setgid bit as a workaround.
+	cp -u "`which msmtp`" "${UTILDIR}/.msmtp-bin"
+
 	HOSTALIASES=${TBASE}/hosts \
-		msmtp -C msmtprc "$@"
+		${UTILDIR}/.msmtp-bin -C msmtprc "$@"
 }
 
 function smtpc.py() {
