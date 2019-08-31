@@ -125,7 +125,11 @@ func (p *Policy) Check() error {
 	if p.Version != "STSv1" {
 		return ErrUnknownVersion
 	}
-	if p.MaxAge <= 0 {
+
+	// A 0 max age is invalid (could also represent an Atoi error), and so is
+	// one greater than 31557600 (1 year), as per
+	// https://tools.ietf.org/html/rfc8461#section-3.2.
+	if p.MaxAge <= 0 || p.MaxAge > 31557600*time.Second {
 		return ErrInvalidMaxAge
 	}
 

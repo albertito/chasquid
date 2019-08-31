@@ -98,6 +98,8 @@ func TestCheckPolicy(t *testing.T) {
 			MXs: []string{"mx1"}},
 		{Version: "STSv1", Mode: "none", MaxAge: 1 * time.Hour,
 			MXs: []string{"mx1"}},
+		{Version: "STSv1", Mode: "none", MaxAge: 31557600 * time.Second,
+			MXs: []string{"mx1"}},
 	}
 	for i, p := range validPs {
 		if err := p.Check(); err != nil {
@@ -111,6 +113,8 @@ func TestCheckPolicy(t *testing.T) {
 	}{
 		{Policy{Version: "STSv2"}, ErrUnknownVersion},
 		{Policy{Version: "STSv1"}, ErrInvalidMaxAge},
+		{Policy{Version: "STSv1", MaxAge: 31557601 * time.Second},
+			ErrInvalidMaxAge},
 		{Policy{Version: "STSv1", MaxAge: 1, Mode: "blah"}, ErrInvalidMode},
 		{Policy{Version: "STSv1", MaxAge: 1, Mode: "enforce"}, ErrInvalidMX},
 		{Policy{Version: "STSv1", MaxAge: 1, Mode: "enforce", MXs: []string{}},
