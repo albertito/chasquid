@@ -252,6 +252,8 @@ func expvarMustEq(t *testing.T, name string, v *expvar.Int, expected int64) {
 
 func TestCacheBasics(t *testing.T) {
 	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+
 	c, err := NewCache(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -308,15 +310,13 @@ func TestCacheBasics(t *testing.T) {
 	expvarMustEq(t, "cacheFetches", cacheFetches, 4)
 	expvarMustEq(t, "cacheHits", cacheHits, 1)
 	expvarMustEq(t, "cacheFailedFetch", cacheFailedFetch, 1)
-
-	if !t.Failed() {
-		os.RemoveAll(dir)
-	}
 }
 
 // Test how the cache behaves when the files are corrupt.
 func TestCacheBadData(t *testing.T) {
 	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+
 	c, err := NewCache(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -379,10 +379,6 @@ func TestCacheBadData(t *testing.T) {
 
 	expvarMustEq(t, "cacheUnmarshalErrors", cacheUnmarshalErrors, 1)
 	expvarMustEq(t, "cacheInvalid", cacheInvalid, 1)
-
-	if !t.Failed() {
-		os.RemoveAll(dir)
-	}
 }
 
 func (c *PolicyCache) mustFetch(ctx context.Context, t *testing.T, d string) *Policy {
@@ -408,6 +404,8 @@ func mustRewriteAndChtime(t *testing.T, fname, content string) {
 
 func TestCacheRefresh(t *testing.T) {
 	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+
 	c, err := NewCache(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -451,10 +449,6 @@ func TestCacheRefresh(t *testing.T) {
 	p = c.mustFetch(ctx, t, "refresh-test")
 	if p.MaxAge != 200*time.Second {
 		t.Fatalf("policy.MaxAge is %v, expected 200s", p.MaxAge)
-	}
-
-	if !t.Failed() {
-		os.RemoveAll(dir)
 	}
 }
 

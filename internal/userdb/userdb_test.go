@@ -5,12 +5,19 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 )
 
 // Remove the file if the test was successful. Used in defer statements, to
 // leave files around for inspection when the tests failed.
 func removeIfSuccessful(t *testing.T, fname string) {
+	// Safeguard, to make sure we only remove test files.
+	// This should help prevent accidental deletions.
+	if !strings.Contains(fname, "userdb_test") {
+		panic("invalid/dangerous directory")
+	}
+
 	if !t.Failed() {
 		os.Remove(fname)
 	}
