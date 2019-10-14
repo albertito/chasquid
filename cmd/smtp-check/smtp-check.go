@@ -72,7 +72,7 @@ func main() {
 			log.Fatal(err)
 		}
 		for _, ip := range ips {
-			result, err := spf.CheckHost(ip, domain)
+			result, err := spf.CheckHostWithSender(ip, domain, "test@"+domain)
 			if result != spf.Pass {
 				log.Printf("SPF check != pass for IP %s: %s - %s",
 					ip, result, err)

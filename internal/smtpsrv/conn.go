@@ -439,8 +439,8 @@ func (c *Conn) checkSPF(addr string) (spf.Result, error) {
 	}
 
 	if tcp, ok := c.conn.RemoteAddr().(*net.TCPAddr); ok {
-		res, err := spf.CheckHost(
-			tcp.IP, envelope.DomainOf(addr))
+		res, err := spf.CheckHostWithSender(
+			tcp.IP, envelope.DomainOf(addr), addr)
 
 		c.tr.Debugf("SPF %v (%v)", res, err)
 		spfResultCount.Add(string(res), 1)
