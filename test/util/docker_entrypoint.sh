@@ -20,8 +20,6 @@ trap - EXIT
 
 set -v
 
-go build -o /tmp/minidns "${UTILDIR}/minidns.go"
-
 # The DNS server resolves only "localhost"; tests will rely on this, as we
 # $HOSTALIASES to point our test hostnames to localhost, so it needs to
 # resolve.
@@ -39,6 +37,10 @@ echo "nameserver ::1" >> /etc/resolv.conf
 
 # Wait until the minidns resolver comes up.
 wait_until_ready 53
+
+# Disable the Go proxy, since now there is no external network access.
+# Modules should be already be made available in the environment.
+export GOPROXY=off
 
 # Launch arguments, which come from docker CMD, as "chasquid" user.
 # Running tests as root makes some integration tests more difficult, as for

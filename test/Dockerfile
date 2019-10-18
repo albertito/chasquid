@@ -46,16 +46,21 @@ RUN go get github.com/driusan/dkim/... \
 # Copy into the container. Everything below this line will not be cached.
 COPY . .
 
-# Install chasquid and its dependencies.
-RUN go get -d -v ./... && go install -v ./...
-
-# Custom entry point, which uses our own DNS server.
-ENTRYPOINT ["./test/util/docker_entrypoint.sh"]
-
 # Don't run the tests as root: it makes some integration tests more difficult,
 # as for example Exim has hard-coded protections against running as root.
 RUN useradd -m chasquid && chown -R chasquid:chasquid .
-#USER chasquid
 
-# Tests expect the $USER variable set.
-#ENV USER chasquid
+# Update dependencies to the latest versions, and fetch them to the cache.
+# The fetch is important because once within the entrypoint, we no longer have
+# network access to the outside, so all modules need to be available.
+# Do it as chasquid because that is what the tests will run as.
+USER chasquid
+ENV GOPATH=
+RUN go get -v ./... && go mod download
+
+# Build the minidns server, which will be run from within the entrypoint.
+RUN go build -o /tmp/minidns ./test/util/minidns.go
+USER root
+
+# Custom entry point, which uses our own DNS server.
+ENTRYPOINT ["./test/util/docker_entrypoint.sh"]
