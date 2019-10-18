@@ -56,7 +56,7 @@ RUN useradd -m chasquid && chown -R chasquid:chasquid .
 # Do it as chasquid because that is what the tests will run as.
 USER chasquid
 ENV GOPATH=
-RUN go get -v ./... && go mod download
+RUN go get -v ${GO_GET_ARGS} ./... && go mod download
 
 # Build the minidns server, which will be run from within the entrypoint.
 RUN go build -o /tmp/minidns ./test/util/minidns.go
