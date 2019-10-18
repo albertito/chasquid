@@ -3,6 +3,7 @@ stages:
   - test
   - docker_image
 
+# Integration test, using the module versions from the repository.
 integration_test:
   stage: test
   image: docker:stable
@@ -11,6 +12,18 @@ integration_test:
   script:
     - docker info
     - docker build -t chasquid-test -f test/Dockerfile .
+    - docker run chasquid-test  env
+    - docker run chasquid-test  make test
+
+# Integration test, using the latest module versions.
+integration_test_latest:
+  stage: test
+  image: docker:stable
+  services:
+    - docker:dind
+  script:
+    - docker info
+    - docker build -t chasquid-test --build-arg GO_GET_ARGS="-u=patch" -f test/Dockerfile .
     - docker run chasquid-test  env
     - docker run chasquid-test  make test
 
