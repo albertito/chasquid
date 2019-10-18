@@ -31,6 +31,9 @@ accordingly.
 
 This lets chasquid issue authentication requests to dovecot.
 
+Authentication requests sent by chasquid to dovecot will use the
+fully-qualified user form, `user@domain`.
+
 
 ## Configuring chasquid
 
