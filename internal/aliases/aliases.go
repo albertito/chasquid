@@ -41,7 +41,7 @@
 // recipients.
 //
 // There are recursion limits to avoid alias loops. If the limit is reached,
-// theat entire resolution will fail.
+// the entire resolution will fail.
 //
 //
 // Suffix removal

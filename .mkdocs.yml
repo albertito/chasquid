@@ -22,6 +22,7 @@ nav:
 - Install: install.md
 - Manpages: man/index.md
 - All:
+    - aliases.md
     - hooks.md
     - dovecot.md
     - dkim.md
