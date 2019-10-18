@@ -80,4 +80,13 @@ if [ "$C" != "hostname: \"$HOSTNAME\"" ]; then
 	exit 1
 fi
 
+if r aliases-add alias2@domain target > /dev/null; then
+	ALIAS=$(grep alias2 .config/domains/domain/aliases)
+	if [ "$ALIAS" != "alias2: target" ]; then
+		echo alias-add failed
+		echo output: "$ALIAS"
+		exit 1
+	fi
+fi
+
 success

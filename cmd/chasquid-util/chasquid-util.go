@@ -36,6 +36,7 @@ Usage:
   chasquid-util [options] aliases-resolve <address>
   chasquid-util [options] domaininfo-remove <domain>
   chasquid-util [options] print-config
+  chasquid-util [options] aliases-add <source> <target>
 
 Options:
   -C --configdir=<path>  Configuration directory
@@ -65,6 +66,7 @@ func main() {
 		"aliases-resolve":   aliasesResolve,
 		"print-config":      printConfig,
 		"domaininfo-remove": domaininfoRemove,
+		"aliases-add":       aliasesAdd,
 	}
 
 	for cmd, f := range commands {
@@ -268,4 +270,54 @@ func domaininfoRemove() {
 	if err != nil {
 		Fatalf("Error removing file: %v", err)
 	}
+}
+
+// chasquid-util aliases-add <source> <target>
+func aliasesAdd() {
+	source := args["<source>"].(string)
+	target := args["<target>"].(string)
+
+	user, domain := envelope.Split(source)
+	if domain == "" {
+		Fatalf("Domain required in source address")
+	}
+
+	// Ensure the domain exists.
+	if _, err := os.Stat(filepath.Join(configDir, "domains", domain)); os.IsNotExist(err) {
+		Fatalf("Domain doesn't exist")
+	}
+
+	conf, err := config.Load(configDir + "/chasquid.conf")
+	if err != nil {
+		Fatalf("Error reading config")
+	}
+	os.Chdir(configDir)
+
+	// Setup alias resolver.
+	r := aliases.NewResolver()
+	r.SuffixSep = conf.SuffixSeparators
+	r.DropChars = conf.DropCharacters
+
+	r.AddDomain(domain)
+	aliasesFilePath := filepath.Join("domains", domain, "aliases")
+	if err := r.AddAliasesFile(domain, aliasesFilePath); err != nil {
+		Fatalf("%s: error loading %q: %v", domain, aliasesFilePath, err)
+	}
+
+	// Check for existing entry.
+	if _, ok := r.Exists(source); ok {
+		Fatalf("There's already an entry for %v", source)
+	}
+
+	// Append the new entry.
+	aliasesFile, err := os.OpenFile(aliasesFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		Fatalf("Couldn't open %s: %v", aliasesFilePath, err)
+	}
+	_, err = fmt.Fprintf(aliasesFile, "%s: %s\n", user, target)
+	if err != nil {
+		Fatalf("Couldn't write to %s: %v", aliasesFilePath, err)
+	}
+	aliasesFile.Close()
+	fmt.Println("Added alias")
 }
