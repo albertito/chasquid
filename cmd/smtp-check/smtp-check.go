@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/smtp"
@@ -54,6 +55,7 @@ func main() {
 		}
 		log.Printf("OK")
 	}
+	log.Printf("")
 
 	mxs, err := net.LookupMX(domain)
 	if err != nil {
@@ -64,8 +66,9 @@ func main() {
 		log.Fatalf("MX lookup returned no results")
 	}
 
+	errs := []error{}
 	for _, mx := range mxs {
-		log.Printf("=== Testing MX: %2d  %s", mx.Pref, mx.Host)
+		log.Printf("=== MX: %2d  %s", mx.Pref, mx.Host)
 
 		ips, err := net.LookupIP(mx.Host)
 		if err != nil {
@@ -73,9 +76,10 @@ func main() {
 		}
 		for _, ip := range ips {
 			result, err := spf.CheckHostWithSender(ip, domain, "test@"+domain)
+			log.Printf("SPF %v for %v: %v", result, ip, err)
 			if result != spf.Pass {
-				log.Printf("SPF check != pass for IP %s: %s - %s",
-					ip, result, err)
+				errs = append(errs,
+					fmt.Errorf("%s: SPF failed (%v)", mx.Host, ip))
 			}
 		}
 
@@ -94,19 +98,21 @@ func main() {
 			}
 			err = c.StartTLS(config)
 			if err != nil {
-				log.Fatalf("TLS error: %v", err)
+				log.Printf("TLS error: %v", err)
+				errs = append(errs, fmt.Errorf("%s: TLS failed", mx.Host))
+			} else {
+				cstate, _ := c.TLSConnectionState()
+				log.Printf("TLS OK: %s - %s", tlsconst.VersionName(cstate.Version),
+					tlsconst.CipherSuiteName(cstate.CipherSuite))
 			}
-
-			cstate, _ := c.TLSConnectionState()
-			log.Printf("TLS OK: %s - %s", tlsconst.VersionName(cstate.Version),
-				tlsconst.CipherSuiteName(cstate.CipherSuite))
 
 			c.Close()
 		}
 
 		if policy != nil {
 			if !policy.MXIsAllowed(mx.Host) {
-				log.Fatalf("NOT allowed by STS policy")
+				log.Printf("NOT allowed by STS policy")
+				errs = append(errs, fmt.Errorf("%s: STS failed", mx.Host))
 			}
 			log.Printf("Allowed by policy")
 		}
@@ -114,5 +120,13 @@ func main() {
 		log.Printf("")
 	}
 
-	log.Printf("=== Success")
+	if len(errs) == 0 {
+		log.Printf("=== Success")
+	} else {
+		log.Printf("=== FAILED")
+		for _, err := range errs {
+			log.Printf("%v", err)
+		}
+		log.Fatal("")
+	}
 }
