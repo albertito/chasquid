@@ -5,6 +5,7 @@
 #
 #  - greylist (from greylistd) to do greylisting.
 #  - spamc (from Spamassassin) to filter spam.
+#  - rspamc (from rspamd) to filter spam.
 #  - clamdscan (from ClamAV) to filter virus.
 #  - dkimsign (from driusan/dkim) to do DKIM signing.
 #
@@ -43,6 +44,22 @@ if command -v spamc >/dev/null; then
                 exit 20  # permanent
         fi
         echo "X-Spam-Score: $SL"
+fi
+
+
+if command -v rspamc >/dev/null; then
+	ACTION=$( rspamc < "$TF" 2>/dev/null | grep Action: | cut -d " " -f 2- )
+	case "$ACTION" in
+		greylist)
+			echo "greylisted, please try again"
+			exit 75  # temporary error
+			;;
+		reject)
+			echo "spam detected"
+			exit 20  # permanent error
+			;;
+	esac
+	echo "X-Spam-Action:" "$ACTION"
 fi
 
 

@@ -93,7 +93,7 @@ The hook should be at `/etc/chasquid/hooks/post-data`.
 The one installed by default is a bash script supporting:
 
 * greylisting using greylistd.
-* anti-spam using spamassassin.
+* anti-spam using spamassassin or rspamd.
 * anti-virus using clamav.
 
 To use them, they just need to be available in your system.
