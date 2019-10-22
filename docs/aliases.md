@@ -77,5 +77,16 @@ The `chasquid-util` command-line tool can be used to check and resolve
 aliases.
 
 
+## Hooks
+
+There are two hooks that allow more sophisticated aliases resolution:
+`alias-exists` and `alias-resolve`.
+
+If they exist, they are invoked as part of the resolution process and the
+results are merged with the file-based resolution results.
+
+See the [hooks](hooks.md) documentation for more details.
+
+
 [chasquid]: https://blitiri.com.ar/p/chasquid
 [email aliases]: https://en.wikipedia.org/wiki/Email_alias

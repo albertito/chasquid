@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/textproto"
+	"path"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
@@ -67,8 +68,8 @@ type Server struct {
 	// Queue where we put incoming mail.
 	queue *queue.Queue
 
-	// Path to the Post-DATA hook.
-	PostDataHook string
+	// Path to the hooks.
+	HookPath string
 }
 
 // NewServer returns a new empty Server.
@@ -130,6 +131,8 @@ func (s *Server) SetAuthFallback(be auth.Backend) {
 func (s *Server) SetAliasesConfig(suffixSep, dropChars string) {
 	s.aliasesR.SuffixSep = suffixSep
 	s.aliasesR.DropChars = dropChars
+	s.aliasesR.ResolveHook = path.Join(s.HookPath, "alias-resolve")
+	s.aliasesR.ExistsHook = path.Join(s.HookPath, "alias-exists")
 }
 
 // InitDomainInfo initializes the domain info database.
@@ -231,6 +234,8 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 		l = tls.NewListener(l, s.tlsConfig)
 	}
 
+	pdhook := path.Join(s.HookPath, "post-data")
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -240,7 +245,7 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 		sc := &Conn{
 			hostname:       s.Hostname,
 			maxDataSize:    s.MaxDataSize,
-			postDataHook:   s.PostDataHook,
+			postDataHook:   pdhook,
 			conn:           conn,
 			tc:             textproto.NewConn(conn),
 			mode:           mode,

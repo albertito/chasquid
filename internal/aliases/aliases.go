@@ -55,14 +55,24 @@ package aliases
 
 import (
 	"bufio"
+	"context"
+	"expvar"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
+	"blitiri.com.ar/go/chasquid/internal/trace"
+)
+
+// Exported variables.
+var (
+	hookResults = expvar.NewMap("chasquid/aliases/hookResults")
 )
 
 // Recipient represents a single recipient, after resolving aliases.
@@ -101,6 +111,10 @@ type Resolver struct {
 	// Characters to drop from the user part.
 	DropChars string
 
+	// Path to resolve and exist hooks.
+	ExistsHook  string
+	ResolveHook string
+
 	// Map of domain -> alias files for that domain.
 	// We keep track of them for reloading purposes.
 	files   map[string][]string
@@ -125,9 +139,6 @@ func NewResolver() *Resolver {
 // Resolve the given address, returning the list of corresponding recipients
 // (if any).
 func (v *Resolver) Resolve(addr string) ([]Recipient, error) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
 	return v.resolve(0, addr)
 }
 
@@ -137,11 +148,15 @@ func (v *Resolver) Resolve(addr string) ([]Recipient, error) {
 // doesn't exist.
 func (v *Resolver) Exists(addr string) (string, bool) {
 	v.mu.Lock()
-	defer v.mu.Unlock()
-
 	addr = v.cleanIfLocal(addr)
 	_, ok := v.aliases[addr]
-	return addr, ok
+	v.mu.Unlock()
+
+	if ok {
+		return addr, true
+	}
+
+	return addr, v.runExistsHook(addr)
 }
 
 func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
@@ -154,7 +169,18 @@ func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
 	// match, which our callers can rely upon.
 	addr = v.cleanIfLocal(addr)
 
+	// Lookup in the aliases database.
+	v.mu.Lock()
 	rcpts := v.aliases[addr]
+	v.mu.Unlock()
+
+	// Augment with the hook results.
+	hr, err := v.runResolveHook(addr)
+	if err != nil {
+		return nil, err
+	}
+	rcpts = append(rcpts, hr...)
+
 	if len(rcpts) == 0 {
 		return []Recipient{{addr, EMAIL}}, nil
 	}
@@ -305,33 +331,41 @@ func parseReader(domain string, r io.Reader) (map[string][]Recipient, error) {
 		addr = addr + "@" + domain
 		addr, _ = normalize.Addr(addr)
 
-		if rawalias[0] == '|' {
-			cmd := strings.TrimSpace(rawalias[1:])
-			if cmd == "" {
-				// A pipe alias without a command is invalid.
-				continue
-			}
-			aliases[addr] = []Recipient{{cmd, PIPE}}
-		} else {
-			rs := []Recipient{}
-			for _, a := range strings.Split(rawalias, ",") {
-				a = strings.TrimSpace(a)
-				if a == "" {
-					continue
-				}
-				// Addresses with no domain get the current one added, so it's
-				// easier to share alias files.
-				if !strings.Contains(a, "@") {
-					a = a + "@" + domain
-				}
-				a, _ = normalize.Addr(a)
-				rs = append(rs, Recipient{a, EMAIL})
-			}
-			aliases[addr] = rs
-		}
+		rs := parseRHS(rawalias, domain)
+		aliases[addr] = rs
 	}
 
 	return aliases, scanner.Err()
+}
+
+func parseRHS(rawalias, domain string) []Recipient {
+	if len(rawalias) == 0 {
+		return nil
+	}
+	if rawalias[0] == '|' {
+		cmd := strings.TrimSpace(rawalias[1:])
+		if cmd == "" {
+			// A pipe alias without a command is invalid.
+			return nil
+		}
+		return []Recipient{{cmd, PIPE}}
+	}
+
+	rs := []Recipient{}
+	for _, a := range strings.Split(rawalias, ",") {
+		a = strings.TrimSpace(a)
+		if a == "" {
+			continue
+		}
+		// Addresses with no domain get the current one added, so it's
+		// easier to share alias files.
+		if !strings.Contains(a, "@") {
+			a = a + "@" + domain
+		}
+		a, _ = normalize.Addr(a)
+		rs = append(rs, Recipient{a, EMAIL})
+	}
+	return rs
 }
 
 // removeAllAfter removes everything from s that comes after the separators,
@@ -360,4 +394,72 @@ func removeChars(s, chars string) string {
 	}
 
 	return s
+}
+
+func (v *Resolver) runResolveHook(addr string) ([]Recipient, error) {
+	if v.ResolveHook == "" {
+		hookResults.Add("resolve:notset", 1)
+		return nil, nil
+	}
+	// TODO: check if the file is executable.
+	if _, err := os.Stat(v.ResolveHook); os.IsNotExist(err) {
+		hookResults.Add("resolve:skip", 1)
+		return nil, nil
+	}
+
+	// TODO: this should be done via a context propagated all the way through.
+	tr := trace.New("Hook.Alias-Resolve", addr)
+	defer tr.Finish()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, v.ResolveHook, addr)
+
+	outb, err := cmd.Output()
+	out := string(outb)
+	tr.Debugf("stdout: %q", out)
+	if err != nil {
+		hookResults.Add("resolve:fail", 1)
+		tr.Error(err)
+		return nil, err
+	}
+
+	// Extract recipients from the output.
+	// Same format as the right hand side of aliases file, see parseRHS.
+	domain := envelope.DomainOf(addr)
+	raw := strings.TrimSpace(out)
+	rs := parseRHS(raw, domain)
+
+	tr.Debugf("recipients: %v", rs)
+	hookResults.Add("resolve:success", 1)
+	return rs, nil
+}
+
+func (v *Resolver) runExistsHook(addr string) bool {
+	if v.ExistsHook == "" {
+		hookResults.Add("exists:notset", 1)
+		return false
+	}
+	// TODO: check if the file is executable.
+	if _, err := os.Stat(v.ExistsHook); os.IsNotExist(err) {
+		hookResults.Add("exists:skip", 1)
+		return false
+	}
+
+	// TODO: this should be done via a context propagated all the way through.
+	tr := trace.New("Hook.Alias-Exists", addr)
+	defer tr.Finish()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, v.ExistsHook, addr)
+	err := cmd.Run()
+	if err != nil {
+		tr.Debugf("not exists: %v", err)
+		hookResults.Add("exists:false", 1)
+		return false
+	}
+	tr.Debugf("exists")
+	hookResults.Add("exists:true", 1)
+	return true
 }

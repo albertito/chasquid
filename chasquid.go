@@ -92,7 +92,7 @@ func main() {
 	s := smtpsrv.NewServer()
 	s.Hostname = conf.Hostname
 	s.MaxDataSize = conf.MaxDataSizeMb * 1024 * 1024
-	s.PostDataHook = "hooks/post-data"
+	s.HookPath = "hooks/"
 
 	s.SetAliasesConfig(conf.SuffixSeparators, conf.DropCharacters)
 

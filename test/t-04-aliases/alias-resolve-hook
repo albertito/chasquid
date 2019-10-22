@@ -1,0 +1,14 @@
+#!/bin/bash
+
+case "$1" in
+"vicuña@testserver")
+	# Test one naked, one full. These exist in the static aliases file.
+	echo pepe, joan@testserver
+	;;
+"ñandú@testserver")
+	echo "| writemailto ../.data/pipe_alias_worked"
+	;;
+"roto@testserver")
+	exit 1
+	;;
+esac

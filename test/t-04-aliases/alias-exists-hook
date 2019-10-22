@@ -1,0 +1,15 @@
+#!/bin/bash
+
+case "$1" in
+"vicuña@testserver")
+	exit 0
+	;;
+"ñandú@testserver")
+	exit 0
+	;;
+"roto@testserver")
+	exit 0
+	;;
+esac
+
+exit 1
