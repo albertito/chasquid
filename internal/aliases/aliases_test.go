@@ -198,6 +198,10 @@ func TestAddFile(t *testing.T) {
 
 		{"a: c@d, e@f, g\n",
 			[]Recipient{{"c@d", EMAIL}, {"e@f", EMAIL}, {"g@dom", EMAIL}}},
+
+		// Invalid pipe aliases, should be ignored.
+		{"a:|\n", []Recipient{{"a@dom", EMAIL}}},
+		{"a:| \n", []Recipient{{"a@dom", EMAIL}}},
 	}
 
 	for _, c := range cases {

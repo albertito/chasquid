@@ -307,6 +307,10 @@ func parseReader(domain string, r io.Reader) (map[string][]Recipient, error) {
 
 		if rawalias[0] == '|' {
 			cmd := strings.TrimSpace(rawalias[1:])
+			if cmd == "" {
+				// A pipe alias without a command is invalid.
+				continue
+			}
 			aliases[addr] = []Recipient{{cmd, PIPE}}
 		} else {
 			rs := []Recipient{}
