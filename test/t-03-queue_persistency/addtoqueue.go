@@ -40,7 +40,11 @@ func main() {
 			From: *from,
 			To:   []string{*rcpt},
 			Rcpt: []*queue.Recipient{
-				{*rcpt, queue.Recipient_EMAIL, queue.Recipient_PENDING, "", ""},
+				{
+					Address: *rcpt,
+					Type:    queue.Recipient_EMAIL,
+					Status:  queue.Recipient_PENDING,
+				},
 			},
 			Data: data,
 		},

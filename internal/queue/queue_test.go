@@ -112,7 +112,7 @@ func TestDSNOnTimeout(t *testing.T) {
 			ID:   <-newID,
 			From: fmt.Sprintf("from@loco"),
 			Rcpt: []*Recipient{
-				{"to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to"}},
+				mkR("to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to")},
 			Data: []byte("data"),
 		},
 		CreatedAt: time.Now().Add(-24 * time.Hour),
@@ -211,7 +211,7 @@ func TestFullQueue(t *testing.T) {
 				ID:   <-newID,
 				From: fmt.Sprintf("from-%d", i),
 				Rcpt: []*Recipient{
-					{"to", Recipient_EMAIL, Recipient_PENDING, "", ""}},
+					mkR("to", Recipient_EMAIL, Recipient_PENDING, "", "")},
 				Data: []byte("data"),
 			},
 			CreatedAt: time.Now(),
@@ -249,7 +249,7 @@ func TestPipes(t *testing.T) {
 			ID:   <-newID,
 			From: "from",
 			Rcpt: []*Recipient{
-				{"true", Recipient_PIPE, Recipient_PENDING, "", ""}},
+				mkR("true", Recipient_PIPE, Recipient_PENDING, "", "")},
 			Data: []byte("data"),
 		},
 		CreatedAt: time.Now(),
@@ -292,7 +292,7 @@ func TestSerialization(t *testing.T) {
 			ID:   <-newID,
 			From: fmt.Sprintf("from@loco"),
 			Rcpt: []*Recipient{
-				{"to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to"}},
+				mkR("to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to")},
 			Data: []byte("data"),
 		},
 		CreatedAt: time.Now().Add(-1 * time.Hour),
@@ -319,5 +319,15 @@ func TestSerialization(t *testing.T) {
 
 	if req.from != "from@loco" || req.to != "to@to" {
 		t.Errorf("wrong email: %v", req)
+	}
+}
+
+func mkR(a string, t Recipient_Type, s Recipient_Status, m, o string) *Recipient {
+	return &Recipient{
+		Address:            a,
+		Type:               t,
+		Status:             s,
+		LastFailureMessage: m,
+		OriginalAddress:    o,
 	}
 }

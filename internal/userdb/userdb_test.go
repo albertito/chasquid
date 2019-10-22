@@ -208,7 +208,9 @@ func TestInvalidUsername(t *testing.T) {
 
 func plainPassword(p string) *Password {
 	return &Password{
-		Scheme: &Password_Plain{&Plain{[]byte(p)}},
+		Scheme: &Password_Plain{
+			Plain: &Plain{Password: []byte(p)},
+		},
 	}
 }
 
