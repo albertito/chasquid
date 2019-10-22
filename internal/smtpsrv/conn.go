@@ -741,7 +741,6 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 	}
 	tr := trace.New("Hook.Post-DATA", c.conn.RemoteAddr().String())
 	defer tr.Finish()
-	tr.Debugf("running")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
@@ -769,14 +768,14 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 	cmd.Env = append(cmd.Env, "SPF_PASS="+boolToStr(c.spfResult == spf.Pass))
 
 	out, err := cmd.Output()
+	tr.Debugf("stdout: %q", out)
 	if err != nil {
 		hookResults.Add("post-data:fail", 1)
 		tr.Error(err)
-		tr.Debugf("stdout: %s", out)
 
 		permanent := false
 		if ee, ok := err.(*exec.ExitError); ok {
-			tr.Printf("stderr: %s", string(ee.Stderr))
+			tr.Printf("stderr: %q", string(ee.Stderr))
 			if status, ok := ee.Sys().(syscall.WaitStatus); ok {
 				permanent = status.ExitStatus() == 20
 			}
@@ -792,12 +791,11 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 	// contents. If it does not, just skip it.
 	if !isHeader(out) {
 		hookResults.Add("post-data:badoutput", 1)
-		tr.Errorf("error parsing post-data output: '%s'", out)
+		tr.Errorf("error parsing post-data output: %q", out)
 		return nil, false, nil
 	}
 
 	tr.Debugf("success")
-	tr.Debugf("stdout: %s", out)
 	hookResults.Add("post-data:success", 1)
 	return out, false, nil
 }
