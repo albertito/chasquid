@@ -604,9 +604,10 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 
 	// There are no partial failures here: we put it in the queue, and then if
 	// individual deliveries fail, we report via email.
+	// If we fail to queue, return a transient error.
 	msgID, err := c.queue.Put(c.mailFrom, c.rcptTo, c.data)
 	if err != nil {
-		return 554, fmt.Sprintf("5.3.0 Failed to queue message: %v", err)
+		return 451, fmt.Sprintf("4.3.0 Failed to queue message: %v", err)
 	}
 
 	c.tr.Printf("Queued from %s to %s - %s", c.mailFrom, c.rcptTo, msgID)
