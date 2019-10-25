@@ -3,16 +3,23 @@
 
 ## Installation
 
-If you're using Debian or Ubuntu, chasquid can be installed by running
-`sudo apt install chasquid`.
+### Debian/Ubuntu
 
-To get, build and install the source, you will need a working
+If you're using Debian or Ubuntu, chasquid can be installed by running:
+
+```shell
+sudo apt install chasquid
+```
+
+### From source
+
+To get, build and install from source, you will need a working
 [Go](http://golang.org) environment.
 
 ```shell
 # Get the code and build the binaries.
-go get blitiri.com.ar/go/chasquid
-cd "$GOPATH/src/blitiri.com.ar/go/chasquid"
+git clone https://blitiri.com.ar/repos/chasquid
+cd chasquid
 make
 
 # Install the binaries to /usr/local/bin.
