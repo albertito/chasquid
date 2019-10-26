@@ -44,11 +44,15 @@ go run "${UTILDIR}/gocovcat.go" .coverage/*.out \
 
 # Generate reports based on the merged output.
 go tool cover -func="$COVER_DIR/all.out" | sort -k 3 -n > "$COVER_DIR/func.txt"
-go tool cover -html="$COVER_DIR/all.out" -o "$COVER_DIR/chasquid.html"
+go tool cover -html="$COVER_DIR/all.out" -o "$COVER_DIR/classic.html"
+go run "${UTILDIR}/coverhtml.go" \
+	-input="$COVER_DIR/all.out"  -strip=3 \
+	-output="$COVER_DIR/coverage.html" \
+	-title="chasquid coverage report" \
+	-notes="Generated at commit <tt>$(git describe --always --dirty)</tt> ($(git log -1 --format=%ci))"
 
 echo
-grep total .coverage/func.txt
 echo
 echo "Coverage report can be found in:"
-echo file://$COVER_DIR/chasquid.html
+echo file://$COVER_DIR/coverage.html
 
