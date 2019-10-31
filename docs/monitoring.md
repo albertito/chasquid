@@ -35,6 +35,8 @@ notes](upgrading.md).*
 
 List of exported variables:
 
+- **chasquid/aliases/hookResults** (hook result -> counter): count of aliases
+  hook results, by hook and result.
 - **chasquid/queue/deliverAttempts** (recipient type -> counter): attempts to
   deliver mail, by recipient type (pipe/local email/remote email).
 - **chasquid/queue/dsnQueued** (counter): count of DSNs that we generated
@@ -48,7 +50,7 @@ List of exported variables:
 - **chasquid/smtpIn/hookResults** (result -> counter): count of hook
   invocations, by result.
 - **chasquid/smtpIn/loopsDetected** (counter): count of email loops detected.
-- **chasquid/smtpIn/responseCodeCount** (result -> counter): count of response
+- **chasquid/smtpIn/responseCodeCount** (code -> counter): count of response
   codes returned to incoming SMTP connections, by result code.
 - **chasquid/smtpIn/securityLevelChecks** (result -> counter): count of
   security level checks on incoming connections, by result.
