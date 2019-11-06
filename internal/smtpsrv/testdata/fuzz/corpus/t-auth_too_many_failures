@@ -1,0 +1,6 @@
+0EHLO localhost
+AUTH PLAIN something
+AUTH PLAIN something
+AUTH PLAIN something
+AUTH PLAIN something
+AUTH PLAIN something

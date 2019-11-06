@@ -1,0 +1,8 @@
+0HELO localhost
+MAIL FROM:<test@testy.com>
+RCPT LALA: <>
+RCPT TO:
+RCPT TO:<pepe>
+RCPT TO:<a@xn--->
+RCPT TO:<henryⅣ@testserver>
+RCPT TO:<aaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaX@bbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbX>

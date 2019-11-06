@@ -1,0 +1,13 @@
+0EHLO localhost
+MAIL FROM: <>
+RCPT TO: user@testserver
+DATA
+From: Mailer daemon <somewhere@báratro>
+Subject: I've come to haunt you
+Message-ID: <booooo>
+
+Ñañañañaña!
+
+
+.
+QUIT
