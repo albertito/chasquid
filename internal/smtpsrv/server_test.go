@@ -19,6 +19,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
+	"blitiri.com.ar/go/chasquid/internal/testlib"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 )
 
@@ -33,12 +34,11 @@ var (
 )
 
 var (
-	// Server addresses.
+	// Server addresses. Will be filled in at init time.
 	// We default to internal ones, but may get overridden via flags.
-	// TODO: Don't hard-code the default.
-	smtpAddr          = "127.0.0.1:13444"
-	submissionAddr    = "127.0.0.1:13999"
-	submissionTLSAddr = "127.0.0.1:13777"
+	smtpAddr          = ""
+	submissionAddr    = ""
+	submissionTLSAddr = ""
 
 	// TLS configuration to use in the clients.
 	// Will contain the generated server certificate as root CA.
@@ -469,6 +469,10 @@ func realMain(m *testing.M) int {
 			fmt.Printf("Failed to generate cert for testing: %v\n", err)
 			return 1
 		}
+
+		smtpAddr = testlib.GetFreePort()
+		submissionAddr = testlib.GetFreePort()
+		submissionTLSAddr = testlib.GetFreePort()
 
 		s := NewServer()
 		s.Hostname = "localhost"
