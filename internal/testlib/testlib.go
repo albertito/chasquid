@@ -3,6 +3,7 @@ package testlib
 
 import (
 	"io/ioutil"
+	"net"
 	"os"
 	"strings"
 	"testing"
@@ -51,4 +52,15 @@ func Rewrite(t *testing.T, path, contents string) error {
 	}
 
 	return err
+}
+
+// GetFreePort returns a free TCP port. This is hacky and not race-free, but
+// it works well enough for testing purposes.
+func GetFreePort() string {
+	l, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		panic(err)
+	}
+	defer l.Close()
+	return l.Addr().String()
 }

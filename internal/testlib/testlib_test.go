@@ -76,3 +76,10 @@ func TestRewrite(t *testing.T) {
 		t.Errorf("basic rewrite failed")
 	}
 }
+
+func TestGetFreePort(t *testing.T) {
+	p := GetFreePort()
+	if p == "" {
+		t.Errorf("failed to get free port")
+	}
+}
