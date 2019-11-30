@@ -28,6 +28,8 @@ var (
 		"SMTP server address to test (defaults to use internal)")
 	externalSubmissionAddr = flag.String("external_submission_addr", "",
 		"submission server address to test (defaults to use internal)")
+	externalSubmissionTLSAddr = flag.String("external_submission_tls_addr", "",
+		"submission+TLS server address to test (defaults to use internal)")
 )
 
 var (
@@ -449,6 +451,7 @@ func realMain(m *testing.M) int {
 	if *externalSMTPAddr != "" {
 		smtpAddr = *externalSMTPAddr
 		submissionAddr = *externalSubmissionAddr
+		submissionTLSAddr = *externalSubmissionTLSAddr
 		tlsConfig = &tls.Config{
 			InsecureSkipVerify: true,
 		}
@@ -495,6 +498,7 @@ func realMain(m *testing.M) int {
 
 	waitForServer(smtpAddr)
 	waitForServer(submissionAddr)
+	waitForServer(submissionTLSAddr)
 	return m.Run()
 }
 
