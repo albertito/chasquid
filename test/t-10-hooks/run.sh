@@ -9,6 +9,7 @@ generate_certs_for testserver
 add_user user@testserver secretpassword
 add_user someone@testserver secretpassword
 add_user blockme@testserver secretpassword
+add_user permanent@testserver secretpassword
 
 mkdir -p .logs
 chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
@@ -45,9 +46,23 @@ check "REMOTE_ADDR="
 check "SPF_PASS=0"
 
 
-# Check that a failure in the script results in failing delivery.
+# Check that failures in the script result in failing delivery.
+# Transient failure.
 if run_msmtp blockme@testserver < content 2>/dev/null; then
 	fail "ERROR: hook did not block email as expected"
+fi
+if ! tail -n 1 .logs/msmtp | grep -q "smtpstatus=451"; then
+	tail -n 1 .logs/msmtp
+	fail "ERROR: transient hook error not returned correctly"
+fi
+
+# Permanent failure.
+if run_msmtp permanent@testserver < content 2>/dev/null; then
+	fail "ERROR: hook did not block email as expected"
+fi
+if ! tail -n 1 .logs/msmtp | grep -q "smtpstatus=554"; then
+	tail -n 1 .logs/msmtp
+	fail "ERROR: permanent hook error not returned correctly"
 fi
 
 # Check that the bad hooks don't prevent delivery.

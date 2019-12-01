@@ -10,5 +10,10 @@ if [ "$RCPT_TO" == "blockme@testserver" ]; then
 	exit 1
 fi
 
+if [ "$RCPT_TO" == "permanent@testserver" ]; then
+	echo "Nos hacemos la permanente"
+	exit 20  # permanent
+fi
+
 echo "X-Post-Data: success"
 
