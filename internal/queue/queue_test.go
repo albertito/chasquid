@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -13,46 +12,16 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
-type deliverRequest struct {
-	from string
-	to   string
-	data []byte
-}
-
-// Courier for test purposes. Never fails, and always remembers everything.
-type TestCourier struct {
-	wg       sync.WaitGroup
-	requests []*deliverRequest
-	reqFor   map[string]*deliverRequest
-	sync.Mutex
-}
-
-func (tc *TestCourier) Deliver(from string, to string, data []byte) (error, bool) {
-	defer tc.wg.Done()
-	dr := &deliverRequest{from, to, data}
-	tc.Lock()
-	tc.requests = append(tc.requests, dr)
-	tc.reqFor[to] = dr
-	tc.Unlock()
-	return nil, false
-}
-
-func newTestCourier() *TestCourier {
-	return &TestCourier{
-		reqFor: map[string]*deliverRequest{},
-	}
-}
-
 func TestBasic(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	localC := newTestCourier()
-	remoteC := newTestCourier()
+	localC := testlib.NewTestCourier()
+	remoteC := testlib.NewTestCourier()
 	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
 		localC, remoteC)
 
-	localC.wg.Add(2)
-	remoteC.wg.Add(1)
+	localC.Expect(2)
+	remoteC.Expect(1)
 	id, err := q.Put("from", []string{"am@loco", "x@remote", "nodomain"}, []byte("data"))
 	if err != nil {
 		t.Fatalf("Put: %v", err)
@@ -62,22 +31,17 @@ func TestBasic(t *testing.T) {
 		t.Errorf("short ID: %v", id)
 	}
 
-	localC.wg.Wait()
-	remoteC.wg.Wait()
+	localC.Wait()
+	remoteC.Wait()
 
 	// Make sure the delivered items leave the queue.
-	for d := time.Now().Add(2 * time.Second); time.Now().Before(d); {
-		if q.Len() == 0 {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	testlib.WaitFor(func() bool { return q.Len() == 0 }, 2*time.Second)
 	if q.Len() != 0 {
 		t.Fatalf("%d items not removed from the queue after delivery", q.Len())
 	}
 
 	cases := []struct {
-		courier    *TestCourier
+		courier    *testlib.TestCourier
 		expectedTo string
 	}{
 		{localC, "nodomain"},
@@ -85,22 +49,22 @@ func TestBasic(t *testing.T) {
 		{remoteC, "x@remote"},
 	}
 	for _, c := range cases {
-		req := c.courier.reqFor[c.expectedTo]
+		req := c.courier.ReqFor[c.expectedTo]
 		if req == nil {
 			t.Errorf("missing request for %q", c.expectedTo)
 			continue
 		}
 
-		if req.from != "from" || req.to != c.expectedTo ||
-			!bytes.Equal(req.data, []byte("data")) {
+		if req.From != "from" || req.To != c.expectedTo ||
+			!bytes.Equal(req.Data, []byte("data")) {
 			t.Errorf("wrong request for %q: %v", c.expectedTo, req)
 		}
 	}
 }
 
 func TestDSNOnTimeout(t *testing.T) {
-	localC := newTestCourier()
-	remoteC := newTestCourier()
+	localC := testlib.NewTestCourier()
+	remoteC := testlib.NewTestCourier()
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
 	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
@@ -127,24 +91,24 @@ func TestDSNOnTimeout(t *testing.T) {
 	q.DumpString()
 
 	// Launch the sending loop, expect 1 local delivery (the DSN).
-	localC.wg.Add(1)
+	localC.Expect(1)
 	go item.SendLoop(q)
-	localC.wg.Wait()
+	localC.Wait()
 
-	req := localC.reqFor["from@loco"]
+	req := localC.ReqFor["from@loco"]
 	if req == nil {
 		t.Fatal("missing DSN")
 	}
 
-	if req.from != "<>" || req.to != "from@loco" ||
-		!strings.Contains(string(req.data), "X-Failed-Recipients: to@to,") {
-		t.Errorf("wrong DSN: %q", string(req.data))
+	if req.From != "<>" || req.To != "from@loco" ||
+		!strings.Contains(string(req.Data), "X-Failed-Recipients: to@to,") {
+		t.Errorf("wrong DSN: %q", string(req.Data))
 	}
 }
 
 func TestAliases(t *testing.T) {
-	localC := newTestCourier()
-	remoteC := newTestCourier()
+	localC := testlib.NewTestCourier()
+	remoteC := testlib.NewTestCourier()
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
 	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
@@ -157,17 +121,17 @@ func TestAliases(t *testing.T) {
 	// Note the pipe aliases are tested below, as they don't use the couriers
 	// and it can be quite inconvenient to test them in this way.
 
-	localC.wg.Add(2)
-	remoteC.wg.Add(1)
+	localC.Expect(2)
+	remoteC.Expect(1)
 	_, err := q.Put("from", []string{"ab@loco", "cd@loco"}, []byte("data"))
 	if err != nil {
 		t.Fatalf("Put: %v", err)
 	}
-	localC.wg.Wait()
-	remoteC.wg.Wait()
+	localC.Wait()
+	remoteC.Wait()
 
 	cases := []struct {
-		courier    *TestCourier
+		courier    *testlib.TestCourier
 		expectedTo string
 	}{
 		{localC, "pq@loco"},
@@ -175,33 +139,24 @@ func TestAliases(t *testing.T) {
 		{remoteC, "ata@hualpa"},
 	}
 	for _, c := range cases {
-		req := c.courier.reqFor[c.expectedTo]
+		req := c.courier.ReqFor[c.expectedTo]
 		if req == nil {
 			t.Errorf("missing request for %q", c.expectedTo)
 			continue
 		}
 
-		if req.from != "from" || req.to != c.expectedTo ||
-			!bytes.Equal(req.data, []byte("data")) {
+		if req.From != "from" || req.To != c.expectedTo ||
+			!bytes.Equal(req.Data, []byte("data")) {
 			t.Errorf("wrong request for %q: %v", c.expectedTo, req)
 		}
 	}
 }
 
-// Dumb courier, for when we just want to return directly.
-type DumbCourier struct{}
-
-func (c DumbCourier) Deliver(from string, to string, data []byte) (error, bool) {
-	return nil, false
-}
-
-var dumbCourier = DumbCourier{}
-
 func TestFullQueue(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
 	q := New(dir, set.NewString(), aliases.NewResolver(),
-		dumbCourier, dumbCourier)
+		testlib.DumbCourier, testlib.DumbCourier)
 
 	// Force-insert maxQueueSize items in the queue.
 	oneID := ""
@@ -243,7 +198,7 @@ func TestPipes(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
 	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
-		dumbCourier, dumbCourier)
+		testlib.DumbCourier, testlib.DumbCourier)
 	item := &Item{
 		Message: Message{
 			ID:   <-newID,
@@ -303,21 +258,21 @@ func TestSerialization(t *testing.T) {
 	}
 
 	// Create the queue; should load the
-	remoteC := newTestCourier()
-	remoteC.wg.Add(1)
+	remoteC := testlib.NewTestCourier()
+	remoteC.Expect(1)
 	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
-		dumbCourier, remoteC)
+		testlib.DumbCourier, remoteC)
 	q.Load()
 
 	// Launch the sending loop, expect 1 remote delivery for the item we saved.
-	remoteC.wg.Wait()
+	remoteC.Wait()
 
-	req := remoteC.reqFor["to@to"]
+	req := remoteC.ReqFor["to@to"]
 	if req == nil {
 		t.Fatal("email not delivered")
 	}
 
-	if req.from != "from@loco" || req.to != "to@to" {
+	if req.From != "from@loco" || req.To != "to@to" {
 		t.Errorf("wrong email: %v", req)
 	}
 }

@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
-	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/testlib"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 )
@@ -43,6 +42,10 @@ var (
 	// TLS configuration to use in the clients.
 	// Will contain the generated server certificate as root CA.
 	tlsConfig *tls.Config
+
+	// Test couriers, so we can validate that emails got sent.
+	localC  = testlib.NewTestCourier()
+	remoteC = testlib.NewTestCourier()
 
 	// Max data size, in MiB.
 	maxDataSizeMiB = 5
@@ -131,9 +134,13 @@ func sendEmailWithAuth(tb testing.TB, c *smtp.Client, auth smtp.Auth) {
 		tb.Errorf("Data write: %v", err)
 	}
 
+	localC.Expect(1)
+
 	if err = w.Close(); err != nil {
 		tb.Errorf("Data close: %v", err)
 	}
+
+	localC.Wait()
 }
 
 func TestSimple(t *testing.T) {
@@ -296,17 +303,21 @@ func TestTooMuchData(t *testing.T) {
 	c := mustDial(t, ModeSMTP, true)
 	defer c.Close()
 
+	localC.Expect(1)
 	err := sendLargeEmail(t, c, maxDataSizeMiB-1)
 	if err != nil {
 		t.Errorf("Error sending large but ok email: %v", err)
 	}
+	localC.Wait()
 
 	// Repeat the test - we want to check that the limit applies to each
 	// message, not the entire connection.
+	localC.Expect(1)
 	err = sendLargeEmail(t, c, maxDataSizeMiB-1)
 	if err != nil {
 		t.Errorf("Error sending large but ok email: %v", err)
 	}
+	localC.Wait()
 
 	err = sendLargeEmail(t, c, maxDataSizeMiB+1)
 	if err == nil || err.Error() != "552 5.3.4 Message too big" {
@@ -403,9 +414,6 @@ func BenchmarkManyEmails(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		sendEmail(b, c)
-
-		// TODO: Make sendEmail() wait for delivery, and remove this.
-		time.Sleep(10 * time.Millisecond)
 	}
 }
 
@@ -416,9 +424,6 @@ func BenchmarkManyEmailsParallel(b *testing.B) {
 
 		for pb.Next() {
 			sendEmail(b, c)
-
-			// TODO: Make sendEmail() wait for delivery, and remove this.
-			time.Sleep(100 * time.Millisecond)
 		}
 	})
 }
@@ -561,8 +566,6 @@ func realMain(m *testing.M) int {
 		s.AddAddr(submissionAddr, ModeSubmission)
 		s.AddAddr(submissionTLSAddr, ModeSubmissionTLS)
 
-		localC := &courier.Procmail{}
-		remoteC := &courier.SMTP{}
 		s.InitQueue(tmpDir+"/queue", localC, remoteC)
 		s.InitDomainInfo(tmpDir + "/domaininfo")
 

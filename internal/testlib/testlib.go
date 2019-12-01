@@ -6,7 +6,9 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 // MustTempDir creates a temporary directory, or dies trying.
@@ -64,3 +66,62 @@ func GetFreePort() string {
 	defer l.Close()
 	return l.Addr().String()
 }
+
+func WaitFor(f func() bool, d time.Duration) bool {
+	start := time.Now()
+	for time.Since(start) < d {
+		if f() {
+			return true
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	return false
+}
+
+type DeliverRequest struct {
+	From string
+	To   string
+	Data []byte
+}
+
+// Courier for test purposes. Never fails, and always remembers everything.
+type TestCourier struct {
+	wg       sync.WaitGroup
+	Requests []*DeliverRequest
+	ReqFor   map[string]*DeliverRequest
+	sync.Mutex
+}
+
+func (tc *TestCourier) Deliver(from string, to string, data []byte) (error, bool) {
+	defer tc.wg.Done()
+	dr := &DeliverRequest{from, to, data}
+	tc.Lock()
+	tc.Requests = append(tc.Requests, dr)
+	tc.ReqFor[to] = dr
+	tc.Unlock()
+	return nil, false
+}
+
+func (tc *TestCourier) Expect(i int) {
+	tc.wg.Add(i)
+}
+
+func (tc *TestCourier) Wait() {
+	tc.wg.Wait()
+}
+
+// NewTestCourier returns a new, empty TestCourier instance.
+func NewTestCourier() *TestCourier {
+	return &TestCourier{
+		ReqFor: map[string]*DeliverRequest{},
+	}
+}
+
+type dumbCourier struct{}
+
+func (c dumbCourier) Deliver(from string, to string, data []byte) (error, bool) {
+	return nil, false
+}
+
+// Dumb courier, for when we just don't care about the result.
+var DumbCourier = dumbCourier{}
