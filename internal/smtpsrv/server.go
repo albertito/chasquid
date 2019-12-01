@@ -163,6 +163,9 @@ func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
 // periodicallyReload some of the server's information, such as aliases and
 // the user databases.
 func (s *Server) periodicallyReload() {
+	if reloadEvery == nil {
+		return
+	}
 	for range time.Tick(*reloadEvery) {
 		err := s.aliasesR.Reload()
 		if err != nil {

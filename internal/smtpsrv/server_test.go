@@ -584,6 +584,9 @@ func realMain(m *testing.M) int {
 		// Disable SPF lookups, to avoid leaking DNS queries.
 		disableSPFForTesting = true
 
+		// Disable reloading.
+		reloadEvery = nil
+
 		go s.ListenAndServe()
 	}
 
