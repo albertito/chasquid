@@ -16,4 +16,6 @@ if [ "$RCPT_TO" == "permanent@testserver" ]; then
 fi
 
 echo "X-Post-Data: success"
+echo "X-Post-Data-Multiline: multiline"
+echo "  header for testing."
 
