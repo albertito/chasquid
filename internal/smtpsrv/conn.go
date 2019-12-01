@@ -1,6 +1,7 @@
 package smtpsrv
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/tls"
@@ -94,9 +95,12 @@ type Conn struct {
 
 	// Connection information.
 	conn         net.Conn
-	tc           *textproto.Conn
 	mode         SocketMode
 	tlsConnState *tls.ConnectionState
+
+	// Reader and text writer, so we can control limits.
+	reader *bufio.Reader
+	writer *bufio.Writer
 
 	// Tracer to use.
 	tr *trace.Trace
@@ -178,7 +182,12 @@ func (c *Conn) Handle() {
 		}
 	}
 
-	c.tc.PrintfLine("220 %s ESMTP chasquid", c.hostname)
+	// Set up a buffered reader and writer from the conn.
+	// They will be used to do line-oriented, limited I/O.
+	c.reader = bufio.NewReader(c.conn)
+	c.writer = bufio.NewWriter(c.conn)
+
+	c.printfLine("220 %s ESMTP chasquid", c.hostname)
 
 	var cmd, params string
 	var err error
@@ -196,7 +205,7 @@ loop:
 
 		cmd, params, err = c.readCommand()
 		if err != nil {
-			c.tc.PrintfLine("554 error reading command: %v", err)
+			c.printfLine("554 error reading command: %v", err)
 			break
 		}
 
@@ -577,9 +586,14 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	// one, we don't want the command timeout to interfere.
 	c.conn.SetDeadline(c.deadline)
 
-	dotr := io.LimitReader(c.tc.DotReader(), c.maxDataSize)
+	// Create a dot reader, limited to the maximum size.
+	dotr := textproto.NewReader(bufio.NewReader(
+		io.LimitReader(c.reader, c.maxDataSize))).DotReader()
 	c.data, err = ioutil.ReadAll(dotr)
 	if err != nil {
+		if err == io.ErrUnexpectedEOF {
+			return 552, fmt.Sprintf("5.3.4 Message too big")
+		}
 		return 554, fmt.Sprintf("5.4.0 Error reading DATA: %v", err)
 	}
 
@@ -875,9 +889,10 @@ func (c *Conn) STARTTLS(params string) (code int, msg string) {
 
 	c.tr.Debugf("<> ...  jump to TLS was successful")
 
-	// Override the connections. We don't need the older ones anymore.
+	// Override the connection. We don't need the older one anymore.
 	c.conn = server
-	c.tc = textproto.NewConn(server)
+	c.reader = bufio.NewReader(c.conn)
+	c.writer = bufio.NewWriter(c.conn)
 
 	// Take the connection state, so we can use it later for logging and
 	// tracing purposes.
@@ -1001,9 +1016,7 @@ func (c *Conn) userExists(addr string) bool {
 }
 
 func (c *Conn) readCommand() (cmd, params string, err error) {
-	var msg string
-
-	msg, err = c.tc.ReadLine()
+	msg, err := c.readLine()
 	if err != nil {
 		return "", "", err
 	}
@@ -1018,14 +1031,36 @@ func (c *Conn) readCommand() (cmd, params string, err error) {
 }
 
 func (c *Conn) readLine() (line string, err error) {
-	return c.tc.ReadLine()
+	// The bufio reader's ReadLine will only read up to the buffer size, which
+	// prevents DoS due to memory exhaustion on extremely long lines.
+	l, more, err := c.reader.ReadLine()
+	if err != nil {
+		return "", err
+	}
+
+	// As per RFC, the maximum length of a text line is 1000 octets.
+	// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.6
+	if len(l) > 1000 || more {
+		// Keep reading to maintain the protocol status, but discard the data.
+		for more && err == nil {
+			_, more, err = c.reader.ReadLine()
+		}
+		return "", fmt.Errorf("line too long")
+	}
+
+	return string(l), nil
 }
 
 func (c *Conn) writeResponse(code int, msg string) error {
-	defer c.tc.W.Flush()
+	defer c.writer.Flush()
 
 	responseCodeCount.Add(strconv.Itoa(code), 1)
-	return writeResponse(c.tc.W, code, msg)
+	return writeResponse(c.writer, code, msg)
+}
+
+func (c *Conn) printfLine(format string, args ...interface{}) error {
+	fmt.Fprintf(c.writer, format+"\r\n", args...)
+	return c.writer.Flush()
 }
 
 // writeResponse writes a multi-line response to the given writer.

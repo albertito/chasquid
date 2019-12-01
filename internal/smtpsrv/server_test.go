@@ -43,6 +43,9 @@ var (
 	// TLS configuration to use in the clients.
 	// Will contain the generated server certificate as root CA.
 	tlsConfig *tls.Config
+
+	// Max data size, in MiB.
+	maxDataSizeMiB = 5
 )
 
 //
@@ -259,14 +262,69 @@ func TestRelayForbidden(t *testing.T) {
 	}
 }
 
-func simpleCmd(t *testing.T, c *smtp.Client, cmd string, expected int) {
+var str1MiB string
+
+func sendLargeEmail(tb testing.TB, c *smtp.Client, sizeMiB int) error {
+	tb.Helper()
+	if err := c.Mail("from@from"); err != nil {
+		tb.Fatalf("Mail: %v", err)
+	}
+	if err := c.Rcpt("to@localhost"); err != nil {
+		tb.Fatalf("Rcpt: %v", err)
+	}
+
+	w, err := c.Data()
+	if err != nil {
+		tb.Fatalf("Data: %v", err)
+	}
+
+	if _, err := w.Write([]byte("Subject: I ate too much\n\n")); err != nil {
+		tb.Fatalf("Data write: %v", err)
+	}
+
+	// Write the 1 MiB string sizeMiB times.
+	for i := 0; i < sizeMiB; i++ {
+		if _, err := w.Write([]byte(str1MiB)); err != nil {
+			tb.Fatalf("Data write: %v", err)
+		}
+	}
+
+	return w.Close()
+}
+
+func TestTooMuchData(t *testing.T) {
+	c := mustDial(t, ModeSMTP, true)
+	defer c.Close()
+
+	err := sendLargeEmail(t, c, maxDataSizeMiB-1)
+	if err != nil {
+		t.Errorf("Error sending large but ok email: %v", err)
+	}
+
+	// Repeat the test - we want to check that the limit applies to each
+	// message, not the entire connection.
+	err = sendLargeEmail(t, c, maxDataSizeMiB-1)
+	if err != nil {
+		t.Errorf("Error sending large but ok email: %v", err)
+	}
+
+	err = sendLargeEmail(t, c, maxDataSizeMiB+1)
+	if err == nil || err.Error() != "552 5.3.4 Message too big" {
+		t.Fatalf("Expected message too big, got: %v", err)
+	}
+}
+
+func simpleCmd(t *testing.T, c *smtp.Client, cmd string, expected int) string {
+	t.Helper()
 	if err := c.Text.PrintfLine(cmd); err != nil {
 		t.Fatalf("Failed to write %s: %v", cmd, err)
 	}
 
-	if _, _, err := c.Text.ReadResponse(expected); err != nil {
+	_, msg, err := c.Text.ReadResponse(expected)
+	if err != nil {
 		t.Errorf("Incorrect %s response: %v", cmd, err)
 	}
+	return msg
 }
 
 func TestSimpleCommands(t *testing.T) {
@@ -276,6 +334,20 @@ func TestSimpleCommands(t *testing.T) {
 	simpleCmd(t, c, "NOOP", 250)
 	simpleCmd(t, c, "VRFY", 502)
 	simpleCmd(t, c, "EXPN", 502)
+}
+
+func TestLongLines(t *testing.T) {
+	c := mustDial(t, ModeSMTP, false)
+	defer c.Close()
+
+	// Send a not-too-long line.
+	simpleCmd(t, c, fmt.Sprintf("%1000s", "x"), 500)
+
+	// Send a very long line, expect an error.
+	msg := simpleCmd(t, c, fmt.Sprintf("%1001s", "x"), 554)
+	if msg != "error reading command: line too long" {
+		t.Errorf("Expected 'line too long', got %v", msg)
+	}
 }
 
 func TestReset(t *testing.T) {
@@ -448,6 +520,13 @@ func waitForServer(addr string) error {
 func realMain(m *testing.M) int {
 	flag.Parse()
 
+	// Create a 1MiB string, which the large message tests use.
+	buf := make([]byte, 1024*1024)
+	for i := 0; i < len(buf); i++ {
+		buf[i] = 'a'
+	}
+	str1MiB = string(buf)
+
 	if *externalSMTPAddr != "" {
 		smtpAddr = *externalSMTPAddr
 		submissionAddr = *externalSubmissionAddr
@@ -476,7 +555,7 @@ func realMain(m *testing.M) int {
 
 		s := NewServer()
 		s.Hostname = "localhost"
-		s.MaxDataSize = 50 * 1024 * 1025
+		s.MaxDataSize = int64(maxDataSizeMiB) * 1024 * 1024
 		s.AddCerts(tmpDir+"/cert.pem", tmpDir+"/key.pem")
 		s.AddAddr(smtpAddr, ModeSMTP)
 		s.AddAddr(submissionAddr, ModeSubmission)

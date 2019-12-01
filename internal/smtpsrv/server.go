@@ -6,7 +6,6 @@ import (
 	"flag"
 	"net"
 	"net/http"
-	"net/textproto"
 	"path"
 	"time"
 
@@ -247,7 +246,6 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 			maxDataSize:    s.MaxDataSize,
 			postDataHook:   pdhook,
 			conn:           conn,
-			tc:             textproto.NewConn(conn),
 			mode:           mode,
 			tlsConfig:      s.tlsConfig,
 			onTLS:          mode.TLS,
