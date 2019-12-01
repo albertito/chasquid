@@ -7,6 +7,8 @@
 package smtp
 
 import (
+	"bufio"
+	"io"
 	"net"
 	"net/smtp"
 	"net/textproto"
@@ -28,6 +30,14 @@ func NewClient(conn net.Conn, host string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Wrap the textproto.Conn reader so we are not exposed to a memory
+	// exhaustion DoS on very long replies from the server.
+	// Limit to 2 MiB total (all replies through the lifetime of the client),
+	// which should be plenty for our uses of SMTP.
+	lr := &io.LimitedReader{R: c.Text.Reader.R, N: 2 * 1024 * 1024}
+	c.Text.Reader.R = bufio.NewReader(lr)
+
 	return &Client{c}, nil
 }
 

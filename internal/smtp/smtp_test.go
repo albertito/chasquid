@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"net"
-	"net/smtp"
 	"net/textproto"
 	"strings"
 	"testing"
@@ -48,8 +48,19 @@ func TestIsASCII(t *testing.T) {
 	}
 }
 
+func mustNewClient(t *testing.T, nc net.Conn) *Client {
+	t.Helper()
+
+	c, err := NewClient(nc, "")
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+	return c
+}
+
 func TestBasic(t *testing.T) {
-	fake, client := fakeDialog(`> EHLO a_test
+	fake, client := fakeDialog(`< 220 welcome
+> EHLO a_test
 < 250-server replies your hello
 < 250-SIZE 35651584
 < 250-SMTPUTF8
@@ -61,8 +72,7 @@ func TestBasic(t *testing.T) {
 < 250 RCPT TO is fine
 `)
 
-	c := &Client{
-		Client: &smtp.Client{Text: textproto.NewConn(fake)}}
+	c := mustNewClient(t, fake)
 	if err := c.Hello("a_test"); err != nil {
 		t.Fatalf("Hello failed: %v", err)
 	}
@@ -78,7 +88,8 @@ func TestBasic(t *testing.T) {
 }
 
 func TestSMTPUTF8(t *testing.T) {
-	fake, client := fakeDialog(`> EHLO araña
+	fake, client := fakeDialog(`< 220 welcome
+> EHLO araña
 < 250-chasquid replies your hello
 < 250-SIZE 35651584
 < 250-SMTPUTF8
@@ -90,8 +101,7 @@ func TestSMTPUTF8(t *testing.T) {
 < 250 RCPT TO is fine
 `)
 
-	c := &Client{
-		Client: &smtp.Client{Text: textproto.NewConn(fake)}}
+	c := mustNewClient(t, fake)
 	if err := c.Hello("araña"); err != nil {
 		t.Fatalf("Hello failed: %v", err)
 	}
@@ -107,15 +117,15 @@ func TestSMTPUTF8(t *testing.T) {
 }
 
 func TestSMTPUTF8NotSupported(t *testing.T) {
-	fake, client := fakeDialog(`> EHLO araña
+	fake, client := fakeDialog(`< 220 welcome
+> EHLO araña
 < 250-chasquid replies your hello
 < 250-SIZE 35651584
 < 250-8BITMIME
 < 250 HELP
 `)
 
-	c := &Client{
-		Client: &smtp.Client{Text: textproto.NewConn(fake)}}
+	c := mustNewClient(t, fake)
 	if err := c.Hello("araña"); err != nil {
 		t.Fatalf("Hello failed: %v", err)
 	}
@@ -135,7 +145,8 @@ func TestSMTPUTF8NotSupported(t *testing.T) {
 }
 
 func TestFallbackToIDNA(t *testing.T) {
-	fake, client := fakeDialog(`> EHLO araña
+	fake, client := fakeDialog(`< 220 welcome
+> EHLO araña
 < 250-chasquid replies your hello
 < 250-SIZE 35651584
 < 250-8BITMIME
@@ -146,8 +157,7 @@ func TestFallbackToIDNA(t *testing.T) {
 < 250 RCPT TO is fine
 `)
 
-	c := &Client{
-		Client: &smtp.Client{Text: textproto.NewConn(fake)}}
+	c := mustNewClient(t, fake)
 	if err := c.Hello("araña"); err != nil {
 		t.Fatalf("Hello failed: %v", err)
 	}
@@ -166,6 +176,38 @@ func TestFallbackToIDNA(t *testing.T) {
 	}
 }
 
+func TestLineTooLong(t *testing.T) {
+	// Fake the server sending a >2MiB reply.
+	dialog := `< 220 welcome
+> EHLO araña
+< 250 HELP
+> NOOP
+< 250 longreply:` + fmt.Sprintf("%2097152s", "x") + `:
+> NOOP
+< 250 ok
+`
+
+	fake, client := fakeDialog(dialog)
+
+	c := mustNewClient(t, fake)
+	if err := c.Hello("araña"); err != nil {
+		t.Fatalf("Hello failed: %v", err)
+	}
+
+	if err := c.Noop(); err != nil {
+		t.Errorf("Noop failed: %v", err)
+	}
+
+	if err := c.Noop(); err != io.EOF {
+		t.Errorf("Expected EOF, got: %v", err)
+	}
+
+	cmds := fake.Client()
+	if client != cmds {
+		t.Errorf("Got:\n%s\nExpected:\n%s", cmds, client)
+	}
+}
+
 type faker struct {
 	buf *bytes.Buffer
 	*bufio.ReadWriter
@@ -181,6 +223,8 @@ func (f faker) Client() string {
 	f.ReadWriter.Writer.Flush()
 	return f.buf.String()
 }
+
+var _ net.Conn = faker{}
 
 // Takes a dialog, returns the corresponding faker and expected client
 // messages.  Ideally we would check this interactively, and it's not that
