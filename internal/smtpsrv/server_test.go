@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
+	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/testlib"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 )
@@ -531,6 +532,10 @@ func realMain(m *testing.M) int {
 		buf[i] = 'a'
 	}
 	str1MiB = string(buf)
+
+	// Set up the mail log to stdout, which is captured by the test runner,
+	// so we have better debugging information on failures.
+	maillog.Default = maillog.New(os.Stdout)
 
 	if *externalSMTPAddr != "" {
 		smtpAddr = *externalSMTPAddr
