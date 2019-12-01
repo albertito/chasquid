@@ -270,6 +270,31 @@ func TestRelayForbidden(t *testing.T) {
 	}
 }
 
+func TestTooManyRecipients(t *testing.T) {
+	c := mustDial(t, ModeSubmission, true)
+	defer c.Close()
+
+	auth := smtp.PlainAuth("", "testuser@localhost", "testpasswd", "127.0.0.1")
+	if err := c.Auth(auth); err != nil {
+		t.Fatalf("Auth: %v", err)
+	}
+
+	if err := c.Mail("testuser@localhost"); err != nil {
+		t.Fatalf("Mail: %v", err)
+	}
+
+	for i := 0; i < 101; i++ {
+		if err := c.Rcpt(fmt.Sprintf("to%d@somewhere", i)); err != nil {
+			t.Fatalf("Rcpt: %v", err)
+		}
+	}
+
+	err := c.Rcpt("to102@somewhere")
+	if err == nil || err.Error() != "452 4.5.3 Too many recipients" {
+		t.Errorf("Expected too many recipients, got: %v", err)
+	}
+}
+
 var str1MiB string
 
 func sendLargeEmail(tb testing.TB, c *smtp.Client, sizeMiB int) error {
