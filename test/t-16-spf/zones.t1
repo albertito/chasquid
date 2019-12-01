@@ -1,0 +1,13 @@
+# srv-a is forbidden from sending mail.
+
+# srv-a zone
+srv-a A    127.0.0.1
+srv-a AAAA ::1
+srv-a MX   srv-a
+srv-a TXT  v=spf1 -all
+
+# srv-b zone
+srv-b A    127.0.0.1
+srv-b AAAA ::1
+srv-b MX   srv-b
+srv-b TXT  v=spf1 a

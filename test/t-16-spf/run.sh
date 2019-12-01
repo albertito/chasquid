@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# Test TLS tracking features, which require faking SPF.
+# Test SPF resolution, which requires overriding DNS server.
+# Note this aims at providing some general end to end coverage, as well as the
+# main gaps.
 
 set -e
 . $(dirname ${0})/../util/lib.sh
@@ -9,10 +11,6 @@ init
 
 # Build with the DNS override, so we can fake DNS records.
 export GOTAGS="dnsoverride"
-
-# Launch minidns in the background using our configuration.
-minidns_bg --addr=":9053" -zones=zones >> .minidns.log 2>&1
-
 
 # Two chasquid servers:
 # A - listens on :1025, hosts srv-A
@@ -42,24 +40,29 @@ chasquid -v=2 --logfile=.logs-B/chasquid.log --config_dir=B \
 
 wait_until_ready 1025
 wait_until_ready 2025
-wait_until_ready 9053
 
+function launch_minidns() {
+	if [ "$MINIDNS" != "" ]; then
+		kill $MINIDNS
+		wait $MINIDNS || true
+	fi
+	cp $1 .zones
+	minidns_bg --addr=":9053" -zones=.zones >> .minidns.log 2>&1
+	wait_until_ready 9053
+}
+
+# T0: Successful.
+launch_minidns zones.t0
 run_msmtp userB@srv-B < content
-
 wait_for_file .mail/userb@srv-b
 mail_diff content .mail/userb@srv-b
 
-# A should have a secure outgoing connection to srv-b.
-if ! grep -q "outgoing_sec_level: TLS_SECURE" ".data-A/domaininfo/s:srv-b";
-then
-	fail "A is missing the domaininfo for srv-b"
-fi
-
-# B should have a secure incoming connection from srv-a.
-if ! grep -q "incoming_sec_level: TLS_CLIENT" ".data-B/domaininfo/s:srv-a";
-then
-	fail "B is missing the domaininfo for srv-a"
-fi
+# T1: A is not permitted to send to B.
+# Check that userA got a DSN about it.
+rm .mail/*
+launch_minidns zones.t1
+run_msmtp userB@srv-B < content
+wait_for_file .mail/usera@srv-a
+mail_diff expected_dsn .mail/usera@srv-a
 
 success
-

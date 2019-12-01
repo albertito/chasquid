@@ -112,8 +112,10 @@ function conngen() {
 	go run ${UTILDIR}/conngen.go "$@"
 }
 
-function minidns() {
-	go run ${UTILDIR}/minidns.go "$@"
+function minidns_bg() {
+	( cd ${UTILDIR}; go build minidns.go )
+	${UTILDIR}/minidns "$@" &
+	MINIDNS=$!
 }
 
 function success() {

@@ -1,0 +1,65 @@
+From usera@srv-a
+From: Mail Delivery System <postmaster-dsn@srv-a>
+To: <userA@srv-a>
+Subject: Mail delivery failed: returning message to sender
+Message-ID: <chasquid-dsn-*
+Date: *
+In-Reply-To: 
+References: 
+X-Failed-Recipients: userB@srv-b, 
+Auto-Submitted: auto-replied
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status;
+    boundary="???????????"
+
+
+--???????????
+Content-Type: text/plain; charset="utf-8"
+Content-Disposition: inline
+Content-Description: Notification
+Content-Transfer-Encoding: 8bit
+
+Delivery of your message to the following recipient(s) failed permanently:
+
+  - userB@srv-b
+
+
+Technical details:
+- "userB@srv-b" (EMAIL) failed permanently with error:
+    MAIL+RCPT 550 5.7.23 SPF check failed: matched 'all'
+
+
+--???????????
+Content-Type: message/global-delivery-status
+Content-Description: Delivery Report
+Content-Transfer-Encoding: 8bit
+
+Reporting-MTA: dns; srv-a
+
+Original-Recipient: utf-8; userB@srv-b
+Final-Recipient: utf-8; userB@srv-b
+Action: failed
+Status: 5.0.0
+Diagnostic-Code: smtp; MAIL+RCPT 550 5.7.23 SPF check failed: matched 'all'
+
+
+
+--???????????
+Content-Type: message/rfc822
+Content-Description: Undelivered Message
+Content-Transfer-Encoding: 8bit
+
+Received: from localhost
+	by srv-A (chasquid) with ESMTPSA
+	tls *
+	(over *
+	; *
+From: userA@srv-A
+Date: *
+Subject: Prueba desde el test
+
+Crece desde el test el futuro
+Crece desde el test
+
+
+--???????????--
