@@ -1,7 +1,9 @@
 package smtpsrv
 
 import (
+	"bufio"
 	"net"
+	"strings"
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
@@ -75,6 +77,57 @@ func TestIsHeader(t *testing.T) {
 	for _, s := range yes {
 		if !isHeader([]byte(s)) {
 			t.Errorf("%q rejected as header, should be accepted", s)
+		}
+	}
+}
+
+func TestReadUntilDot(t *testing.T) {
+	// This must be > than the minimum buffer size for bufio.Reader, which
+	// unfortunately is not available to us. The current value is 16, these
+	// tests will break if it gets increased, and the nonfinal cases will need
+	// to be adjusted.
+	size := 20
+	xs := "12345678901234567890"
+
+	final := []string{
+		"", ".", "..",
+		".\r\n", "\r\n.", "\r\n.\r\n",
+		".\n", "\n.", "\n.\n",
+		".\r", "\r.", "\r.\r",
+		xs + "\r\n.\r\n",
+		xs + "1234\r\n.\r\n",
+		xs + xs + "\r\n.\r\n",
+		xs + xs + xs + "\r\n.\r\n",
+		xs + "." + xs + "\n.",
+		xs + ".\n" + xs + "\n.",
+	}
+	for _, s := range final {
+		t.Logf("testing %q", s)
+		buf := bufio.NewReaderSize(strings.NewReader(s), size)
+		readUntilDot(buf)
+		if r := buf.Buffered(); r != 0 {
+			t.Errorf("%q: there are %d remaining bytes", s, r)
+		}
+	}
+
+	nonfinal := []struct {
+		s string
+		r int
+	}{
+		{".\na", 1},
+		{"\n.\na", 1},
+		{"\n.\nabc", 3},
+		{"\n.\n12345678", 8},
+		{"\n.\n" + xs, size - 3},
+		{"\n.\n" + xs + xs, size - 3},
+		{"\n.\n.\n", 2},
+	}
+	for _, c := range nonfinal {
+		t.Logf("testing %q", c.s)
+		buf := bufio.NewReaderSize(strings.NewReader(c.s), size)
+		readUntilDot(buf)
+		if r := buf.Buffered(); r != c.r {
+			t.Errorf("%q: expected %d remaining bytes, got %d", c.s, c.r, r)
 		}
 	}
 }

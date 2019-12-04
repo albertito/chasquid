@@ -349,6 +349,15 @@ func TestTooMuchData(t *testing.T) {
 	if err == nil || err.Error() != "552 5.3.4 Message too big" {
 		t.Fatalf("Expected message too big, got: %v", err)
 	}
+
+	// Repeat the test once again, the limit should not prevent connection
+	// from continuing.
+	localC.Expect(1)
+	err = sendLargeEmail(t, c, maxDataSizeMiB-1)
+	if err != nil {
+		t.Errorf("Error sending large but ok email: %v", err)
+	}
+	localC.Wait()
 }
 
 func simpleCmd(t *testing.T, c *smtp.Client, cmd string, expected int) string {

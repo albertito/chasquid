@@ -592,6 +592,11 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	c.data, err = ioutil.ReadAll(dotr)
 	if err != nil {
 		if err == io.ErrUnexpectedEOF {
+			// Message is too big already. But we need to keep reading until we see
+			// the "\r\n.\r\n", otherwise we will treat the remanent data that
+			// the user keeps sending as commands, and that's a security
+			// issue.
+			readUntilDot(c.reader)
 			return 552, fmt.Sprintf("5.3.4 Message too big")
 		}
 		return 554, fmt.Sprintf("5.4.0 Error reading DATA: %v", err)
@@ -866,6 +871,24 @@ func boolToStr(b bool) string {
 		return "1"
 	}
 	return "0"
+}
+
+func readUntilDot(r *bufio.Reader) {
+	prevMore := false
+	for {
+		// The reader will not read more than the size of the buffer,
+		// so this doesn't cause increased memory consumption.
+		// The reader's data deadline will prevent this from continuing
+		// forever.
+		l, more, err := r.ReadLine()
+		if err != nil {
+			break
+		}
+		if !more && !prevMore && string(l) == "." {
+			break
+		}
+		prevMore = more
+	}
 }
 
 // STARTTLS SMTP command handler.
