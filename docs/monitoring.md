@@ -30,8 +30,8 @@ They're accessible over the monitoring http server, at `/debug/vars` (default
 endpoint for expvars).
 
 *Note these are still subject to change, although breaking changes will be
-avoided whenever possible, and will be noted in the [upgrading
-notes](upgrading.md).*
+avoided whenever possible, and will be noted in the [release
+notes](relnotes.md).*
 
 List of exported variables:
 
