@@ -5,6 +5,22 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.2 (2019-12-06)
+
+Security fixes:
+
+- DoS through memory exhaustion due to not limiting the line length (on both
+  incoming and outgoing connections). Thanks to Max Mazurov
+  (fox.cpp@disroot.org) for the initial report.
+
+Release notes:
+
+- Fix handling of excessive long lines on incoming and outgoing connections.
+- Better error codes when DATA size exceeded the maximum.
+- New documentation sections (monitoring, release notes).
+- Many miscellaneous test improvements.
+
+
 ## 1.1 (2019-10-26)
 
 - Added hooks for aliases resolution.
