@@ -86,7 +86,7 @@ if [ "$AUTH_AS" != "" ] && command -v dkimsign; then
 			&& [ -f "certs/$DOMAIN/dkim_privkey.pem" ]; then
 		dkimsign -n -hd \
 			-key "certs/$DOMAIN/dkim_privkey.pem" \
-			-s $(cat "domains/$DOMAIN/dkim_selector") \
+			-s "$(cat "domains/$DOMAIN/dkim_selector")" \
 			-d "$DOMAIN" \
 			< "$TF"
 	fi
