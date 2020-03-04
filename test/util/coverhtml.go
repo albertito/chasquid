@@ -191,6 +191,27 @@ const htmlTmpl = `<!DOCTYPE html>
         color: #069;
       }
 
+      table {
+        border-collapse: collapse;
+      }
+
+      tr:nth-child(odd) {
+        background: #f5f5f7;
+      }
+
+      tr.total {
+        border-top: 1px solid;
+        font-weight: bold;
+      }
+
+      td {
+        padding: 0.2em 1em;
+      }
+
+      td.pcnt {
+        text-align: right;
+      }
+
       code, pre, tt {
         font-family: Monaco, Bitstream Vera Sans Mono, Lucida Console,
           Terminal, Consolas, Liberation Mono, DejaVu Sans Mono,
@@ -241,12 +262,19 @@ const htmlTmpl = `<!DOCTYPE html>
 
   {{.Notes}}<p>
 
-  <tt>Total: {{.Totals.TotalPercent | printf "%.2f"}}%</tt><p>
-
+  <table>
   {{range .Files}}
-  <tt><a onclick="visible('f::{{.}}')">
-    {{.}}  ({{$.Totals.Percent . | printf "%.1f%%"}})</a></tt><br>
+  <tr>
+    <td><a onclick="visible('f::{{.}}')" tabindex="0"> {{.}} </a></td>
+    <td class="pcnt">{{$.Totals.Percent . | printf "%.1f%%"}}</td>
+  </tr>
   {{- end}}
+
+  <tr class="total">
+    <td>Total</td>
+    <td class="pcnt">{{.Totals.TotalPercent | printf "%.1f"}}%</td>
+  </tr>
+  </table>
 
   <div id="source">
   {{range .Files}}
