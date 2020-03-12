@@ -68,13 +68,13 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 		a.from = ""
 	}
 
-	mxs, err := lookupMXs(a.tr, a.toDomain)
+	mxs, err, perm := lookupMXs(a.tr, a.toDomain)
 	if err != nil || len(mxs) == 0 {
 		// Note this is considered a permanent error.
 		// This is in line with what other servers (Exim) do. However, the
 		// downside is that temporary DNS issues can affect delivery, so we
 		// have to make sure we try hard enough on the lookup above.
-		return a.tr.Errorf("Could not find mail server: %v", err), true
+		return a.tr.Errorf("Could not find mail server: %v", err), perm
 	}
 
 	// Issue an EHLO with a valid domain; otherwise, some servers like postfix
@@ -245,10 +245,10 @@ func (s *SMTP) fetchSTSPolicy(tr *trace.Trace, domain string) *sts.Policy {
 	return policy
 }
 
-func lookupMXs(tr *trace.Trace, domain string) ([]string, error) {
+func lookupMXs(tr *trace.Trace, domain string) ([]string, error, bool) {
 	domain, err := idna.ToASCII(domain)
 	if err != nil {
-		return nil, err
+		return nil, err, true
 	}
 
 	mxs := []string{}
@@ -264,10 +264,10 @@ func lookupMXs(tr *trace.Trace, domain string) ([]string, error) {
 		dnsErr, ok := err.(*net.DNSError)
 		if !ok {
 			tr.Debugf("MX lookup error: %v", err)
-			return nil, err
+			return nil, err, true
 		} else if dnsErr.Temporary() {
 			tr.Debugf("temporary DNS error: %v", dnsErr)
-			return nil, err
+			return nil, err, false
 		}
 
 		// Permanent error, we assume MX does not exist and fall back to A.
@@ -292,5 +292,5 @@ func lookupMXs(tr *trace.Trace, domain string) ([]string, error) {
 	}
 
 	tr.Debugf("MXs: %v", mxs)
-	return mxs, nil
+	return mxs, nil, true
 }

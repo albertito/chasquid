@@ -213,9 +213,12 @@ func TestTooManyMX(t *testing.T) {
 		{Host: "h3", Pref: 30}, {Host: "h4", Pref: 40},
 		{Host: "h5", Pref: 50}, {Host: "h5", Pref: 60},
 	}
-	mxs, err := lookupMXs(tr, "domain")
+	mxs, err, perm := lookupMXs(tr, "domain")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if perm != true {
+		t.Fatalf("expected perm == true")
 	}
 	if len(mxs) != 5 {
 		t.Errorf("expected len(mxs) == 5, got: %v", mxs)
@@ -230,9 +233,12 @@ func TestFallbackToA(t *testing.T) {
 		IsTemporary: false,
 	}
 
-	mxs, err := lookupMXs(tr, "domain")
+	mxs, err, perm := lookupMXs(tr, "domain")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if perm != true {
+		t.Fatalf("expected perm == true")
 	}
 	if !(len(mxs) == 1 && mxs[0] == "domain") {
 		t.Errorf("expected mxs == [domain], got: %v", mxs)
@@ -247,9 +253,12 @@ func TestTemporaryDNSerror(t *testing.T) {
 		IsTemporary: true,
 	}
 
-	mxs, err := lookupMXs(tr, "domain")
+	mxs, err, perm := lookupMXs(tr, "domain")
 	if !(mxs == nil && err == testMXErr["domain"]) {
 		t.Errorf("expected mxs == nil, err == test error, got: %v, %v", mxs, err)
+	}
+	if perm != false {
+		t.Errorf("expected perm == false")
 	}
 }
 
@@ -258,18 +267,24 @@ func TestMXLookupError(t *testing.T) {
 	testMX["domain"] = nil
 	testMXErr["domain"] = fmt.Errorf("test error")
 
-	mxs, err := lookupMXs(tr, "domain")
+	mxs, err, perm := lookupMXs(tr, "domain")
 	if !(mxs == nil && err == testMXErr["domain"]) {
 		t.Errorf("expected mxs == nil, err == test error, got: %v, %v", mxs, err)
+	}
+	if perm != true {
+		t.Fatalf("expected perm == true")
 	}
 }
 
 func TestLookupInvalidDomain(t *testing.T) {
 	tr := trace.New("test", "test")
 
-	mxs, err := lookupMXs(tr, invalidDomain)
+	mxs, err, perm := lookupMXs(tr, invalidDomain)
 	if !(mxs == nil && err != nil) {
 		t.Errorf("expected err != nil, got: %v, %v", mxs, err)
+	}
+	if perm != true {
+		t.Fatalf("expected perm == true")
 	}
 }
 
