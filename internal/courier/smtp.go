@@ -260,7 +260,7 @@ func lookupMXs(tr *trace.Trace, domain string) ([]string, error) {
 		// Unfortunately, go's API doesn't let us easily distinguish between
 		// them. For now, if the error is permanent, we assume it's because
 		// there was no MX and fall back, otherwise we return.
-		// TODO: Find a better way to do this.
+		// TODO: Use dnsErr.IsNotFound once we can use Go >= 1.13.
 		dnsErr, ok := err.(*net.DNSError)
 		if !ok {
 			tr.Debugf("MX lookup error: %v", err)
