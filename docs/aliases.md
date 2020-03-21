@@ -36,6 +36,12 @@ pepe: jose
 flowers: rose@backgarden, lilly@pond
 ```
 
+Destination addresses can be for a remote domain as well. In that case, the
+email will be forwarded using
+[sender rewriting](https://en.wikipedia.org/wiki/Sender_Rewriting_Scheme).
+While the content of the message will not be changed, the envelope sender will
+be the constructed from the alias user.
+
 User names cannot contain spaces, ":" or commas, for parsing reasons. This is
 a tradeoff between flexibility and keeping the file format easy to edit for
 people. User names will be normalized internally to lower-case. UTF-8 is
