@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestBasic(t *testing.T) {
@@ -81,5 +82,17 @@ func TestGetFreePort(t *testing.T) {
 	p := GetFreePort()
 	if p == "" {
 		t.Errorf("failed to get free port")
+	}
+}
+
+func TestWaitFor(t *testing.T) {
+	ok := WaitFor(func() bool { return true }, 20*time.Millisecond)
+	if !ok {
+		t.Errorf("WaitFor(true) timed out")
+	}
+
+	ok = WaitFor(func() bool { return false }, 20*time.Millisecond)
+	if ok {
+		t.Errorf("WaitFor(false) worked")
 	}
 }
