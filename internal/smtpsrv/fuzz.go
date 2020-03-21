@@ -85,40 +85,55 @@ func Fuzz(data []byte) int {
 	tconn := textproto.NewConn(conn)
 	defer tconn.Close()
 
-	in_data := false
 	scanner := bufio.NewScanner(bytes.NewBuffer(data))
 	for scanner.Scan() {
 		line := scanner.Text()
+		cmd := strings.TrimSpace(strings.ToUpper(line))
 
 		// Skip STARTTLS if it happens on a non-TLS connection - the jump is
 		// not going to happen via fuzzer, it will just cause a timeout (which
 		// is considered a crash).
-		if strings.TrimSpace(strings.ToUpper(line)) == "STARTTLS" && !mode.TLS {
+		if cmd == "STARTTLS" && !mode.TLS {
 			continue
 		}
 
 		if err = tconn.PrintfLine(line); err != nil {
 			break
 		}
-		if in_data {
-			if line == "." {
-				in_data = false
-			} else {
-				continue
-			}
-		}
 
 		if _, _, err = tconn.ReadResponse(-1); err != nil {
 			break
 		}
 
-		in_data = strings.HasPrefix(strings.ToUpper(line), "DATA")
+		if cmd == "DATA" {
+			// We just sent DATA and got a response; send the contents.
+			err = exchangeData(scanner, tconn)
+			if err != nil {
+				break
+			}
+		}
 	}
 	if (err != nil && err != io.EOF) || scanner.Err() != nil {
 		return 1
 	}
 
 	return 0
+}
+
+func exchangeData(scanner *bufio.Scanner, tconn *textproto.Conn) error {
+	for scanner.Scan() {
+		line := scanner.Text()
+		if err := tconn.PrintfLine(line); err != nil {
+			return err
+		}
+		if line == "." {
+			break
+		}
+	}
+
+	// Read the "." response.
+	_, _, err := tconn.ReadResponse(-1)
+	return err
 }
 
 //
@@ -216,7 +231,7 @@ func waitForServer(addr string) {
 func init() {
 	flag.Parse()
 
-	log.Default.Level = log.Debug
+	log.Default.Level = log.Error
 
 	// Generate certificates in a temporary directory.
 	tmpDir, err := ioutil.TempDir("", "chasquid_smtpsrv_fuzz:")
