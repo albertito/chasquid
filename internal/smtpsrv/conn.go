@@ -280,7 +280,11 @@ loop:
 	}
 
 	if err != nil {
-		c.tr.Errorf("exiting with error: %v", err)
+		if err == io.EOF {
+			c.tr.Debugf("client closed the connection")
+		} else {
+			c.tr.Errorf("exiting with error: %v", err)
+		}
 	}
 }
 
