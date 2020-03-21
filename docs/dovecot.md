@@ -51,5 +51,23 @@ If chasquid can't find them, the paths can be set with the
 `dovecot_userdb_path` and `dovecot_client_path` options.
 
 
+## Troubleshooting
+
+Dovecot authentication can be tricky to troubleshoot.
+
+If you think it is not working as it should, or chasquid isn't correctly
+talking with it, the easiest way to check is to [increase dovecot auth logging
+verbosity](https://doc.dovecot.org/admin_manual/logging/?highlight=logging#logging-verbosity):
+
+```
+auth_verbose = yes
+auth_debug = yes
+```
+
+One common gotcha is when dovecot is set up to use `user` instead of
+`user@domain`. In that case you can try setting `auth_username_format = %n` to
+make it ignore the domain if present.
+
+
 [dovecot]: https://dovecot.org
 [chasquid]: https://blitiri.com.ar/p/chasquid
