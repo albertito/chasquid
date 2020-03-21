@@ -67,6 +67,7 @@ func GetFreePort() string {
 	return l.Addr().String()
 }
 
+// WaitFor f to return true (returns true), or d to pass (returns false).
 func WaitFor(f func() bool, d time.Duration) bool {
 	start := time.Now()
 	for time.Since(start) < d {
@@ -78,23 +79,24 @@ func WaitFor(f func() bool, d time.Duration) bool {
 	return false
 }
 
-type DeliverRequest struct {
+type deliverRequest struct {
 	From string
 	To   string
 	Data []byte
 }
 
-// Courier for test purposes. Never fails, and always remembers everything.
+// TestCourier never fails, and always remembers everything.
 type TestCourier struct {
 	wg       sync.WaitGroup
-	Requests []*DeliverRequest
-	ReqFor   map[string]*DeliverRequest
+	Requests []*deliverRequest
+	ReqFor   map[string]*deliverRequest
 	sync.Mutex
 }
 
+// Deliver the given mail (saving it in tc.Requests).
 func (tc *TestCourier) Deliver(from string, to string, data []byte) (error, bool) {
 	defer tc.wg.Done()
-	dr := &DeliverRequest{from, to, data}
+	dr := &deliverRequest{from, to, data}
 	tc.Lock()
 	tc.Requests = append(tc.Requests, dr)
 	tc.ReqFor[to] = dr
@@ -102,10 +104,12 @@ func (tc *TestCourier) Deliver(from string, to string, data []byte) (error, bool
 	return nil, false
 }
 
+// Expect i mails to be delivered.
 func (tc *TestCourier) Expect(i int) {
 	tc.wg.Add(i)
 }
 
+// Wait until all mails have been delivered.
 func (tc *TestCourier) Wait() {
 	tc.wg.Wait()
 }
@@ -113,7 +117,7 @@ func (tc *TestCourier) Wait() {
 // NewTestCourier returns a new, empty TestCourier instance.
 func NewTestCourier() *TestCourier {
 	return &TestCourier{
-		ReqFor: map[string]*DeliverRequest{},
+		ReqFor: map[string]*deliverRequest{},
 	}
 }
 
@@ -123,5 +127,5 @@ func (c dumbCourier) Deliver(from string, to string, data []byte) (error, bool) 
 	return nil, false
 }
 
-// Dumb courier, for when we just don't care about the result.
+// DumbCourier always succeeds delivery, and ignores everything.
 var DumbCourier = dumbCourier{}
