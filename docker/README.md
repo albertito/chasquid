@@ -4,10 +4,8 @@
 chasquid comes with a Dockerfile to create a container running [chasquid],
 [dovecot], and managed certificates with [Let's Encrypt].
 
-**IT IS EXPERIMENTAL AND LIKELY TO BREAK**
-
-The more traditional setup is **highly recommended**, see the
-[how-to](howto.md) documentation for more details.
+Note these are less thoroughly tested than the [traditional setup](howto.md),
+which is the recommended way to use chasquid.
 
 [chasquid]: https://blitiri.com.ar/p/chasquid
 [dovecot]: https://dovecot.org
@@ -16,10 +14,11 @@ The more traditional setup is **highly recommended**, see the
 
 ## Images
 
-There are [pre-built images at gitlab
-registry](https://gitlab.com/albertito/chasquid/container_registry).  They are
-automatically built, and tagged with the corresponding branch name. Use the
-*master* tag for a stable version.
+There are pre-built images at the
+[gitlab registry](https://gitlab.com/albertito/chasquid/container_registry)
+and [dockerhub](https://hub.docker.com/r/albertito/chasquid).
+They are automatically built, and tagged with the corresponding branch name.
+Use the *master* tag for a stable version.
 
 If, instead, you want to build the image yourself, just run:
 
