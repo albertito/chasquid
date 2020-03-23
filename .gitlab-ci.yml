@@ -1,10 +1,10 @@
 
 stages:
   - test
-  - docker_image
+  - image
 
 # Integration test, using the module versions from the repository.
-integration_test:
+stable:
   stage: test
   image: docker:stable
   services:
@@ -16,7 +16,7 @@ integration_test:
     - docker run chasquid-test  make test
 
 # Integration test, using the latest module versions.
-integration_test_latest:
+latest:
   stage: test
   image: docker:stable
   services:
@@ -27,8 +27,9 @@ integration_test_latest:
     - docker run chasquid-test  env
     - docker run chasquid-test  make test
 
-image_build:
-  stage: docker_image
+# Build docker image, upload to gitlab registry.
+build_gitlab:
+  stage: image
   image: docker:stable
   services:
     - docker:dind
@@ -37,3 +38,15 @@ image_build:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     - docker build -t $CI_REGISTRY_IMAGE:$CI_BUILD_REF_NAME -f docker/Dockerfile .
     - docker push $CI_REGISTRY_IMAGE:$CI_BUILD_REF_NAME
+
+# Build docker image, upload to dockerhub registry.
+build_dockerhub:
+  stage: image
+  image: docker:stable
+  services:
+    - docker:dind
+  script:
+    - docker info
+    - docker login -u $DOCKER_REGISTRY_USER -p $DOCKER_REGISTRY_PASSWORD docker.io
+    - docker build -t index.docker.io/albertito/chasquid:$CI_BUILD_REF_NAME -f docker/Dockerfile .
+    - docker push index.docker.io/albertito/chasquid:$CI_BUILD_REF_NAME
