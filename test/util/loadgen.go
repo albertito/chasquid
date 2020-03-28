@@ -7,6 +7,7 @@ import (
 	"flag"
 	"net"
 	"net/http"
+	"net/textproto"
 	"runtime"
 	"sync"
 	"time"
@@ -172,6 +173,7 @@ func one() error {
 			return err
 		}
 
+	retry:
 		w, err := client.Data()
 		if err != nil {
 			return err
@@ -182,6 +184,16 @@ func one() error {
 		}
 		err = w.Close()
 		if err != nil {
+			// If we are sending too fast we might hit chasquid's queue size
+			// limit. In that case, wait and try again.
+			// We detect it with error code 451 which is used for this
+			// situation.
+			if terr, ok := err.(*textproto.Error); ok {
+				if terr.Code == 451 {
+					time.Sleep(10 * time.Millisecond)
+					goto retry
+				}
+			}
 			return err
 		}
 	}
