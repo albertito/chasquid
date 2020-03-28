@@ -25,7 +25,7 @@ It's written in [Go](https://golang.org), and distributed under the
       relay, or clear-text authentication).
     * [Monitoring] HTTP server, with exported variables and tracing to help
       debugging.
-    * Integrated with [Debian] and [Ubuntu].
+    * Integrated with [Debian], [Ubuntu], and [Arch].
     * Supports using [Dovecot] for authentication.
 * Useful
     * Multiple/virtual domains, with per-domain users and aliases.
@@ -40,6 +40,7 @@ It's written in [Go](https://golang.org), and distributed under the
     * [SPF] and [MTA-STS] checking.
 
 
+[Arch]: https://www.archlinux.org/
 [Debian]: https://debian.org
 [Dovecot]: https://blitiri.com.ar/p/chasquid/docs/dovecot/
 [Hooks]: https://blitiri.com.ar/p/chasquid/docs/hooks/

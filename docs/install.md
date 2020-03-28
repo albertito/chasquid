@@ -11,6 +11,19 @@ If you're using Debian or Ubuntu, chasquid can be installed by running:
 sudo apt install chasquid
 ```
 
+### Arch
+
+If you're using Arch, there is a
+[chasquid AUR package](https://aur.archlinux.org/packages/chasquid/) you can
+use.  See the [official Arch
+documentation](https://wiki.archlinux.org/index.php/Arch_User_Repository) for
+how to install it.  If you use the [pacaur](https://github.com/E5ten/pacaur)
+[helper](https://wiki.archlinux.org/index.php/AUR_helpers), you can just run:
+
+```shell
+pacaur -S chasquid
+```
+
 ### From source
 
 To get, build and install from source, you will need a working
