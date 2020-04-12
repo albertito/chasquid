@@ -5,6 +5,14 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.3 (2020-04-12)
+
+- Improved handling of DNS temporary errors.
+- Documentation updates (use of SRS when forwarding, Dovecot troubleshooting,
+  Arch installation instructions).
+- Miscellaneous test improvements and cleanups.
+
+
 ## 1.2 (2019-12-06)
 
 Security fixes:
