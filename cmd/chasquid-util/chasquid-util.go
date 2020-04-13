@@ -100,7 +100,10 @@ func userDBFromArgs(create bool) (string, string, *userdb.DB) {
 	if err != nil {
 		if create && os.IsNotExist(err) {
 			fmt.Println("Creating database")
-			os.MkdirAll(filepath.Dir(userDBForDomain(domain)), 0755)
+			err = os.MkdirAll(filepath.Dir(userDBForDomain(domain)), 0755)
+			if err != nil {
+				Fatalf("Error creating database dir: %v", err)
+			}
 		} else {
 			Fatalf("Error loading database: %v", err)
 		}
