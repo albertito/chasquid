@@ -174,7 +174,12 @@ func (c *Conn) Handle() {
 	if tc, ok := c.conn.(*tls.Conn); ok {
 		// For TLS connections, complete the handshake and get the state, so
 		// it can be used when we say hello below.
-		tc.Handshake()
+		err := tc.Handshake()
+		if err != nil {
+			c.tr.Errorf("error completing TLS handshake: %v", err)
+			return
+		}
+
 		cstate := tc.ConnectionState()
 		c.tlsConnState = &cstate
 		if name := c.tlsConnState.ServerName; name != "" {
