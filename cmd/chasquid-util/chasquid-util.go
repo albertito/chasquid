@@ -51,7 +51,7 @@ var (
 )
 
 func main() {
-	args, _ = docopt.Parse(usage, nil, true, "", false)
+	args, _ = docopt.ParseDoc(usage)
 
 	// Load globals.
 	if d, ok := args["--configdir"].(string); ok {
