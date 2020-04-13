@@ -10,7 +10,8 @@ It's written in [Go](https://golang.org), and distributed under the
 [Apache license 2.0](http://en.wikipedia.org/wiki/Apache_License).
 
 [![Travis-CI status](https://travis-ci.org/albertito/chasquid.svg?branch=master)](https://travis-ci.org/albertito/chasquid)
-[![Gitlab CI status](https://gitlab.com/albertito/chasquid/badges/master/pipeline.svg)](https://gitlab.com/albertito/chasquid/pipelines)
+[![Cirrus-CI Status](https://api.cirrus-ci.com/github/albertito/chasquid.svg?branch=next)](https://cirrus-ci.com/github/albertito/chasquid)
+[![Gitlab CI status](https://gitlab.com/albertito/chasquid/badges/master/pipeline.svg)](https://gitlab.com/albertito/chasquid/pipelines)\
 [![Go Report Card](https://goreportcard.com/badge/github.com/albertito/chasquid)](https://goreportcard.com/report/github.com/albertito/chasquid)
 [![Coverage](https://img.shields.io/badge/coverage-next-brightgreen.svg)](https://blitiri.com.ar/p/chasquid/coverage.html)
 [![Docs](https://img.shields.io/badge/docs-reference-blue.svg)](https://blitiri.com.ar/p/chasquid/docs/)

@@ -1,0 +1,70 @@
+
+# Configuration for https://cirrus-ci.org/
+
+env:
+  GOPROXY: https://proxy.golang.org
+
+# Run go tests under a Linux container.
+# Note that by default it is run as root, which causes the tests to fail since
+# they expect to get permission denied on some cases, so we create a separate
+# user and use that instead.
+linux_task:
+  name: Go tests (Linux)
+  container:
+    image: golang:latest
+  modules_cache:
+    fingerprint_script: cat go.sum
+    folder: $GOPATH/pkg/mod
+  get_script: |
+    useradd --create-home --user-group testing
+    su testing -c "go get ./..."
+  build_script: |
+    su testing -c "go build ./..."
+  test_script: |
+    su testing -c "go test ./..."
+
+# Run go tests under a FreeBSD VM.
+# Same as linux_task, we need to use a separate non-root user.
+freebsd_task:
+  name: Go tests (FreeBSD)
+  freebsd_instance:
+      image_family: freebsd-13-0-snap
+  install_script: |
+    pkg install -y lang/go
+    pw useradd testing -m
+  test_script: |
+    su testing -c "go test ./..."
+
+# GolangCI linter.
+lint_task:
+  name: GolangCI Lint
+  container:
+    image: golangci/golangci-lint:latest
+  environment:
+    LINT_CONFIG: |
+      issues:
+        exclude:
+          - "Error return value of .(.*Errorf?). is not checked"
+          - "Error return value of .(.*SetDeadline). is not checked"
+          - "Error return value of .(.*ListenAndServe). is not checked"
+        exclude-rules:
+          - path: _test\.go
+            linters:
+              - errcheck
+          - linters:
+              - staticcheck
+            text: "SA1015:"
+        exclude-use-default: true
+  lint_config_file:
+    path: /tmp/lint.yml
+    variable_name: LINT_CONFIG
+  run_script: |
+    golangci-lint run -v --out-format json \
+      -c /tmp/lint.yml \
+      > lint-report.json
+  always:
+    golangci_artifacts:
+      path: lint-report.json
+      type: text/json
+      format: golangci
+
