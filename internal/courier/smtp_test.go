@@ -55,7 +55,7 @@ func fakeServer(t *testing.T, responses map[string]string) (string, *sync.WaitGr
 
 		c, err := l.Accept()
 		if err != nil {
-			t.Fatalf("fake server accept: %v", err)
+			panic(err)
 		}
 		defer c.Close()
 
