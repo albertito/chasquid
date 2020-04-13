@@ -232,7 +232,7 @@ func (q *Queue) Remove(id string) {
 func (q *Queue) DumpString() string {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	s := fmt.Sprintf("# Queue status\n\n")
+	s := "# Queue status\n\n"
 	s += fmt.Sprintf("date: %v\n", time.Now())
 	s += fmt.Sprintf("length: %d\n\n", len(q.q))
 
@@ -248,7 +248,7 @@ func (q *Queue) DumpString() string {
 			s += fmt.Sprintf("  last failure: %q\n", rcpt.LastFailureMessage)
 		}
 		item.Unlock()
-		s += fmt.Sprintf("\n")
+		s += "\n"
 	}
 
 	return s

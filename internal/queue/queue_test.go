@@ -74,7 +74,7 @@ func TestDSNOnTimeout(t *testing.T) {
 	item := &Item{
 		Message: Message{
 			ID:   <-newID,
-			From: fmt.Sprintf("from@loco"),
+			From: "from@loco",
 			Rcpt: []*Recipient{
 				mkR("to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to")},
 			Data: []byte("data"),
@@ -245,7 +245,7 @@ func TestSerialization(t *testing.T) {
 	item := &Item{
 		Message: Message{
 			ID:   <-newID,
-			From: fmt.Sprintf("from@loco"),
+			From: "from@loco",
 			Rcpt: []*Recipient{
 				mkR("to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to")},
 			Data: []byte("data"),

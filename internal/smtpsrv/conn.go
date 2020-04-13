@@ -606,7 +606,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 			// the user keeps sending as commands, and that's a security
 			// issue.
 			readUntilDot(c.reader)
-			return 552, fmt.Sprintf("5.3.4 Message too big")
+			return 552, "5.3.4 Message too big"
 		}
 		return 554, fmt.Sprintf("5.4.0 Error reading DATA: %v", err)
 	}
