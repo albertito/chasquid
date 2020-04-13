@@ -208,7 +208,7 @@ func aliasesResolve() {
 	if err != nil {
 		Fatalf("Error reading config")
 	}
-	os.Chdir(configDir)
+	_ = os.Chdir(configDir)
 
 	r := aliases.NewResolver()
 	r.SuffixSep = conf.SuffixSeparators
@@ -294,7 +294,7 @@ func aliasesAdd() {
 	if err != nil {
 		Fatalf("Error reading config")
 	}
-	os.Chdir(configDir)
+	_ = os.Chdir(configDir)
 
 	// Setup alias resolver.
 	r := aliases.NewResolver()

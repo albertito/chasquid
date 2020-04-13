@@ -220,7 +220,7 @@ retry:
 		return a.tr.Errorf("DATA closing %v", err), smtp.IsPermanent(err)
 	}
 
-	c.Quit()
+	_ = c.Quit()
 	a.tr.Debugf("done")
 
 	return nil, false

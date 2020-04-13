@@ -156,7 +156,7 @@ func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
 
 	http.HandleFunc("/debug/queue",
 		func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(q.DumpString()))
+			_, _ = w.Write([]byte(q.DumpString()))
 		})
 }
 

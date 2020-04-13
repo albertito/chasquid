@@ -209,7 +209,7 @@ func initMailLog(path string) {
 	if path == "<syslog>" {
 		maillog.Default, err = maillog.NewSyslog()
 	} else {
-		os.MkdirAll(filepath.Dir(path), 0775)
+		_ = os.MkdirAll(filepath.Dir(path), 0775)
 		var f *os.File
 		f, err = os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0664)
 		maillog.Default = maillog.New(f)
@@ -309,7 +309,7 @@ func launchMonitoringServer(addr string) {
 
 	flags := dumpFlags()
 	http.HandleFunc("/debug/flags", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(flags))
+		_, _ = w.Write([]byte(flags))
 	})
 
 	go http.ListenAndServe(addr, nil)

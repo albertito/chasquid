@@ -250,7 +250,7 @@ loop:
 		case "AUTH":
 			code, msg = c.AUTH(params)
 		case "QUIT":
-			c.writeResponse(221, "2.0.0 Be seeing you...")
+			_ = c.writeResponse(221, "2.0.0 Be seeing you...")
 			break loop
 		default:
 			// Sanitize it a bit to avoid filling the logs and events with
@@ -272,7 +272,7 @@ loop:
 				if errCount > 10 {
 					// https://tools.ietf.org/html/rfc5321#section-4.3.2
 					c.tr.Errorf("too many errors, breaking connection")
-					c.writeResponse(421, "4.5.0 Too many errors, bye")
+					_ = c.writeResponse(421, "4.5.0 Too many errors, bye")
 					break
 				}
 			}
@@ -1090,9 +1090,9 @@ func (c *Conn) writeResponse(code int, msg string) error {
 	return writeResponse(c.writer, code, msg)
 }
 
-func (c *Conn) printfLine(format string, args ...interface{}) error {
+func (c *Conn) printfLine(format string, args ...interface{}) {
 	fmt.Fprintf(c.writer, format+"\r\n", args...)
-	return c.writer.Flush()
+	c.writer.Flush()
 }
 
 // writeResponse writes a multi-line response to the given writer.
