@@ -108,11 +108,10 @@ type Queue struct {
 
 // New creates a new Queue instance.
 func New(path string, localDomains *set.String, aliases *aliases.Resolver,
-	localC, remoteC courier.Courier) *Queue {
+	localC, remoteC courier.Courier) (*Queue, error) {
 
-	os.MkdirAll(path, 0700)
-
-	return &Queue{
+	err := os.MkdirAll(path, 0700)
+	q := &Queue{
 		q:            map[string]*Item{},
 		localC:       localC,
 		remoteC:      remoteC,
@@ -120,6 +119,7 @@ func New(path string, localDomains *set.String, aliases *aliases.Resolver,
 		path:         path,
 		aliases:      aliases,
 	}
+	return q, err
 }
 
 // Load the queue and launch the sending loops on startup.

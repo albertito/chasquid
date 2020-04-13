@@ -17,7 +17,7 @@ func TestBasic(t *testing.T) {
 	defer testlib.RemoveIfOk(t, dir)
 	localC := testlib.NewTestCourier()
 	remoteC := testlib.NewTestCourier()
-	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString("loco"), aliases.NewResolver(),
 		localC, remoteC)
 
 	localC.Expect(2)
@@ -67,7 +67,7 @@ func TestDSNOnTimeout(t *testing.T) {
 	remoteC := testlib.NewTestCourier()
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString("loco"), aliases.NewResolver(),
 		localC, remoteC)
 
 	// Insert an expired item in the queue.
@@ -111,7 +111,7 @@ func TestAliases(t *testing.T) {
 	remoteC := testlib.NewTestCourier()
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString("loco"), aliases.NewResolver(),
 		localC, remoteC)
 
 	q.aliases.AddDomain("loco")
@@ -155,7 +155,7 @@ func TestAliases(t *testing.T) {
 func TestFullQueue(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	q := New(dir, set.NewString(), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString(), aliases.NewResolver(),
 		testlib.DumbCourier, testlib.DumbCourier)
 
 	// Force-insert maxQueueSize items in the queue.
@@ -197,7 +197,7 @@ func TestFullQueue(t *testing.T) {
 func TestPipes(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString("loco"), aliases.NewResolver(),
 		testlib.DumbCourier, testlib.DumbCourier)
 	item := &Item{
 		Message: Message{
@@ -212,6 +212,16 @@ func TestPipes(t *testing.T) {
 
 	if err, _ := item.deliver(q, item.Rcpt[0]); err != nil {
 		t.Errorf("pipe delivery failed: %v", err)
+	}
+}
+
+func TestBadPath(t *testing.T) {
+	// A new queue will attempt to os.MkdirAll the path.
+	// We expect this path to fail.
+	_, err := New("/proc/doesnotexist", set.NewString("loco"),
+		aliases.NewResolver(), testlib.DumbCourier, testlib.DumbCourier)
+	if err == nil {
+		t.Errorf("could create queue, expected permission denied")
 	}
 }
 
@@ -260,7 +270,7 @@ func TestSerialization(t *testing.T) {
 	// Create the queue; should load the
 	remoteC := testlib.NewTestCourier()
 	remoteC.Expect(1)
-	q := New(dir, set.NewString("loco"), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString("loco"), aliases.NewResolver(),
 		testlib.DumbCourier, remoteC)
 	q.Load()
 
