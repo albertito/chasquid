@@ -81,7 +81,10 @@ func main() {
 	// It also can be useful in unusual environments and for testing purposes,
 	// where paths inside the configuration itself could be relative, and this
 	// fixes the point of reference.
-	os.Chdir(*configDir)
+	err = os.Chdir(*configDir)
+	if err != nil {
+		log.Fatalf("Error changing to config dir %q: %v", *configDir, err)
+	}
 
 	initMailLog(conf.MailLogPath)
 
