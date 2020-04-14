@@ -7,9 +7,17 @@ sudo: false
 
 go:
     # Check against the version in Debian stable.
-    - 1.11
+    - 1.11.x
     - stable
     - master
+
+env:
+  # Enable Go modules explicitly on Go 1.11.
+  # Some packages update in backwards-incompatible ways assuming Go modules
+  # are in use, which can break the build unexpectedly.
+  # We can remove this once we no longer support Go 1.11, as it is the default
+  # in the newer versions.
+  - GO111MODULE=on
 
 # This is needed because the repository has a Makefile, so travis won't invoke
 # "go get" by default.
