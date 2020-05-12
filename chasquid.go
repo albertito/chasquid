@@ -35,6 +35,7 @@ import (
 
 // Command-line flags.
 var (
+        hostname = flag.String("hostname", "", "overrides config's hostname if specified")
 	configDir = flag.String("config_dir", "/etc/chasquid",
 		"configuration directory")
 	showVer = flag.Bool("version", false, "show version and exit")
@@ -74,6 +75,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error reading config: %v", err)
 	}
+        if *hostname != "" {
+            conf.Hostname = *hostname
+        }
 	config.LogConfig(conf)
 
 	// Change to the config dir.
