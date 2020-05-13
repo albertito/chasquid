@@ -160,7 +160,11 @@ func main() {
 		Args:    conf.MailDeliveryAgentArgs,
 		Timeout: 30 * time.Second,
 	}
-	remoteC := &courier.SMTP{Dinfo: dinfo, STSCache: stsCache}
+	remoteC := &courier.SMTP{
+		HelloDomain: conf.Hostname,
+		Dinfo:       dinfo,
+		STSCache:    stsCache,
+	}
 	s.InitQueue(conf.DataDir+"/queue", localC, remoteC)
 
 	// Load the addresses and listeners.

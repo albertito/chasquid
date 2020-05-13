@@ -22,7 +22,11 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Config struct {
 	// Default hostname to use when saying hello.
-	// This is used to say hello to clients, for aesthetic purposes.
+	// This is used:
+	// 1) To say hello to clients, for aesthetic purposes.
+	// 2) As the HELO/EHLO domain on outgoing SMTP connections, so ideally
+	//    it would resolve back to the server. In practice, it's not a big
+	//    deal if it isn't, but it makes troubleshooting easier.
 	// Default: the system's hostname.
 	Hostname string `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	// Maximum email size, in megabytes.

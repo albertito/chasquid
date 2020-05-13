@@ -25,7 +25,9 @@ Some values might be repeated, for example the listening addresses.
 =item B<hostname> (string):
 
 Default hostname to use when saying hello. This is used to say hello to
-clients, for aesthetic purposes. Default: the system's hostname.
+clients (for aesthetic purposes), and as the HELO/EHLO domain on outgoing SMTP
+connections (so ideally it would resolve back to the server, but it isn't a
+big deal if it doesn't). Default: the system's hostname.
 
 =item B<max_data_size_mb> (int):
 

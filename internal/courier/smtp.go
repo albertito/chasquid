@@ -6,7 +6,6 @@ import (
 	"expvar"
 	"flag"
 	"net"
-	"os"
 	"time"
 
 	"golang.org/x/net/idna"
@@ -45,8 +44,9 @@ var (
 
 // SMTP delivers remote mail via outgoing SMTP.
 type SMTP struct {
-	Dinfo    *domaininfo.DB
-	STSCache *sts.PolicyCache
+	HelloDomain string
+	Dinfo       *domaininfo.DB
+	STSCache    *sts.PolicyCache
 }
 
 // Deliver an email. On failures, returns an error, and whether or not it is
@@ -75,17 +75,6 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 		// downside is that temporary DNS issues can affect delivery, so we
 		// have to make sure we try hard enough on the lookup above.
 		return a.tr.Errorf("Could not find mail server: %v", err), perm
-	}
-
-	// Issue an EHLO with a valid domain; otherwise, some servers like postfix
-	// will complain.
-	a.helloDomain, err = idna.ToASCII(envelope.DomainOf(from))
-	if err != nil {
-		return a.tr.Errorf("Sender domain not IDNA compliant: %v", err), true
-	}
-	if a.helloDomain == "" {
-		// This can happen when sending bounces. Last resort.
-		a.helloDomain, _ = os.Hostname()
 	}
 
 	a.stsPolicy = s.fetchSTSPolicy(a.tr, a.toDomain)
@@ -118,8 +107,7 @@ type attempt struct {
 	to   string
 	data []byte
 
-	toDomain    string
-	helloDomain string
+	toDomain string
 
 	stsPolicy *sts.Policy
 
@@ -145,7 +133,7 @@ retry:
 		return a.tr.Errorf("Error creating client: %v", err), false
 	}
 
-	if err = c.Hello(a.helloDomain); err != nil {
+	if err = c.Hello(a.courier.HelloDomain); err != nil {
 		return a.tr.Errorf("Error saying hello: %v", err), false
 	}
 
