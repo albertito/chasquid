@@ -42,4 +42,4 @@ notifications:
           - "ircs://chat.freenode.net:7070/#chasquid"
         use_notice: true
         on_success: change
-        on_failure: always
+        on_failure: change
