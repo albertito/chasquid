@@ -45,6 +45,7 @@ var (
 
 // SMTP delivers remote mail via outgoing SMTP.
 type SMTP struct {
+	Hostname string
 	Dinfo    *domaininfo.DB
 	STSCache *sts.PolicyCache
 }
@@ -53,12 +54,13 @@ type SMTP struct {
 // permanent.
 func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	a := &attempt{
-		courier:  s,
-		from:     from,
-		to:       to,
-		toDomain: envelope.DomainOf(to),
-		data:     data,
-		tr:       trace.New("Courier.SMTP", to),
+		courier:     s,
+		from:        from,
+		to:          to,
+		toDomain:    envelope.DomainOf(to),
+		helloDomain: s.Hostname,
+		data:        data,
+		tr:          trace.New("Courier.SMTP", to),
 	}
 	defer a.tr.Finish()
 	a.tr.Debugf("%s  ->  %s", from, to)
@@ -79,13 +81,15 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 
 	// Issue an EHLO with a valid domain; otherwise, some servers like postfix
 	// will complain.
-	a.helloDomain, err = idna.ToASCII(envelope.DomainOf(from))
-	if err != nil {
-		return a.tr.Errorf("Sender domain not IDNA compliant: %v", err), true
-	}
 	if a.helloDomain == "" {
-		// This can happen when sending bounces. Last resort.
-		a.helloDomain, _ = os.Hostname()
+		a.helloDomain, err = idna.ToASCII(envelope.DomainOf(from))
+		if err != nil {
+			return a.tr.Errorf("Sender domain not IDNA compliant: %v", err), true
+		}
+		if a.helloDomain == "" {
+			// This can happen when sending bounces. Last resort.
+			a.helloDomain, _ = os.Hostname()
+		}
 	}
 
 	a.stsPolicy = s.fetchSTSPolicy(a.tr, a.toDomain)
