@@ -5,6 +5,7 @@ package config
 //go:generate protoc --go_out=. --go_opt=paths=source_relative config.proto
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -19,15 +20,12 @@ func Load(path string) (*Config, error) {
 
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Errorf("Failed to read config at %q", path)
-		log.Errorf("  (%v)", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to read config at %q: %v", path, err)
 	}
 
 	err = prototext.Unmarshal(buf, c)
 	if err != nil {
-		log.Errorf("Error parsing config: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("parsing config: %v", err)
 	}
 
 	// Fill in defaults for anything that's missing.
@@ -35,8 +33,7 @@ func Load(path string) (*Config, error) {
 	if c.Hostname == "" {
 		c.Hostname, err = os.Hostname()
 		if err != nil {
-			log.Errorf("Could not get hostname: %v", err)
-			return nil, err
+			return nil, fmt.Errorf("could not get hostname: %v", err)
 		}
 	}
 

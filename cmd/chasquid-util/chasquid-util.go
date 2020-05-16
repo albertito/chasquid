@@ -206,7 +206,7 @@ func userRemove() {
 func aliasesResolve() {
 	conf, err := config.Load(configDir + "/chasquid.conf")
 	if err != nil {
-		Fatalf("Error reading config")
+		Fatalf("Error loading config: %v", err)
 	}
 	_ = os.Chdir(configDir)
 
@@ -250,7 +250,7 @@ func aliasesResolve() {
 func printConfig() {
 	conf, err := config.Load(configDir + "/chasquid.conf")
 	if err != nil {
-		Fatalf("Error reading config")
+		Fatalf("Error loading config: %v", err)
 	}
 
 	fmt.Println(prototext.Format(conf))
@@ -262,7 +262,7 @@ func domaininfoRemove() {
 
 	conf, err := config.Load(configDir + "/chasquid.conf")
 	if err != nil {
-		Fatalf("Error reading config")
+		Fatalf("Error loading config: %v", err)
 	}
 
 	// File for the corresponding domain.
@@ -292,7 +292,7 @@ func aliasesAdd() {
 
 	conf, err := config.Load(configDir + "/chasquid.conf")
 	if err != nil {
-		Fatalf("Error reading config")
+		Fatalf("Error loading config: %v", err)
 	}
 	_ = os.Chdir(configDir)
 

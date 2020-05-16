@@ -72,7 +72,7 @@ func main() {
 
 	conf, err := config.Load(*configDir + "/chasquid.conf")
 	if err != nil {
-		log.Fatalf("Error reading config: %v", err)
+		log.Fatalf("Error loading config: %v", err)
 	}
 	config.LogConfig(conf)
 
