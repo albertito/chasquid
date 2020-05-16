@@ -2,7 +2,7 @@
 package config
 
 // Generate the config protobuf.
-//go:generate protoc --go_out=. config.proto
+//go:generate protoc --go_out=. --go_opt=paths=source_relative config.proto
 
 import (
 	"io/ioutil"
@@ -10,7 +10,7 @@ import (
 
 	"blitiri.com.ar/go/log"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/encoding/prototext"
 )
 
 // Load the config from the given file.
@@ -24,7 +24,7 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 
-	err = proto.UnmarshalText(string(buf), c)
+	err = prototext.Unmarshal(buf, c)
 	if err != nil {
 		log.Errorf("Error parsing config: %v", err)
 		return nil, err

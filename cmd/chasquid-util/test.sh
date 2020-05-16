@@ -74,7 +74,7 @@ if [ "$A" != "(email)  user@somewhere" ]; then
 fi
 
 C=$(r print-config | grep hostname)
-if [ "$C" != "hostname: \"$HOSTNAME\"" ]; then
+if ! ( echo "$C" | grep -E -q "hostname:.*\"$HOSTNAME\"" ); then
 	echo print-config failed
 	echo output: "$C"
 	exit 1

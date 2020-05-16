@@ -3,7 +3,7 @@
 package queue
 
 // Command to generate queue.pb.go from queue.proto.
-//go:generate protoc --go_out=. -I=${GOPATH}/src -I. queue.proto
+//go:generate protoc --go_out=. --go_opt=paths=source_relative -I=${GOPATH}/src -I. queue.proto
 
 import (
 	"context"
@@ -29,8 +29,8 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/log"
 
-	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/idna"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -276,8 +276,8 @@ func ItemFromFile(fname string) (*Item, error) {
 		return nil, err
 	}
 
-	item.CreatedAt, err = ptypes.Timestamp(item.CreatedAtTs)
-	return item, err
+	item.CreatedAt = timeFromProto(item.CreatedAtTs)
+	return item, nil
 }
 
 // WriteTo saves an item to the given directory.
@@ -286,11 +286,7 @@ func (item *Item) WriteTo(dir string) error {
 	defer item.Unlock()
 	itemsWritten.Add(1)
 
-	var err error
-	item.CreatedAtTs, err = ptypes.TimestampProto(item.CreatedAt)
-	if err != nil {
-		return err
-	}
+	item.CreatedAtTs = timeToProto(item.CreatedAt)
 
 	path := fmt.Sprintf("%s/%s%s", dir, itemFilePrefix, item.ID)
 
@@ -489,4 +485,15 @@ func mustIDNAToASCII(s string) string {
 		return a
 	}
 	return s
+}
+
+func timeFromProto(ts *timestamppb.Timestamp) time.Time {
+	return time.Unix(ts.Seconds, int64(ts.Nanos)).UTC()
+}
+
+func timeToProto(t time.Time) *timestamppb.Timestamp {
+	return &timestamppb.Timestamp{
+		Seconds: t.Unix(),
+		Nanos:   int32(t.Nanosecond()),
+	}
 }

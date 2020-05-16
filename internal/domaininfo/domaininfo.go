@@ -11,7 +11,7 @@ import (
 )
 
 // Command to generate domaininfo.pb.go.
-//go:generate protoc --go_out=. domaininfo.proto
+//go:generate protoc --go_out=. --go_opt=paths=source_relative domaininfo.proto
 
 // DB represents the persistent domain information database.
 type DB struct {

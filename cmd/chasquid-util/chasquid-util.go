@@ -20,9 +20,9 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
+	"google.golang.org/protobuf/encoding/prototext"
 
 	"github.com/docopt/docopt-go"
-	"github.com/golang/protobuf/proto"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -253,7 +253,7 @@ func printConfig() {
 		Fatalf("Error reading config")
 	}
 
-	fmt.Println(proto.MarshalTextString(conf))
+	fmt.Println(prototext.Format(conf))
 }
 
 // chasquid-util domaininfo-remove <domain>

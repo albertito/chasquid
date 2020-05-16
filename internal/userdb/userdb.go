@@ -30,7 +30,7 @@
 //
 package userdb
 
-//go:generate protoc --go_out=. userdb.proto
+//go:generate protoc --go_out=. --go_opt=paths=source_relative userdb.proto
 
 import (
 	"crypto/rand"

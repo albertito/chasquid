@@ -2,6 +2,7 @@
 syntax = "proto3";
 
 package queue;
+option go_package = "blitiri.com.ar/go/chasquid/internal/queue";
 
 import "github.com/golang/protobuf/ptypes/timestamp/timestamp.proto";
 

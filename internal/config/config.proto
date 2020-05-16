@@ -1,5 +1,6 @@
 
 syntax = "proto3";
+option go_package = "blitiri.com.ar/go/chasquid/internal/config";
 
 message Config {
 	// Default hostname to use when saying hello.
