@@ -37,6 +37,8 @@ import (
 var (
 	configDir = flag.String("config_dir", "/etc/chasquid",
 		"configuration directory")
+	configOverrides = flag.String("config_overrides", "",
+		"override configuration values (in text protobuf format)")
 	showVer = flag.Bool("version", false, "show version and exit")
 )
 
@@ -70,7 +72,7 @@ func main() {
 	// Seed the PRNG, just to prevent for it to be totally predictable.
 	rand.Seed(time.Now().UnixNano())
 
-	conf, err := config.Load(*configDir + "/chasquid.conf")
+	conf, err := config.Load(*configDir+"/chasquid.conf", *configOverrides)
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}

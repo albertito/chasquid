@@ -33,8 +33,8 @@ var defaultConfig = &Config{
 	MailLogPath: "<syslog>",
 }
 
-// Load the config from the given file.
-func Load(path string) (*Config, error) {
+// Load the config from the given file, with the given overrides.
+func Load(path, overrides string) (*Config, error) {
 	// Start with a copy of the default config.
 	c := proto.Clone(defaultConfig).(*Config)
 
@@ -50,6 +50,14 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("parsing config: %v", err)
 	}
 	override(c, fromFile)
+
+	// Handle command line overrides.
+	fromOverrides := &Config{}
+	err = prototext.Unmarshal([]byte(overrides), fromOverrides)
+	if err != nil {
+		return nil, fmt.Errorf("parsing override: %v", err)
+	}
+	override(c, fromOverrides)
 
 	// Handle hostname separate, because if it is set, we don't need to call
 	// os.Hostname which can fail.

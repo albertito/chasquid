@@ -204,7 +204,7 @@ func userRemove() {
 
 // chasquid-util aliases-resolve <address>
 func aliasesResolve() {
-	conf, err := config.Load(configDir + "/chasquid.conf")
+	conf, err := config.Load(configDir+"/chasquid.conf", "")
 	if err != nil {
 		Fatalf("Error loading config: %v", err)
 	}
@@ -248,7 +248,7 @@ func aliasesResolve() {
 
 // chasquid-util print-config
 func printConfig() {
-	conf, err := config.Load(configDir + "/chasquid.conf")
+	conf, err := config.Load(configDir+"/chasquid.conf", "")
 	if err != nil {
 		Fatalf("Error loading config: %v", err)
 	}
@@ -260,7 +260,7 @@ func printConfig() {
 func domaininfoRemove() {
 	domain := args["<domain>"].(string)
 
-	conf, err := config.Load(configDir + "/chasquid.conf")
+	conf, err := config.Load(configDir+"/chasquid.conf", "")
 	if err != nil {
 		Fatalf("Error loading config: %v", err)
 	}
@@ -290,7 +290,7 @@ func aliasesAdd() {
 		Fatalf("Domain doesn't exist")
 	}
 
-	conf, err := config.Load(configDir + "/chasquid.conf")
+	conf, err := config.Load(configDir+"/chasquid.conf", "")
 	if err != nil {
 		Fatalf("Error loading config: %v", err)
 	}

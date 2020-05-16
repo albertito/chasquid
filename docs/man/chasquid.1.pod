@@ -22,6 +22,12 @@ It's written in Go, and distributed under the Apache license 2.0.
 
 configuration directory (default F</etc/chasquid>)
 
+=item B<-config_overrides> I<config>
+
+configuration values (in text protobuf format) to override the on-disk
+configuration with. This should only be needed in very specific cases for
+deployments where editing the configuration file is not feasible.
+
 =item B<-alsologtostderr>
 
 also log to stderr, in addition to the file

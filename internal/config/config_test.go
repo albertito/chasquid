@@ -27,7 +27,7 @@ func mustCreateConfig(t *testing.T, contents string) (string, string) {
 func TestEmptyConfig(t *testing.T) {
 	tmpDir, path := mustCreateConfig(t, "")
 	defer testlib.RemoveIfOk(t, tmpDir)
-	c, err := Load(path)
+	c, err := Load(path, "")
 	if err != nil {
 		t.Fatalf("error loading empty config: %v", err)
 	}
@@ -59,12 +59,18 @@ func TestFullConfig(t *testing.T) {
 	tmpDir, path := mustCreateConfig(t, confStr)
 	defer testlib.RemoveIfOk(t, tmpDir)
 
+	overrideStr := `
+		hostname: "proust"
+		submission_address: ":999"
+		dovecot_auth: true
+	`
+
 	expected := &Config{
-		Hostname:      "joust",
+		Hostname:      "proust",
 		MaxDataSizeMb: 26,
 
 		SmtpAddress:              []string{":1234", ":5678"},
-		SubmissionAddress:        []string{":10001", ":10002"},
+		SubmissionAddress:        []string{":999"},
 		SubmissionOverTlsAddress: []string{"systemd"},
 		MonitoringAddress:        ":1111",
 
@@ -77,9 +83,11 @@ func TestFullConfig(t *testing.T) {
 		DropCharacters:   ".",
 
 		MailLogPath: "<syslog>",
+
+		DovecotAuth: true,
 	}
 
-	c, err := Load(path)
+	c, err := Load(path, overrideStr)
 	if err != nil {
 		t.Fatalf("error loading non-existent config: %v", err)
 	}
@@ -93,7 +101,7 @@ func TestFullConfig(t *testing.T) {
 }
 
 func TestErrorLoading(t *testing.T) {
-	c, err := Load("/does/not/exist")
+	c, err := Load("/does/not/exist", "")
 	if err == nil {
 		t.Fatalf("loaded a non-existent config: %v", c)
 	}
@@ -104,7 +112,18 @@ func TestBrokenConfig(t *testing.T) {
 		t, "<invalid> this is not a valid protobuf")
 	defer testlib.RemoveIfOk(t, tmpDir)
 
-	c, err := Load(path)
+	c, err := Load(path, "")
+	if err == nil {
+		t.Fatalf("loaded an invalid config: %v", c)
+	}
+}
+
+func TestBrokenOverride(t *testing.T) {
+	tmpDir, path := mustCreateConfig(
+		t, `hostname: "test"`)
+	defer testlib.RemoveIfOk(t, tmpDir)
+
+	c, err := Load(path, "broken override")
 	if err == nil {
 		t.Fatalf("loaded an invalid config: %v", c)
 	}
