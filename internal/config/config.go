@@ -12,24 +12,47 @@ import (
 	"blitiri.com.ar/go/log"
 
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 )
+
+var defaultConfig = &Config{
+	MaxDataSizeMb: 50,
+
+	SmtpAddress:              []string{"systemd"},
+	SubmissionAddress:        []string{"systemd"},
+	SubmissionOverTlsAddress: []string{"systemd"},
+
+	MailDeliveryAgentBin:  "maildrop",
+	MailDeliveryAgentArgs: []string{"-f", "%from%", "-d", "%to_user%"},
+
+	DataDir: "/var/lib/chasquid",
+
+	SuffixSeparators: "+",
+	DropCharacters:   ".",
+
+	MailLogPath: "<syslog>",
+}
 
 // Load the config from the given file.
 func Load(path string) (*Config, error) {
-	c := &Config{}
+	// Start with a copy of the default config.
+	c := proto.Clone(defaultConfig).(*Config)
 
+	// Load from the path.
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config at %q: %v", path, err)
 	}
 
-	err = prototext.Unmarshal(buf, c)
+	fromFile := &Config{}
+	err = prototext.Unmarshal(buf, fromFile)
 	if err != nil {
 		return nil, fmt.Errorf("parsing config: %v", err)
 	}
+	override(c, fromFile)
 
-	// Fill in defaults for anything that's missing.
-
+	// Handle hostname separate, because if it is set, we don't need to call
+	// os.Hostname which can fail.
 	if c.Hostname == "" {
 		c.Hostname, err = os.Hostname()
 		if err != nil {
@@ -37,45 +60,61 @@ func Load(path string) (*Config, error) {
 		}
 	}
 
-	if c.MaxDataSizeMb == 0 {
-		c.MaxDataSizeMb = 50
-	}
-
-	if len(c.SmtpAddress) == 0 {
-		c.SmtpAddress = append(c.SmtpAddress, "systemd")
-	}
-	if len(c.SubmissionAddress) == 0 {
-		c.SubmissionAddress = append(c.SubmissionAddress, "systemd")
-	}
-	if len(c.SubmissionOverTlsAddress) == 0 {
-		c.SubmissionOverTlsAddress = append(c.SubmissionOverTlsAddress, "systemd")
-	}
-
-	if c.MailDeliveryAgentBin == "" {
-		c.MailDeliveryAgentBin = "maildrop"
-	}
-	if len(c.MailDeliveryAgentArgs) == 0 {
-		c.MailDeliveryAgentArgs = append(c.MailDeliveryAgentArgs,
-			"-f", "%from%", "-d", "%to_user%")
-	}
-
-	if c.DataDir == "" {
-		c.DataDir = "/var/lib/chasquid"
-	}
-
-	if c.SuffixSeparators == "" {
-		c.SuffixSeparators = "+"
-	}
-
-	if c.DropCharacters == "" {
-		c.DropCharacters = "."
-	}
-
-	if c.MailLogPath == "" {
-		c.MailLogPath = "<syslog>"
-	}
-
 	return c, nil
+}
+
+// Override fields in `c` that are set in `o`. We can't use proto.Merge
+// because the semantics would not be convenient for overriding.
+func override(c, o *Config) {
+	if o.Hostname != "" {
+		c.Hostname = o.Hostname
+	}
+	if o.MaxDataSizeMb > 0 {
+		c.MaxDataSizeMb = o.MaxDataSizeMb
+	}
+	if len(o.SmtpAddress) > 0 {
+		c.SmtpAddress = o.SmtpAddress
+	}
+	if len(o.SubmissionAddress) > 0 {
+		c.SubmissionAddress = o.SubmissionAddress
+	}
+	if len(o.SubmissionOverTlsAddress) > 0 {
+		c.SubmissionOverTlsAddress = o.SubmissionOverTlsAddress
+	}
+	if o.MonitoringAddress != "" {
+		c.MonitoringAddress = o.MonitoringAddress
+	}
+
+	if o.MailDeliveryAgentBin != "" {
+		c.MailDeliveryAgentBin = o.MailDeliveryAgentBin
+	}
+	if len(o.MailDeliveryAgentArgs) > 0 {
+		c.MailDeliveryAgentArgs = o.MailDeliveryAgentArgs
+	}
+
+	if o.DataDir != "" {
+		c.DataDir = o.DataDir
+	}
+
+	if o.SuffixSeparators != "" {
+		c.SuffixSeparators = o.SuffixSeparators
+	}
+	if o.DropCharacters != "" {
+		c.DropCharacters = o.DropCharacters
+	}
+	if o.MailLogPath != "" {
+		c.MailLogPath = o.MailLogPath
+	}
+
+	if o.DovecotAuth {
+		c.DovecotAuth = true
+	}
+	if o.DovecotUserdbPath != "" {
+		c.DovecotUserdbPath = o.DovecotUserdbPath
+	}
+	if o.DovecotClientPath != "" {
+		c.DovecotClientPath = o.DovecotClientPath
+	}
 }
 
 // LogConfig logs the given configuration, in a human-friendly way.
