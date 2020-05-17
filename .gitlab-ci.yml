@@ -3,8 +3,31 @@ stages:
   - test
   - image
 
+# Go tests, on various Go versions.
+.golang_template: &golang
+  stage: test
+  before_script:
+    - useradd --create-home --user-group testing
+    - chown -R testing:testing $GOPATH/ .
+  script:
+    - su testing -c "go mod download"
+    - su testing -c "go get ./..."
+    - su testing -c "make all"
+    - su testing -c "go test ./..."
+    - su testing -c "go test -race ./..."
+
+golang_1.11:
+  <<: *golang
+  image: golang:1.11    # Version in Debian stable.
+  variables:
+    GO111MODULE: "on"
+
+golang_latest:
+  <<: *golang
+  image: golang:latest
+
 # Integration test, using the module versions from the repository.
-stable:
+integration_stable:
   stage: test
   image: docker:stable
   services:
@@ -16,7 +39,7 @@ stable:
     - docker run chasquid-test  make test
 
 # Integration test, using the latest module versions.
-latest:
+integration_latest:
   stage: test
   image: docker:stable
   services:
@@ -28,7 +51,7 @@ latest:
     - docker run chasquid-test  make test
 
 # Build docker image, upload to gitlab registry.
-build_gitlab:
+gitlab:
   stage: image
   image: docker:stable
   services:
@@ -40,7 +63,7 @@ build_gitlab:
     - docker push $CI_REGISTRY_IMAGE:$CI_BUILD_REF_NAME
 
 # Build docker image, upload to dockerhub registry.
-build_dockerhub:
+dockerhub:
   stage: image
   image: docker:stable
   services:
