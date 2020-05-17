@@ -17,6 +17,8 @@ linux_task:
     folder: $GOPATH/pkg/mod
   get_script: |
     useradd --create-home --user-group testing
+    chown -R testing:testing $GOPATH/
+    su testing -c "go mod download"
     su testing -c "go get ./..."
   build_script: |
     su testing -c "go build ./..."
