@@ -14,8 +14,10 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/config"
@@ -89,6 +91,8 @@ func main() {
 	}
 
 	initMailLog(conf.MailLogPath)
+
+	go signalHandler()
 
 	if conf.MonitoringAddress != "" {
 		launchMonitoringServer(conf.MonitoringAddress)
@@ -221,6 +225,29 @@ func initMailLog(path string) {
 
 	if err != nil {
 		log.Fatalf("Error opening mail log: %v", err)
+	}
+}
+
+// goroutine that reopens logs on SIGHUP
+func signalHandler() {
+	var err error
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGHUP)
+
+	for {
+		switch sig := <- signals; sig {
+		case syscall.SIGHUP:
+			err = log.Default.Reopen()
+			if err != nil {
+				log.Fatalf("Could not reopened log: %v", err)
+			}
+
+			err = maillog.Default.Reopen()
+			if err != nil {
+				log.Fatalf("Could not reopened mail log: %v", err)
+			}
+		}
 	}
 }
 

@@ -60,6 +60,11 @@ func (l *Logger) printf(format string, args ...interface{}) {
 	}
 }
 
+// Reopen the underlying logger.
+func (l *Logger) Reopen() error {
+	return l.inner.Reopen()
+}
+
 // Listening logs that the daemon is listening on the given address.
 func (l *Logger) Listening(a string) {
 	l.printf("daemon listening on %s\n", a)
