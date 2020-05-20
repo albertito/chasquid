@@ -3,8 +3,6 @@ package maillog
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log/syslog"
 	"net"
 	"sync"
@@ -19,43 +17,41 @@ var (
 	authLog = trace.NewEventLog("Authentication", "Incoming SMTP")
 )
 
-// A writer that prepends timing information.
-type timedWriter struct {
-	w io.Writer
-}
-
-// Write the given buffer, prepending timing information.
-func (t timedWriter) Write(b []byte) (int, error) {
-	fmt.Fprintf(t.w, "%s  ", time.Now().Format("2006-01-02 15:04:05.000000"))
-	return t.w.Write(b)
-}
-
 // Logger contains a backend used to log data to, such as a file or syslog.
 // It implements various user-friendly methods for logging mail information to
 // it.
 type Logger struct {
-	w    io.Writer
-	once sync.Once
+	inner *log.Logger
+	once  sync.Once
 }
 
 // New creates a new Logger which will write messages to the given writer.
-func New(w io.Writer) *Logger {
-	return &Logger{w: timedWriter{w}}
-}
-
-// NewSyslog creates a new Logger which will write messages to syslog.
-func NewSyslog() (*Logger, error) {
-	w, err := syslog.New(syslog.LOG_INFO|syslog.LOG_MAIL, "chasquid")
+func NewFile(path string) (*Logger, error) {
+	inner, err := log.NewFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	l := &Logger{w: w}
-	return l, nil
+	// Only include time in output
+	inner.SetOptions(log.ShowTime)
+
+	return &Logger{inner: inner}, nil
+}
+
+// NewSyslog creates a new Logger which will write messages to syslog.
+func NewSyslog() (*Logger, error) {
+	inner, err := log.NewSyslog(syslog.LOG_INFO|syslog.LOG_MAIL, "chasquid")
+	if err != nil {
+		return nil, err
+	}
+
+	inner.SetOptions(log.ShowMessageOnly)
+
+	return &Logger{inner: inner}, nil
 }
 
 func (l *Logger) printf(format string, args ...interface{}) {
-	_, err := fmt.Fprintf(l.w, format, args...)
+	err := l.inner.Log(log.Info, 2, format, args...)
 	if err != nil {
 		l.once.Do(func() {
 			log.Errorf("failed to write to maillog: %v", err)
@@ -120,34 +116,40 @@ func (l *Logger) QueueLoop(id, from string, nextDelay time.Duration) {
 }
 
 // Default logger, used in the following top-level functions.
-var Default = New(ioutil.Discard)
+var Default *Logger = nil
 
 // Listening logs that the daemon is listening on the given address.
 func Listening(a string) {
+	if Default == nil { return }
 	Default.Listening(a)
 }
 
 // Auth logs an authentication request.
 func Auth(netAddr net.Addr, user string, successful bool) {
+	if Default == nil { return }
 	Default.Auth(netAddr, user, successful)
 }
 
 // Rejected logs that we've rejected an email.
 func Rejected(netAddr net.Addr, from string, to []string, err string) {
+	if Default == nil { return }
 	Default.Rejected(netAddr, from, to, err)
 }
 
 // Queued logs that we have queued an email.
 func Queued(netAddr net.Addr, from string, to []string, id string) {
+	if Default == nil { return }
 	Default.Queued(netAddr, from, to, id)
 }
 
 // SendAttempt logs that we have attempted to send an email.
 func SendAttempt(id, from, to string, err error, permanent bool) {
+	if Default == nil { return }
 	Default.SendAttempt(id, from, to, err, permanent)
 }
 
 // QueueLoop logs that we have completed a queue loop.
 func QueueLoop(id, from string, nextDelay time.Duration) {
+	if Default == nil { return }
 	Default.QueueLoop(id, from, nextDelay)
 }

@@ -216,9 +216,7 @@ func initMailLog(path string) {
 		maillog.Default, err = maillog.NewSyslog()
 	} else {
 		_ = os.MkdirAll(filepath.Dir(path), 0775)
-		var f *os.File
-		f, err = os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0664)
-		maillog.Default = maillog.New(f)
+		maillog.Default, err = maillog.NewFile(path)
 	}
 
 	if err != nil {
