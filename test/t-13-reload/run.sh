@@ -7,6 +7,10 @@ init
 
 generate_certs_for testserver
 
+#
+# Automatic reload.
+#
+
 # Start with the user with the wrong password, and no aliases.
 add_user someone@testserver password111
 rm -f config/domains/testserver/aliases
@@ -29,5 +33,33 @@ sleep 0.2
 
 run_msmtp analias@testserver < content
 wait_for_file .mail/someone@testserver
+
+
+#
+# Manual log rotation.
+#
+
+# Rotate logs.
+mv .logs/chasquid.log .logs/chasquid.log-old
+mv .logs/mail_log .logs/mail_log-old
+
+# Send SIGHUP and give it a little for the server to handle it.
+pkill -HUP -s 0 chasquid
+sleep 0.2
+
+# Send another mail.
+rm .mail/someone@testserver
+run_msmtp analias@testserver < content
+wait_for_file .mail/someone@testserver
+
+# Check there are new entries.
+sleep 0.2
+if ! grep -q "from=someone@testserver all done" .logs/mail_log; then
+	fail "new mail log did not have the expected entry"
+fi
+if ! grep -q -E "Queue.SendLoop .*: someone@testserver sent" .logs/chasquid.log;
+then
+	fail "new chasquid log did not have the expected entry"
+fi
 
 success
