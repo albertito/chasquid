@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -18,17 +19,17 @@ var netAddr = &net.TCPAddr{
 }
 
 func expect(t *testing.T, buf *bytes.Buffer, s string) {
-	if strings.Contains(buf.String(), s) {
-		return
+	t.Helper()
+	re := regexp.MustCompile(`^....-..-.. ..:..:..\.\d{6} ` + s + "\n")
+	if !re.Match(buf.Bytes()) {
+		t.Errorf("mismatch:\n  regexp: %q\n  string: %q",
+			re, buf.String())
 	}
-	t.Errorf("buffer mismatch:")
-	t.Errorf("  expected to contain: %q", s)
-	t.Errorf("  got: %q", buf.String())
 }
 
 func TestLogger(t *testing.T) {
 	buf := &bytes.Buffer{}
-	l := New(buf)
+	l := New(nopCloser{buf})
 
 	l.Listening("1.2.3.4:4321")
 	expect(t, buf, "daemon listening on 1.2.3.4:4321")
@@ -43,11 +44,11 @@ func TestLogger(t *testing.T) {
 	buf.Reset()
 
 	l.Rejected(netAddr, "from", []string{"to1", "to2"}, "error")
-	expect(t, buf, "1.2.3.4:4321 rejected from=from to=[to1 to2] - error")
+	expect(t, buf, `1.2.3.4:4321 rejected from=from to=\[to1 to2\] - error`)
 	buf.Reset()
 
 	l.Queued(netAddr, "from", []string{"to1", "to2"}, "qid")
-	expect(t, buf, "qid from=from queued ip=1.2.3.4:4321 to=[to1 to2]")
+	expect(t, buf, `qid from=from queued ip=1.2.3.4:4321 to=\[to1 to2\]`)
 	buf.Reset()
 
 	l.SendAttempt("qid", "from", "to", nil, false)
@@ -55,11 +56,11 @@ func TestLogger(t *testing.T) {
 	buf.Reset()
 
 	l.SendAttempt("qid", "from", "to", fmt.Errorf("error"), false)
-	expect(t, buf, "qid from=from to=to failed (temporary): error")
+	expect(t, buf, `qid from=from to=to failed \(temporary\): error`)
 	buf.Reset()
 
 	l.SendAttempt("qid", "from", "to", fmt.Errorf("error"), true)
-	expect(t, buf, "qid from=from to=to failed (permanent): error")
+	expect(t, buf, `qid from=from to=to failed \(permanent\): error`)
 	buf.Reset()
 
 	l.QueueLoop("qid", "from", 17*time.Second)
@@ -75,7 +76,7 @@ func TestLogger(t *testing.T) {
 // Unfortunately this is almost the same as TestLogger.
 func TestDefault(t *testing.T) {
 	buf := &bytes.Buffer{}
-	Default = New(buf)
+	Default = New(nopCloser{buf})
 
 	Listening("1.2.3.4:4321")
 	expect(t, buf, "daemon listening on 1.2.3.4:4321")
@@ -90,11 +91,11 @@ func TestDefault(t *testing.T) {
 	buf.Reset()
 
 	Rejected(netAddr, "from", []string{"to1", "to2"}, "error")
-	expect(t, buf, "1.2.3.4:4321 rejected from=from to=[to1 to2] - error")
+	expect(t, buf, `1.2.3.4:4321 rejected from=from to=\[to1 to2\] - error`)
 	buf.Reset()
 
 	Queued(netAddr, "from", []string{"to1", "to2"}, "qid")
-	expect(t, buf, "qid from=from queued ip=1.2.3.4:4321 to=[to1 to2]")
+	expect(t, buf, `qid from=from queued ip=1.2.3.4:4321 to=\[to1 to2\]`)
 	buf.Reset()
 
 	SendAttempt("qid", "from", "to", nil, false)
@@ -102,11 +103,11 @@ func TestDefault(t *testing.T) {
 	buf.Reset()
 
 	SendAttempt("qid", "from", "to", fmt.Errorf("error"), false)
-	expect(t, buf, "qid from=from to=to failed (temporary): error")
+	expect(t, buf, `qid from=from to=to failed \(temporary\): error`)
 	buf.Reset()
 
 	SendAttempt("qid", "from", "to", fmt.Errorf("error"), true)
-	expect(t, buf, "qid from=from to=to failed (permanent): error")
+	expect(t, buf, `qid from=from to=to failed \(permanent\): error`)
 	buf.Reset()
 
 	QueueLoop("qid", "from", 17*time.Second)
@@ -125,14 +126,7 @@ func (w *failedWriter) Write(p []byte) (int, error) {
 	return 0, fmt.Errorf("test error")
 }
 
-// nopCloser adds a Close method to an io.Writer, to turn it into a
-// io.WriteCloser. This is the equivalent of ioutil.NopCloser but for
-// io.Writer.
-type nopCloser struct {
-	io.Writer
-}
-
-func (nopCloser) Close() error { return nil }
+func (w *failedWriter) Close() error { return nil }
 
 // Test that we complain (only once) when we can't log.
 func TestFailedLogger(t *testing.T) {

@@ -19,43 +19,60 @@ var (
 	authLog = trace.NewEventLog("Authentication", "Incoming SMTP")
 )
 
-// A writer that prepends timing information.
-type timedWriter struct {
-	w io.Writer
-}
-
-// Write the given buffer, prepending timing information.
-func (t timedWriter) Write(b []byte) (int, error) {
-	fmt.Fprintf(t.w, "%s  ", time.Now().Format("2006-01-02 15:04:05.000000"))
-	return t.w.Write(b)
-}
-
 // Logger contains a backend used to log data to, such as a file or syslog.
 // It implements various user-friendly methods for logging mail information to
 // it.
 type Logger struct {
-	w    io.Writer
-	once sync.Once
+	inner *log.Logger
+	once  sync.Once
 }
 
 // New creates a new Logger which will write messages to the given writer.
-func New(w io.Writer) *Logger {
-	return &Logger{w: timedWriter{w}}
+func New(w io.WriteCloser) *Logger {
+	inner := log.New(w)
+
+	// Don't include level or caller in the output, it doesn't add value for
+	// this type of log.
+	inner.LogLevel = false
+	inner.LogCaller = false
+
+	return &Logger{inner: inner}
 }
 
-// NewSyslog creates a new Logger which will write messages to syslog.
-func NewSyslog() (*Logger, error) {
-	w, err := syslog.New(syslog.LOG_INFO|syslog.LOG_MAIL, "chasquid")
+// NewFile creates a new Logger which will write messages to the file at the
+// given path.
+func NewFile(path string) (*Logger, error) {
+	inner, err := log.NewFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	l := &Logger{w: w}
-	return l, nil
+	// Don't include level or caller in the output, it doesn't add value for
+	// this type of log.
+	inner.LogLevel = false
+	inner.LogCaller = false
+
+	return &Logger{inner: inner}, nil
+}
+
+// NewSyslog creates a new Logger which will write messages to syslog.
+func NewSyslog() (*Logger, error) {
+	inner, err := log.NewSyslog(syslog.LOG_INFO|syslog.LOG_MAIL, "chasquid")
+	if err != nil {
+		return nil, err
+	}
+
+	// Like NewFile, we skip level and caller. In addition, we skip time, as
+	// syslog usually adds that on its own.
+	inner.LogLevel = false
+	inner.LogCaller = false
+	inner.LogTime = false
+
+	return &Logger{inner: inner}, nil
 }
 
 func (l *Logger) printf(format string, args ...interface{}) {
-	_, err := fmt.Fprintf(l.w, format, args...)
+	err := l.inner.Log(log.Info, 2, format, args...)
 	if err != nil {
 		l.once.Do(func() {
 			log.Errorf("failed to write to maillog: %v", err)
@@ -119,8 +136,14 @@ func (l *Logger) QueueLoop(id, from string, nextDelay time.Duration) {
 	}
 }
 
+type nopCloser struct {
+	io.Writer
+}
+
+func (nopCloser) Close() error { return nil }
+
 // Default logger, used in the following top-level functions.
-var Default = New(ioutil.Discard)
+var Default *Logger = New(nopCloser{ioutil.Discard})
 
 // Listening logs that the daemon is listening on the given address.
 func Listening(a string) {
