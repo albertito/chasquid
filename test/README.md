@@ -84,12 +84,16 @@ constrained or non supported environments.
 There are two sets of automated tests which are run on every commit to
 upstream, and weekly:
 
-* [Travis CI](https://travis-ci.org/albertito/chasquid), configured in the
-  `.travis.yml` file, runs the Go tests.
-* [Gitlab CI](https://gitlab.com/albertito/chasquid/commits/master),
-  configured in the `.gitlab-ci.yml` file, runs integration tests. The tests
-  are run twice: once against the dependencies listed in `go.mod`, and once
-  against the latest version of the dependencies.
+* [GitLab CI](https://gitlab.com/albertito/chasquid/commits/master),
+  configured in the `.gitlab-ci.yml` file, runs the Go tests and the
+  integration tests (using [docker](#docker)).  
+  The integration tests are run twice: once against the dependencies listed in
+  `go.mod`, and once against the latest version of the dependencies.
+  It also builds the [public Docker images](docker.md).
+
+* [Cirrus CI](https://gitlab.com/albertito/chasquid/pipelines),
+  configured in the `.cirrus.yml` file, runs Go tests on FreeBSD, and a
+  comprehensive linter.
 
 
 ## Coverage

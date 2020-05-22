@@ -2,22 +2,27 @@
 
 language: go
 go_import_path: blitiri.com.ar/go/chasquid
-dist: trusty
-sudo: false
+dist: bionic
 
-go:
-    # Check against the version in Debian stable.
-    - 1.11.x
-    - stable
-    - master
-
-env:
-  # Enable Go modules explicitly on Go 1.11.
-  # Some packages update in backwards-incompatible ways assuming Go modules
-  # are in use, which can break the build unexpectedly.
-  # We can remove this once we no longer support Go 1.11, as it is the default
-  # in the newer versions.
-  - GO111MODULE=on
+jobs:
+  include:
+    - name: "go 1.11 (debian stable)"
+      go: 1.11.x
+      # Enable Go modules explicitly on Go 1.11.
+      # Some packages update in backwards-incompatible ways assuming Go
+      # modules are in use, which can break the build unexpectedly.
+      env: GO111MODULE=on
+    - name: "go stable"
+      go: stable
+    - name: "go tip"
+      go: master
+  allow_failures:
+    # There is a bug in the Travis environment where it can't reach certain
+    # hosts that host Go package dependencies.
+    # This manifests only in Go 1.11, since subsequent versions use the public
+    # proxy which has no problems.
+    # Make the build optional until the issue is fixed.
+    - go: 1.11.x
 
 # This is needed because the repository has a Makefile, so travis won't invoke
 # "go get" by default.
@@ -37,9 +42,3 @@ notifications:
     email:
         on_success: change
         on_failure: always
-    irc:
-        channels:
-          - "ircs://chat.freenode.net:7070/#chasquid"
-        use_notice: true
-        on_success: change
-        on_failure: change
