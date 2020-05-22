@@ -5,6 +5,13 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.4 (2020-05-22)
+
+- Use the configured hostname in outgoing SMTP HELO/EHLO.
+- Allow config overrides from the command line.
+- Miscellaneous test improvements and code cleanups.
+
+
 ## 1.3 (2020-04-12)
 
 - Improved handling of DNS temporary errors.
