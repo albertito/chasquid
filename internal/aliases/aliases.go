@@ -453,12 +453,15 @@ func (v *Resolver) runExistsHook(addr string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, v.ExistsHook, addr)
-	err := cmd.Run()
+
+	out, err := cmd.CombinedOutput()
+	tr.Debugf("output: %q", string(out))
 	if err != nil {
 		tr.Debugf("not exists: %v", err)
 		hookResults.Add("exists:false", 1)
 		return false
 	}
+
 	tr.Debugf("exists")
 	hookResults.Add("exists:true", 1)
 	return true
