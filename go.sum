@@ -1,7 +1,7 @@
 blitiri.com.ar/go/log v1.1.0 h1:prKXp2hnYXRamcrYaCajq1SdQYvHU852lY7QStHyuaw=
 blitiri.com.ar/go/log v1.1.0/go.mod h1:CobnZ0FcxCAWHnkPCVtNPmj8AGiW9aNLKd/E7tI43Sw=
-blitiri.com.ar/go/spf v0.0.0-20191018194539-a683815bdae8 h1:faoLmiOKc/iC8/jn9HN8hVbWBrgeVweZmdPeJgk5fWc=
-blitiri.com.ar/go/spf v0.0.0-20191018194539-a683815bdae8/go.mod h1:Mpik83f+Vc8wPdRrnGR5cV50NsENy+caW+42Kz4huCs=
+blitiri.com.ar/go/spf v1.1.0 h1:Uy5nrxWks4byhHW69lJpRnSnQAcoLLfh3GsiKgPTJqM=
+blitiri.com.ar/go/spf v1.1.0/go.mod h1:HLmgHxdrsqbBgi5omEopdAKm18PypvUKJGkF/j7BO0w=
 blitiri.com.ar/go/systemd v0.0.0-20171003041308-cdc4fd023aa4 h1:ceTBe2TiHNkhA7q/TAHyukC5Jc1iUb7On/++f1Mszwk=
 blitiri.com.ar/go/systemd v0.0.0-20171003041308-cdc4fd023aa4/go.mod h1:FmDkVlYnOzDHOhtSwtLHh6z9WVVx+aPjrHkPtfA3qhI=
 github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815 h1:bWDMxwH3px2JBh6AyO7hdCn/PkvCZXii8TGj7sbtEbQ=

@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	blitiri.com.ar/go/log v1.1.0
-	blitiri.com.ar/go/spf v0.0.0-20191018194539-a683815bdae8
+	blitiri.com.ar/go/spf v1.1.0
 	blitiri.com.ar/go/systemd v0.0.0-20171003041308-cdc4fd023aa4
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
 	github.com/golang/protobuf v1.4.2
@@ -13,5 +13,4 @@ require (
 	golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2
 	golang.org/x/text v0.3.2
 	google.golang.org/protobuf v1.23.0
-	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
