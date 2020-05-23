@@ -1004,9 +1004,12 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 		return 501, fmt.Sprintf("5.5.2 Error decoding AUTH response: %v", err)
 	}
 
+	// https://tools.ietf.org/html/rfc4954#section-6
 	authOk, err := c.authr.Authenticate(user, domain, passwd)
 	if err != nil {
 		c.tr.Errorf("error authenticating %q@%q: %v", user, domain, err)
+		maillog.Auth(c.conn.RemoteAddr(), user+"@"+domain, false)
+		return 454, "4.7.0 Temporary authentication failure"
 	}
 	if authOk {
 		c.authUser = user

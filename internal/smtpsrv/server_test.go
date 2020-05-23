@@ -200,6 +200,19 @@ func TestAuthOnSMTP(t *testing.T) {
 	sendEmailWithAuth(t, c, auth)
 }
 
+func TestBrokenAuth(t *testing.T) {
+	c := mustDial(t, ModeSubmission, true)
+	defer c.Close()
+
+	auth := smtp.PlainAuth("", "user@broken", "passwd", "127.0.0.1")
+	err := c.Auth(auth)
+	if err == nil {
+		t.Errorf("Broken auth succeeded")
+	} else if err.Error() != "454 4.7.0 Temporary authentication failure" {
+		t.Errorf("Broken auth returned unexpected error %q", err.Error())
+	}
+}
+
 func TestWrongMailParsing(t *testing.T) {
 	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()
@@ -292,6 +305,24 @@ func TestTooManyRecipients(t *testing.T) {
 	err := c.Rcpt("to102@somewhere")
 	if err == nil || err.Error() != "452 4.5.3 Too many recipients" {
 		t.Errorf("Expected too many recipients, got: %v", err)
+	}
+}
+
+func TestRcptFailsExistsCheck(t *testing.T) {
+	c := mustDial(t, ModeSMTP, true)
+	defer c.Close()
+
+	if err := c.Mail("from@localhost"); err != nil {
+		t.Fatalf("Mail: %v", err)
+	}
+
+	err := c.Rcpt("to@broken")
+	if err == nil {
+		t.Errorf("Accepted RCPT with broken Exists")
+	}
+	expect := "550 5.1.1 Destination address is unknown (user does not exist)"
+	if err.Error() != expect {
+		t.Errorf("RCPT returned unexpected error %q", err.Error())
 	}
 }
 
@@ -555,6 +586,20 @@ func waitForServer(addr string) error {
 	return fmt.Errorf("not reachable")
 }
 
+type brokenAuthBE struct{}
+
+func (b brokenAuthBE) Authenticate(user, password string) (bool, error) {
+	return false, fmt.Errorf("failed to auth")
+}
+
+func (b brokenAuthBE) Exists(user string) (bool, error) {
+	return false, fmt.Errorf("failed to check if user exists")
+}
+
+func (b brokenAuthBE) Reload() error {
+	return fmt.Errorf("failed to reload")
+}
+
 // realMain is the real main function, which returns the value to pass to
 // os.Exit(). We have to do this so we can use defer.
 func realMain(m *testing.M) int {
@@ -614,6 +659,9 @@ func realMain(m *testing.M) int {
 			"to@localhost", "testuser@localhost", aliases.EMAIL)
 		s.AddDomain("localhost")
 		s.AddUserDB("localhost", udb)
+
+		s.AddDomain("broken")
+		s.authr.Register("broken", &brokenAuthBE{})
 
 		// Disable SPF lookups, to avoid leaking DNS queries.
 		disableSPFForTesting = true
