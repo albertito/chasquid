@@ -133,7 +133,7 @@
 .\" ========================================================================
 .\"
 .IX Title "chasquid.conf 5"
-.TH chasquid.conf 5 "2020-05-13" "" ""
+.TH chasquid.conf 5 "2020-05-24" "" ""
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -224,7 +224,8 @@ you set this to \f(CW\*(C`._\*(C'\fR, email to local user \f(CW\*(C`u.se_r\*(C'\
 .IP "\fBmail_log_path\fR (string):" 8
 .IX Item "mail_log_path (string):"
 Path where to write the mail log to.  If \f(CW\*(C`<syslog>\*(C'\fR, log using the
-syslog (at \f(CW\*(C`MAIL|INFO\*(C'\fR priority).  Default: \f(CW\*(C`<syslog>\*(C'\fR.
+syslog (at \f(CW\*(C`MAIL|INFO\*(C'\fR priority).  If \f(CW\*(C`<stdout>\*(C'\fR, log to stdout; if
+\&\f(CW\*(C`<stderr>\*(C'\fR, log to stderr.  Default: \f(CW\*(C`<syslog>\*(C'\fR.
 .IP "\fBdovecot_auth\fR (bool):" 8
 .IX Item "dovecot_auth (bool):"
 Enable dovecot authentication. If true, users that are not found in chasquid's

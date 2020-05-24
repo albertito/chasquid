@@ -101,7 +101,8 @@ C<user>.  Default: C<.>.
 =item B<mail_log_path> (string):
 
 Path where to write the mail log to.  If C<< <syslog> >>, log using the
-syslog (at C<MAIL|INFO> priority).  Default: C<< <syslog> >>.
+syslog (at C<MAIL|INFO> priority).  If C<< <stdout> >>, log to stdout; if
+C<< <stderr> >>, log to stderr.  Default: C<< <syslog> >>.
 
 =item B<dovecot_auth> (bool):
 

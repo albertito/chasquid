@@ -77,6 +77,7 @@ message Config {
 
 	// Path where to write the mail log to.
 	// If "<syslog>", log using the syslog (at MAIL|INFO priority).
+	// If "<stdout>", log to stdout; if "<stderr>", log to stderr.
 	// Default: <syslog>
 	string mail_log_path = 12;
 

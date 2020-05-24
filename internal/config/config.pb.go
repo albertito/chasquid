@@ -93,6 +93,7 @@ type Config struct {
 	DropCharacters string `protobuf:"bytes,11,opt,name=drop_characters,json=dropCharacters,proto3" json:"drop_characters,omitempty"`
 	// Path where to write the mail log to.
 	// If "<syslog>", log using the syslog (at MAIL|INFO priority).
+	// If "<stdout>", log to stdout; if "<stderr>", log to stderr.
 	// Default: <syslog>
 	MailLogPath string `protobuf:"bytes,12,opt,name=mail_log_path,json=mailLogPath,proto3" json:"mail_log_path,omitempty"`
 	// Enable dovecot authentication.

@@ -216,9 +216,14 @@ func loadAddresses(srv *smtpsrv.Server, addrs []string, ls []net.Listener, mode 
 func initMailLog(path string) {
 	var err error
 
-	if path == "<syslog>" {
+	switch path {
+	case "<syslog>":
 		maillog.Default, err = maillog.NewSyslog()
-	} else {
+	case "<stdout>":
+		maillog.Default = maillog.New(os.Stdout)
+	case "<stderr>":
+		maillog.Default = maillog.New(os.Stderr)
+	default:
 		_ = os.MkdirAll(filepath.Dir(path), 0775)
 		maillog.Default, err = maillog.NewFile(path)
 	}
