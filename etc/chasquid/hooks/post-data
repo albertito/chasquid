@@ -48,12 +48,14 @@ fi
 
 
 if command -v rspamc >/dev/null; then
+	# Note the actions emitted by rspamc come from the thresholds
+	# configured in /etc/rspamd/actions.conf.
+	# The ones handled here are common defaults, but they might require
+	# adjusting to match your rspamd configuration.
+	# Note that greylisting is disabled in rspamc by design, so the
+	# "greylist" action is ignored here to prevent false rejections.
 	ACTION=$( rspamc < "$TF" 2>/dev/null | grep Action: | cut -d " " -f 2- )
 	case "$ACTION" in
-		greylist)
-			echo "greylisted, please try again"
-			exit 75  # temporary error
-			;;
 		reject)
 			echo "spam detected"
 			exit 20  # permanent error
