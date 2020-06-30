@@ -9,7 +9,8 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/safeio"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 )
 
 // ReadMessage reads a protocol buffer message from fname, and unmarshalls it
@@ -29,7 +30,7 @@ func ReadTextMessage(fname string, pb proto.Message) error {
 	if err != nil {
 		return err
 	}
-	return proto.UnmarshalText(string(in), pb)
+	return prototext.Unmarshal(in, pb)
 }
 
 // WriteMessage marshals pb and atomically writes it into fname.
@@ -42,11 +43,18 @@ func WriteMessage(fname string, pb proto.Message, perm os.FileMode) error {
 	return safeio.WriteFile(fname, out, perm)
 }
 
+var textOpts = prototext.MarshalOptions{
+	Multiline: true,
+}
+
 // WriteTextMessage marshals pb in text format and atomically writes it into
 // fname.
 func WriteTextMessage(fname string, pb proto.Message, perm os.FileMode) error {
-	out := proto.MarshalTextString(pb)
-	return safeio.WriteFile(fname, []byte(out), perm)
+	out, err := textOpts.Marshal(pb)
+	if err != nil {
+		return err
+	}
+	return safeio.WriteFile(fname, out, perm)
 }
 
 ///////////////////////////////////////////////////////////////

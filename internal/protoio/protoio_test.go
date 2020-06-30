@@ -75,16 +75,25 @@ func TestStore(t *testing.T) {
 	}
 
 	// Add an extraneous file, which ListIDs should ignore.
-	fd, err := os.Create(dir + "/store/" + "somefile")
-	if fd != nil {
-		fd.Close()
-	}
-	if err != nil {
-		t.Errorf("failed to create extraneous file: %v", err)
-	}
+	mustCreate(t, dir+"/store/"+"somefile")
+
+	// Add a file that is not properly query-escaped, and should be ignored.
+	mustCreate(t, dir+"/store/"+"s:somefile%N")
 
 	if ids, err := st.ListIDs(); len(ids) != 1 || ids[0] != "f" || err != nil {
 		t.Errorf("expected [f], got %v - %v", ids, err)
+	}
+}
+
+func mustCreate(t *testing.T, fname string) {
+	t.Helper()
+
+	f, err := os.Create(fname)
+	if f != nil {
+		f.Close()
+	}
+	if err != nil {
+		t.Fatalf("failed to create file %q: %v", fname, err)
 	}
 }
 
@@ -97,12 +106,37 @@ func TestFileErrors(t *testing.T) {
 		t.Errorf("write to /proc/doesnotexist worked, expected error")
 	}
 
+	if err := WriteTextMessage("/proc/doesnotexist", pb, 0600); err == nil {
+		t.Errorf("text write to /proc/doesnotexist worked, expected error")
+	}
+
 	if err := ReadMessage("/doesnotexist", pb); err == nil {
 		t.Errorf("read from /doesnotexist worked, expected error")
+	}
+
+	if err := ReadTextMessage("/doesnotexist", pb); err == nil {
+		t.Errorf("text read from /doesnotexist worked, expected error")
 	}
 
 	s := &Store{dir: "/doesnotexist"}
 	if ids, err := s.ListIDs(); !(ids == nil && err != nil) {
 		t.Errorf("list /doesnotexist worked (%v, %v), expected error", ids, err)
+	}
+}
+
+func TestMarshalErrors(t *testing.T) {
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+
+	// The marshaller enforces that strings are well-formed utf8. So to create
+	// a marshalling error, we use a non-utf8 string.
+	pb := &testpb.M{Content: "\xc3\x28"}
+
+	if err := WriteMessage("f", pb, 0600); err == nil {
+		t.Errorf("write worked, expected error")
+	}
+
+	if err := WriteTextMessage("ft", pb, 0600); err == nil {
+		t.Errorf("text write worked, expected error")
 	}
 }

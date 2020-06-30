@@ -50,13 +50,13 @@ wait_for_file .mail/userb@srv-b
 mail_diff content .mail/userb@srv-b
 
 # A should have a secure outgoing connection to srv-b.
-if ! grep -q "outgoing_sec_level: TLS_SECURE" ".data-A/domaininfo/s:srv-b";
+if ! grep -q 'outgoing_sec_level:\s*TLS_SECURE' ".data-A/domaininfo/s:srv-b";
 then
 	fail "A is missing the domaininfo for srv-b"
 fi
 
 # B should have a secure incoming connection from srv-a.
-if ! grep -q "incoming_sec_level: TLS_CLIENT" ".data-B/domaininfo/s:srv-a";
+if ! grep -q 'incoming_sec_level:\s*TLS_CLIENT' ".data-B/domaininfo/s:srv-a";
 then
 	fail "B is missing the domaininfo for srv-a"
 fi
