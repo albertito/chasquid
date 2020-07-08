@@ -40,6 +40,8 @@ wget -q -o /dev/null -O .data-A/dbg-flags http://localhost:1099/debug/flags \
 	|| fail "failed to fetch /debug/flags"
 wget -q -o /dev/null -O .data-A/dbg-queue http://localhost:1099/debug/queue \
 	|| fail "failed to fetch /debug/queue"
+wget -q -o /dev/null -O .data-A/dbg-config http://localhost:1099/debug/config \
+	|| fail "failed to fetch /debug/config"
 wget -q -o /dev/null -O .data-A/dbg-root http://localhost:1099/404 \
 	&& fail "fetch /404 worked, should have failed"
 

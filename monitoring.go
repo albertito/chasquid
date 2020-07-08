@@ -10,6 +10,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/log"
+	"google.golang.org/protobuf/encoding/prototext"
 
 	// To enable live profiling in the monitoring server.
 	_ "net/http/pprof"
@@ -45,6 +46,7 @@ func launchMonitoringServer(conf *config.Config) {
 	})
 
 	http.HandleFunc("/debug/flags", debugFlagsHandler)
+	http.HandleFunc("/debug/config", debugConfigHandler(conf))
 
 	go http.ListenAndServe(conf.MonitoringAddress, nil)
 }
@@ -94,6 +96,7 @@ os hostname <i>{{.Hostname}}</i><p>
   <li>execution
     <ul>
       <li><a href="/debug/flags">flags</a>
+      <li><a href="/debug/config">config</a>
       <li><a href="/debug/pprof/cmdline">command line</a>
     </ul>
   <li><a href="/debug/pprof">pprof</a>
@@ -122,6 +125,12 @@ func debugFlagsHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "-%s=%s\n", f.Name, f.Value.String())
 		}
 	})
+}
+
+func debugConfigHandler(conf *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(prototext.Format(conf)))
+	}
 }
 
 func roundDuration(d time.Duration) time.Duration {
