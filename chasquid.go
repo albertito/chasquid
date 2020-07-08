@@ -91,7 +91,7 @@ func main() {
 	go signalHandler()
 
 	if conf.MonitoringAddress != "" {
-		launchMonitoringServer(conf.MonitoringAddress)
+		launchMonitoringServer(conf)
 	}
 
 	s := smtpsrv.NewServer()
