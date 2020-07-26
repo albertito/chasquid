@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	blitiri.com.ar/go/log v1.1.0
-	blitiri.com.ar/go/spf v1.1.0
+	blitiri.com.ar/go/spf v1.1.1
 	blitiri.com.ar/go/systemd v1.1.0
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
 	github.com/golang/protobuf v1.4.2

@@ -1,7 +1,7 @@
 blitiri.com.ar/go/log v1.1.0 h1:prKXp2hnYXRamcrYaCajq1SdQYvHU852lY7QStHyuaw=
 blitiri.com.ar/go/log v1.1.0/go.mod h1:CobnZ0FcxCAWHnkPCVtNPmj8AGiW9aNLKd/E7tI43Sw=
-blitiri.com.ar/go/spf v1.1.0 h1:Uy5nrxWks4byhHW69lJpRnSnQAcoLLfh3GsiKgPTJqM=
-blitiri.com.ar/go/spf v1.1.0/go.mod h1:HLmgHxdrsqbBgi5omEopdAKm18PypvUKJGkF/j7BO0w=
+blitiri.com.ar/go/spf v1.1.1 h1:H5MKnEe5feN4NjtPDK/vFkkS0fI+ecTIsOfLNCR+6yI=
+blitiri.com.ar/go/spf v1.1.1/go.mod h1:HLmgHxdrsqbBgi5omEopdAKm18PypvUKJGkF/j7BO0w=
 blitiri.com.ar/go/systemd v1.1.0 h1:AMr7Ce/5CkvLZvGxsn/ZOagzFf3zU13rcgWdlbWMQ+Y=
 blitiri.com.ar/go/systemd v1.1.0/go.mod h1:0D9Ttrh+TX+WuKQ/dJpdhFND7NYy505v6jhsWrihmPY=
 github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815 h1:bWDMxwH3px2JBh6AyO7hdCn/PkvCZXii8TGj7sbtEbQ=
