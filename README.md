@@ -42,25 +42,25 @@ It's written in [Go](https://golang.org), and distributed under the
 
 [Arch]: https://www.archlinux.org/
 [Debian]: https://debian.org
-[Dovecot]: https://blitiri.com.ar/p/chasquid/docs/dovecot/
-[Hooks]: https://blitiri.com.ar/p/chasquid/docs/hooks/
+[Dovecot]: https://blitiri.com.ar/p/chasquid/dovecot/
+[Hooks]: https://blitiri.com.ar/p/chasquid/hooks/
 [IDNA]: https://en.wikipedia.org/wiki/Internationalized_domain_name
 [Let's Encrypt]: https://letsencrypt.org
 [MTA-STS]: https://tools.ietf.org/html/rfc8461
-[Monitoring]: https://blitiri.com.ar/p/chasquid/docs/monitoring/
+[Monitoring]: https://blitiri.com.ar/p/chasquid/monitoring/
 [SMTPUTF8]: https://en.wikipedia.org/wiki/Extended_SMTP#SMTPUTF8
 [SPF]: https://en.wikipedia.org/wiki/Sender_Policy_Framework
-[Tracking]: https://blitiri.com.ar/p/chasquid/docs/sec-levels/
+[Tracking]: https://blitiri.com.ar/p/chasquid/sec-levels/
 [Ubuntu]: https://ubuntu.com
 
 
 ## Documentation
 
-The [how-to guide](https://blitiri.com.ar/p/chasquid/docs/howto/) and the
-[installation guide](https://blitiri.com.ar/p/chasquid/docs/install/) are the
+The [how-to guide](https://blitiri.com.ar/p/chasquid/howto/) and the
+[installation guide](https://blitiri.com.ar/p/chasquid/install/) are the
 best starting points on how to install, configure and run chasquid.
 
-You will find [all documentation here](https://blitiri.com.ar/p/chasquid/docs/).
+You will find [all documentation here](https://blitiri.com.ar/p/chasquid/).
 
 
 ## Contact
