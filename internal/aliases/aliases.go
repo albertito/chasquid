@@ -56,7 +56,6 @@ package aliases
 import (
 	"bufio"
 	"context"
-	"expvar"
 	"fmt"
 	"io"
 	"os"
@@ -66,13 +65,15 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/expvarom"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
 // Exported variables.
 var (
-	hookResults = expvar.NewMap("chasquid/aliases/hookResults")
+	hookResults = expvarom.NewMap("chasquid/aliases/hookResults",
+		"result", "count of aliases hook results, by hook and result")
 )
 
 // Recipient represents a single recipient, after resolving aliases.

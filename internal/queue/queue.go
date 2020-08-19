@@ -8,7 +8,6 @@ package queue
 import (
 	"context"
 	"encoding/base64"
-	"expvar"
 	"fmt"
 	"math/rand"
 	"os"
@@ -23,6 +22,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/expvarom"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/protoio"
 	"blitiri.com.ar/go/chasquid/internal/set"
@@ -54,10 +54,14 @@ var (
 
 // Exported variables.
 var (
-	putCount        = expvar.NewInt("chasquid/queue/putCount")
-	itemsWritten    = expvar.NewInt("chasquid/queue/itemsWritten")
-	dsnQueued       = expvar.NewInt("chasquid/queue/dsnQueued")
-	deliverAttempts = expvar.NewMap("chasquid/queue/deliverAttempts")
+	putCount = expvarom.NewInt("chasquid/queue/putCount",
+		"count of envelopes attempted to be put in the queue")
+	itemsWritten = expvarom.NewInt("chasquid/queue/itemsWritten",
+		"count of items the queue wrote to disk")
+	dsnQueued = expvarom.NewInt("chasquid/queue/dsnQueued",
+		"count of DSNs that we generated (queued)")
+	deliverAttempts = expvarom.NewMap("chasquid/queue/deliverAttempts",
+		"recipient_type", "attempts to deliver mail, by recipient type")
 )
 
 // Channel used to get random IDs for items in the queue.

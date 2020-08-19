@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/config"
+	"blitiri.com.ar/go/chasquid/internal/expvarom"
 	"blitiri.com.ar/go/log"
 	"google.golang.org/protobuf/encoding/prototext"
 
@@ -45,6 +46,7 @@ func launchMonitoringServer(conf *config.Config) {
 		}
 	})
 
+	http.HandleFunc("/metrics", expvarom.MetricsHandler)
 	http.HandleFunc("/debug/flags", debugFlagsHandler)
 	http.HandleFunc("/debug/config", debugConfigHandler(conf))
 
@@ -90,8 +92,12 @@ os hostname <i>{{.Hostname}}</i><p>
     <ul>
       <li><a href="/debug/requests?exp=1">requests (short-lived)</a>
       <li><a href="/debug/events?exp=1">events (long-lived)</a>
-      <li><a href="/debug/vars">exported variables</a>
-        <small><a href="https://golang.org/pkg/expvar/">(ref)</a></small>
+	  <li><a href="https://blitiri.com.ar/p/chasquid/monitoring/#variables">
+	        exported variables</a>:
+          <a href="/debug/vars">expvar</a>
+          <small><a href="https://golang.org/pkg/expvar/">(ref)</a></small>,
+		  <a href="/metrics">openmetrics</a>
+		  <small><a href="https://openmetrics.io/">(ref)</a></small>
     </ul>
   <li>execution
     <ul>

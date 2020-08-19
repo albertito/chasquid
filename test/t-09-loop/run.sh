@@ -55,6 +55,13 @@ fetch http://localhost:1099/debug/config .data-A/dbg-config \
 	|| fail "failed to fetch /debug/config"
 fetch http://localhost:1099/404 .data-A/dbg-404 \
 	&& fail "fetch /404 worked, should have failed"
+fetch http://localhost:1099/metrics .data-A/metrics \
+	&& linesgt10 .data-A/metrics \
+	|| fail "failed to fetch /metrics"
+
+# Quick sanity-check of the /metrics page, just in case.
+grep -q '^chasquid_queue_itemsWritten [0-9]\+$' .data-A/metrics \
+	|| fail "A /metrics is missing the chasquid_queue_itemsWritten counter"
 
 # Wait until one of them has noticed and stopped the loop.
 while sleep 0.1; do

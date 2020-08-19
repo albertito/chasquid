@@ -23,11 +23,16 @@ These include:
 ## Variables
 
 chasquid exports some variables for monitoring, via the standard
-[expvar](https://golang.org/pkg/expvar/) package, which can be useful for
+[expvar](https://golang.org/pkg/expvar/) package and the
+[OpenMetrics](https://openmetrics.io/) text format, which can be useful for
 whitebox monitoring.
 
-They're accessible over the monitoring http server, at `/debug/vars` (default
-endpoint for expvars).
+They're accessible on the monitoring HTTP server, at `/debug/vars` (default
+endpoint for expvars) and `/metrics` (common endpoint for openmetrics).
+
+<a name="prometheus"></a>
+The `/metrics` endpoint is also compatible with
+[Prometheus](https://prometheus.io/).
 
 *Note these are still subject to change, although breaking changes will be
 avoided whenever possible, and will be noted in the [release
@@ -91,115 +96,3 @@ List of exported variables:
 - **chasquid/sts/cache/unmarshalErrors** (counter): count of unmarshaling
   errors as part of keeping the STS cache.
 - **chasquid/version** (string): version string.
-
-
-## Prometheus
-
-To monitor chasquid using [Prometheus](https://prometheus.io), you can use the
-[prometheus-expvar-exporter](https://blitiri.com.ar/git/r/prometheus-expvar-exporter/b/master/t/f=README.md.html)
-with the following configuration:
-
-```toml
-# Address to listen on. Prometheus should be told to scrape this.
-listen_addr = ":8000"
-
-[chasquid]
-# Replace with the address of chasquid's monitoring server.
-url = "http://localhost:1099/debug/vars"
-
-# Metrics are auto-imported, but some can't be; in particular the ones with
-# labels need explicit definitions here.
-
-m.aliases_hook_results.expvar ="chasquid/aliases/hookResults"
-m.aliases_hook_results.help ="aliases hook results"
-m.aliases_hook_results.label_name ="result"
-
-m.deliver_attempts.expvar = "chasquid/queue/deliverAttempts"
-m.deliver_attempts.help = "attempts to deliver mail"
-m.deliver_attempts.label_name = "recipient_type"
-
-m.dsn_queued.expvar = "chasquid/queue/dsnQueued"
-m.dsn_queued.help = "DSN queued"
-
-m.items_written.expvar = "chasquid/queue/itemsWritten"
-m.items_written.help = "items written"
-
-m.queue_puts.expvar = "chasquid/queue/putCount"
-m.queue_puts.help = "chasquid/queue/putCount"
-
-m.smtpin_commands.expvar = "chasquid/smtpIn/commandCount"
-m.smtpin_commands.help = "incoming SMTP command count"
-m.smtpin_commands.label_name = "command"
-
-m.smtp_hook_results.expvar = "chasquid/smtpIn/hookResults"
-m.smtp_hook_results.help = "hook invocation results"
-m.smtp_hook_results.label_name = "result"
-
-m.loops_detected.expvar = "chasquid/smtpIn/loopsDetected"
-m.loops_detected.help = "loops detected"
-
-m.smtp_response_codes.expvar = "chasquid/smtpIn/responseCodeCount"
-m.smtp_response_codes.help = "response codes returned to SMTP commands"
-m.smtp_response_codes.label_name = "code"
-
-m.in_sec_level_checks.expvar = "chasquid/smtpIn/securityLevelChecks"
-m.in_sec_level_checks.help = "incoming security level check results"
-m.in_sec_level_checks.label_name = "result"
-
-m.spf_results.expvar = "chasquid/smtpIn/spfResultCount"
-m.spf_results.help = "SPF result count"
-m.spf_results.label_name = "result"
-
-m.in_tls_usage.expvar = "chasquid/smtpIn/tlsCount"
-m.in_tls_usage.help = "count of TLS usage in incoming connections"
-m.in_tls_usage.label_name = "status"
-
-m.out_sec_level_checks.expvar = "chasquid/smtpOut/securityLevelChecks"
-m.out_sec_level_checks.help = "outgoing security level check results"
-m.out_sec_level_checks.label_name = "result"
-
-m.sts_modes.expvar = "chasquid/smtpOut/sts/mode"
-m.sts_modes.help = "STS checks on outgoing connections, by mode"
-m.sts_modes.label_name = "mode"
-
-m.sts_security.expvar = "chasquid/smtpOut/sts/security"
-m.sts_security.help = "STS security checks on outgoing connections, by result"
-m.sts_security.label_name = "result"
-
-m.out_tls_usage.expvar = "chasquid/smtpOut/tlsCount"
-m.out_tls_usage.help = "count of TLS usage in outgoing connections"
-m.out_tls_usage.label_name = "status"
-
-m.sts_cache_expired.expvar = "chasquid/sts/cache/expired"
-m.sts_cache_expired.help = "expired entries in the STS cache"
-
-m.sts_cache_failed_fetch.expvar = "chasquid/sts/cache/failedFetch"
-m.sts_cache_failed_fetch.help = "failed fetches in the STS cache"
-
-m.sts_cache_fetches.expvar = "chasquid/sts/cache/fetches"
-m.sts_cache_fetches.help = "total fetches in the STS cache"
-
-m.sts_cache_hits.expvar = "chasquid/sts/cache/hits"
-m.sts_cache_hits.help = "hits in the STS cache"
-
-m.sts_cache_invalid.expvar = "chasquid/sts/cache/invalid"
-m.sts_cache_invalid.help = "invalid policies in the STS cache"
-
-m.sts_cache_io_errors.expvar = "chasquid/sts/cache/ioErrors"
-m.sts_cache_io_errors.help = "I/O errors when maintaining STS cache"
-
-m.sts_cache_marshal_errors.expvar = "chasquid/sts/cache/marshalErrors"
-m.sts_cache_marshal_errors.help = "marshalling errors when maintaining STS cache"
-
-m.sts_cache_refresh_cycles.expvar = "chasquid/sts/cache/refreshCycles"
-m.sts_cache_refresh_cycles.help = "STS cache refresh cycles"
-
-m.sts_cache_refresh_errors.expvar = "chasquid/sts/cache/refreshErrors"
-m.sts_cache_refresh_errors.help = "STS cache refresh errors"
-
-m.sts_cache_refreshes.expvar = "chasquid/sts/cache/refreshes"
-m.sts_cache_refreshes.help = "count of STS cache refreshes"
-
-m.sts_cache_unmarshal_errors.expvar = "chasquid/sts/cache/unmarshalErrors"
-m.sts_cache_unmarshal_errors.help = "unmarshalling errors in STS cache"
-```

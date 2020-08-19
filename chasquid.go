@@ -22,6 +22,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/dovecot"
+	"blitiri.com.ar/go/chasquid/internal/expvarom"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/smtpsrv"
@@ -52,7 +53,8 @@ var (
 
 	sourceDate      time.Time
 	sourceDateVar   = expvar.NewString("chasquid/sourceDateStr")
-	sourceDateTsVar = expvar.NewInt("chasquid/sourceDateTimestamp")
+	sourceDateTsVar = expvarom.NewInt("chasquid/sourceDateTimestamp",
+		"timestamp when the binary was built, in seconds since epoch")
 )
 
 func main() {

@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"expvar"
 	"flag"
 	"fmt"
 	"io"
@@ -25,6 +24,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/auth"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/expvarom"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/queue"
@@ -36,13 +36,20 @@ import (
 
 // Exported variables.
 var (
-	commandCount      = expvar.NewMap("chasquid/smtpIn/commandCount")
-	responseCodeCount = expvar.NewMap("chasquid/smtpIn/responseCodeCount")
-	spfResultCount    = expvar.NewMap("chasquid/smtpIn/spfResultCount")
-	loopsDetected     = expvar.NewInt("chasquid/smtpIn/loopsDetected")
-	tlsCount          = expvar.NewMap("chasquid/smtpIn/tlsCount")
-	slcResults        = expvar.NewMap("chasquid/smtpIn/securityLevelChecks")
-	hookResults       = expvar.NewMap("chasquid/smtpIn/hookResults")
+	commandCount = expvarom.NewMap("chasquid/smtpIn/commandCount",
+		"command", "count of SMTP commands received, by command")
+	responseCodeCount = expvarom.NewMap("chasquid/smtpIn/responseCodeCount",
+		"code", "response codes returned to SMTP commands")
+	spfResultCount = expvarom.NewMap("chasquid/smtpIn/spfResultCount",
+		"result", "SPF result count")
+	loopsDetected = expvarom.NewInt("chasquid/smtpIn/loopsDetected",
+		"count of loops detected")
+	tlsCount = expvarom.NewMap("chasquid/smtpIn/tlsCount",
+		"status", "count of TLS usage in incoming connections")
+	slcResults = expvarom.NewMap("chasquid/smtpIn/securityLevelChecks",
+		"result", "incoming security level check results")
+	hookResults = expvarom.NewMap("chasquid/smtpIn/hookResults",
+		"result", "count of hook invocations, by result")
 )
 
 var (

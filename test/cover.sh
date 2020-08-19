@@ -23,10 +23,17 @@ mkdir -p .coverage
 export COVER_DIR="$PWD/.coverage"
 
 # Normal go tests.
-go test -tags coverage \
-	-covermode=count \
-	-coverprofile="$COVER_DIR/pkg-tests.out"\
-	-coverpkg=./... ./...
+# We have to run them one by one because the expvar registration causes
+# the single-binary tests to fail: cross-package expvars confuse the expvarom
+# tests, which don't expect any expvars to exists besides the one registered
+# in the tests themselves.
+for pkg in $(go list ./... | grep -v chasquid/cmd/); do
+	OUT_FILE="$COVER_DIR/pkg-`echo $pkg | sed s+/+_+g`.out"
+	go test -tags coverage \
+		-covermode=count \
+		-coverprofile="$OUT_FILE" \
+		-coverpkg=./... $pkg
+done
 
 # Integration tests.
 # Will run in coverage mode due to $COVER_DIR being set.

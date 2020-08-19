@@ -12,7 +12,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"expvar"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"blitiri.com.ar/go/chasquid/internal/expvarom"
 	"blitiri.com.ar/go/chasquid/internal/safeio"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 
@@ -34,20 +34,31 @@ import (
 
 // Exported variables.
 var (
-	cacheFetches = expvar.NewInt("chasquid/sts/cache/fetches")
-	cacheHits    = expvar.NewInt("chasquid/sts/cache/hits")
-	cacheExpired = expvar.NewInt("chasquid/sts/cache/expired")
+	cacheFetches = expvarom.NewInt("chasquid/sts/cache/fetches",
+		"count of total fetches in the STS cache")
+	cacheHits = expvarom.NewInt("chasquid/sts/cache/hits",
+		"count of hits in the STS cache")
+	cacheExpired = expvarom.NewInt("chasquid/sts/cache/expired",
+		"count of expired entries in the STS cache")
 
-	cacheIOErrors    = expvar.NewInt("chasquid/sts/cache/ioErrors")
-	cacheFailedFetch = expvar.NewInt("chasquid/sts/cache/failedFetch")
-	cacheInvalid     = expvar.NewInt("chasquid/sts/cache/invalid")
+	cacheIOErrors = expvarom.NewInt("chasquid/sts/cache/ioErrors",
+		"count of I/O errors when maintaining STS cache")
+	cacheFailedFetch = expvarom.NewInt("chasquid/sts/cache/failedFetch",
+		"count of failed fetches in the STS cache")
+	cacheInvalid = expvarom.NewInt("chasquid/sts/cache/invalid",
+		"count of invalid policies in the STS cache")
 
-	cacheMarshalErrors   = expvar.NewInt("chasquid/sts/cache/marshalErrors")
-	cacheUnmarshalErrors = expvar.NewInt("chasquid/sts/cache/unmarshalErrors")
+	cacheMarshalErrors = expvarom.NewInt("chasquid/sts/cache/marshalErrors",
+		"count of marshalling errors when maintaining STS cache")
+	cacheUnmarshalErrors = expvarom.NewInt("chasquid/sts/cache/unmarshalErrors",
+		"count of unmarshalling errors in STS cache")
 
-	cacheRefreshCycles = expvar.NewInt("chasquid/sts/cache/refreshCycles")
-	cacheRefreshes     = expvar.NewInt("chasquid/sts/cache/refreshes")
-	cacheRefreshErrors = expvar.NewInt("chasquid/sts/cache/refreshErrors")
+	cacheRefreshCycles = expvarom.NewInt("chasquid/sts/cache/refreshCycles",
+		"count of STS cache refresh cycles")
+	cacheRefreshes = expvarom.NewInt("chasquid/sts/cache/refreshes",
+		"count of STS cache refreshes")
+	cacheRefreshErrors = expvarom.NewInt("chasquid/sts/cache/refreshErrors",
+		"count of STS cache refresh errors")
 )
 
 // Policy represents a parsed policy.

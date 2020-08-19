@@ -3,7 +3,6 @@ package courier
 import (
 	"context"
 	"crypto/tls"
-	"expvar"
 	"flag"
 	"net"
 	"time"
@@ -12,6 +11,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/expvarom"
 	"blitiri.com.ar/go/chasquid/internal/smtp"
 	"blitiri.com.ar/go/chasquid/internal/sts"
 	"blitiri.com.ar/go/chasquid/internal/trace"
@@ -35,11 +35,15 @@ var (
 
 // Exported variables.
 var (
-	tlsCount   = expvar.NewMap("chasquid/smtpOut/tlsCount")
-	slcResults = expvar.NewMap("chasquid/smtpOut/securityLevelChecks")
+	tlsCount = expvarom.NewMap("chasquid/smtpOut/tlsCount",
+		"result", "count of TLS status on outgoing connections")
+	slcResults = expvarom.NewMap("chasquid/smtpOut/securityLevelChecks",
+		"result", "count of security level checks on outgoing connections")
 
-	stsSecurityModes   = expvar.NewMap("chasquid/smtpOut/sts/mode")
-	stsSecurityResults = expvar.NewMap("chasquid/smtpOut/sts/security")
+	stsSecurityModes = expvarom.NewMap("chasquid/smtpOut/sts/mode",
+		"mode", "count of STS checks on outgoing connections")
+	stsSecurityResults = expvarom.NewMap("chasquid/smtpOut/sts/security",
+		"result", "count of STS security checks on outgoing connections")
 )
 
 // SMTP delivers remote mail via outgoing SMTP.
