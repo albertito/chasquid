@@ -34,15 +34,26 @@ run_msmtp aliasB@srv-B < content
 
 # Get some of the debugging pages, for troubleshooting, and to make sure they
 # work reasonably well.
-wget -q -o /dev/null -O .data-A/dbg-root http://localhost:1099/ \
+function fetch() {
+	wget -q -o /dev/null -O $2 $1
+}
+
+function linesgt10() {
+	[ $( cat $1 | wc -l ) -gt 10 ]
+}
+
+fetch http://localhost:1099/ .data-A/dbg-root \
+	&& linesgt10 .data-A/dbg-root \
 	|| fail "failed to fetch /"
-wget -q -o /dev/null -O .data-A/dbg-flags http://localhost:1099/debug/flags \
+fetch http://localhost:1099/debug/flags .data-A/dbg-flags \
+	&& linesgt10 .data-A/dbg-flags \
 	|| fail "failed to fetch /debug/flags"
-wget -q -o /dev/null -O .data-A/dbg-queue http://localhost:1099/debug/queue \
+fetch http://localhost:1099/debug/queue .data-A/dbg-queue \
 	|| fail "failed to fetch /debug/queue"
-wget -q -o /dev/null -O .data-A/dbg-config http://localhost:1099/debug/config \
+fetch http://localhost:1099/debug/config .data-A/dbg-config \
+	&& linesgt10 .data-A/dbg-config \
 	|| fail "failed to fetch /debug/config"
-wget -q -o /dev/null -O .data-A/dbg-root http://localhost:1099/404 \
+fetch http://localhost:1099/404 .data-A/dbg-404 \
 	&& fail "fetch /404 worked, should have failed"
 
 # Wait until one of them has noticed and stopped the loop.
