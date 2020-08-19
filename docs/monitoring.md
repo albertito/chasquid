@@ -16,7 +16,7 @@ These include:
   lived requests (sampled).
 - State of the queue.
 - State of goroutines.
-- [Exported variables](#variables).
+- [Exported variables](#variables) for whitebox monitoring.
 - Profiling endpoints, for use with `go tool pprof` or similar tools.
 
 
@@ -35,64 +35,70 @@ The `/metrics` endpoint is also compatible with
 [Prometheus](https://prometheus.io/).
 
 *Note these are still subject to change, although breaking changes will be
-avoided whenever possible, and will be noted in the [release
-notes](relnotes.md).*
+avoided whenever possible, and will be noted in the
+[release notes](relnotes.md).*
 
 List of exported variables:
 
-- **chasquid/aliases/hookResults** (hook result -> counter): count of aliases
-  hook results, by hook and result.
-- **chasquid/queue/deliverAttempts** (recipient type -> counter): attempts to
-  deliver mail, by recipient type (pipe/local email/remote email).
-- **chasquid/queue/dsnQueued** (counter): count of DSNs that we generated
-  (queued).
-- **chasquid/queue/itemsWritten** (counter): count of items the queue wrote to
-  disk.
-- **chasquid/queue/putCount** (counter): number of envelopes put in the queue.
-- **chasquid/smtpIn/commandCount** (map of command -> count): count of SMTP
-  commands received, by command. Note that for unknown commands we use
-  `unknown<COMMAND>`.
-- **chasquid/smtpIn/hookResults** (result -> counter): count of hook
-  invocations, by result.
-- **chasquid/smtpIn/loopsDetected** (counter): count of email loops detected.
-- **chasquid/smtpIn/responseCodeCount** (code -> counter): count of response
-  codes returned to incoming SMTP connections, by result code.
-- **chasquid/smtpIn/securityLevelChecks** (result -> counter): count of
-  security level checks on incoming connections, by result.
-- **chasquid/smtpIn/spfResultCount** (result -> counter): count of SPF checks,
-  by result.
-- **chasquid/smtpIn/tlsCount** (tls status -> counter): count of TLS statuses
-  (plain/tls) for incoming SMTP connections.
-- **chasquid/smtpOut/securityLevelChecks** (result -> counter): count of
-  security level checks on outgoing connections, by result.
-- **chasquid/smtpOut/sts/mode** (mode -> counter): count of STS checks on
-  outgoing connections, by mode (enforce/testing).
-- **chasquid/smtpOut/sts/security** (result -> counter): count of STS security
-  checks on outgoing connections, by result (pass/fail).
-- **chasquid/smtpOut/tlsCount** (status -> counter): count of TLS status
-  (insecure TLS/secure TLS/plain) on outgoing connections.
-- **chasquid/sourceDateStr** (string): timestamp when the binary was built, in
-  human readable format.
-- **chasquid/sourceDateTimestamp** (int): timestamp when the binary was built,
-  in seconds since epoch.
-- **chasquid/sts/cache/expired** (counter): count of expired entries in the
-  STS cache.
-- **chasquid/sts/cache/failedFetch** (counter): count of failed fetches in the
-  STS cache.
-- **chasquid/sts/cache/fetches** (counter): count of total fetches in the STS
-  cache.
-- **chasquid/sts/cache/hits** (counter): count of hits in the STS cache.
-- **chasquid/sts/cache/invalid** (counter): count of invalid policies in the
-  STS cache.
-- **chasquid/sts/cache/ioErrors** (counter): count of I/O errors when
-  reading/writing as part of keeping the STS cache.
-- **chasquid/sts/cache/marshalErrors** (counter): count of marshaling errors
-  as part of keeping the STS cache.
-- **chasquid/sts/cache/refreshCycles** (counter): count of STS cache refresh
-  cycles.
-- **chasquid/sts/cache/refreshErrors** (counter): count of STS cache refresh
-  errors.
-- **chasquid/sts/cache/refreshes** (counter): count of STS cache refreshes.
-- **chasquid/sts/cache/unmarshalErrors** (counter): count of unmarshaling
-  errors as part of keeping the STS cache.
-- **chasquid/version** (string): version string.
+- **chasquid/aliases/hookResults** (hook result -> counter)  
+  count of aliases hook results, by hook and result.
+- **chasquid/queue/deliverAttempts** (recipient type -> counter)  
+  attempts to deliver mail, by recipient type (pipe/local email/remote email).
+- **chasquid/queue/dsnQueued** (counter)  
+  count of DSNs that we generated (queued).
+- **chasquid/queue/itemsWritten** (counter)  
+  count of items the queue wrote to disk.
+- **chasquid/queue/putCount** (counter)  
+  number of envelopes put in the queue.
+- **chasquid/smtpIn/commandCount** (map of command -> count)  
+  count of SMTP commands received, by command. Note that for unknown commands
+  we use `unknown<COMMAND>`.
+- **chasquid/smtpIn/hookResults** (result -> counter)  
+  count of hook invocations, by result.
+- **chasquid/smtpIn/loopsDetected** (counter)  
+  count of email loops detected.
+- **chasquid/smtpIn/responseCodeCount** (code -> counter)  
+  count of response codes returned to incoming SMTP connections, by result
+  code.
+- **chasquid/smtpIn/securityLevelChecks** (result -> counter)  
+  count of security level checks on incoming connections, by result.
+- **chasquid/smtpIn/spfResultCount** (result -> counter)  
+  count of SPF checks, by result.
+- **chasquid/smtpIn/tlsCount** (tls status -> counter)  
+  count of TLS statuses (plain/tls) for incoming SMTP connections.
+- **chasquid/smtpOut/securityLevelChecks** (result -> counter)  
+  count of security level checks on outgoing connections, by result.
+- **chasquid/smtpOut/sts/mode** (mode -> counter)  
+  count of STS checks on outgoing connections, by mode (enforce/testing).
+- **chasquid/smtpOut/sts/security** (result -> counter)  
+  count of STS security checks on outgoing connections, by result (pass/fail).
+- **chasquid/smtpOut/tlsCount** (status -> counter)  
+  count of TLS status (insecure TLS/secure TLS/plain) on outgoing connections.
+- **chasquid/sourceDateStr** (string)  
+  timestamp when the binary was built, in human readable format.
+- **chasquid/sourceDateTimestamp** (int)  
+  timestamp when the binary was built, in seconds since epoch.
+- **chasquid/sts/cache/expired** (counter)  
+  count of expired entries in the STS cache.
+- **chasquid/sts/cache/failedFetch** (counter)  
+  count of failed fetches in the STS cache.
+- **chasquid/sts/cache/fetches** (counter)  
+  count of total fetches in the STS cache.
+- **chasquid/sts/cache/hits** (counter)  
+  count of hits in the STS cache.
+- **chasquid/sts/cache/invalid** (counter)  
+  count of invalid policies in the STS cache.
+- **chasquid/sts/cache/ioErrors** (counter)  
+  count of I/O errors when maintaining the STS cache.
+- **chasquid/sts/cache/marshalErrors** (counter)  
+  count of marshaling errors when maintaining the STS cache.
+- **chasquid/sts/cache/refreshCycles** (counter)  
+  count of STS cache refresh cycles.
+- **chasquid/sts/cache/refreshErrors** (counter)  
+  count of STS cache refresh errors.
+- **chasquid/sts/cache/refreshes** (counter)  
+  count of STS cache refreshes.
+- **chasquid/sts/cache/unmarshalErrors** (counter)  
+  count of unmarshaling errors in the STS cache.
+- **chasquid/version** (string)  
+  version string.
