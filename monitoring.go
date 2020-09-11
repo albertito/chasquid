@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/config"
@@ -24,12 +25,14 @@ func launchMonitoringServer(conf *config.Config) {
 
 	indexData := struct {
 		Version    string
+		GoVersion  string
 		SourceDate time.Time
 		StartTime  time.Time
 		Config     *config.Config
 		Hostname   string
 	}{
 		Version:    version,
+		GoVersion:  runtime.Version(),
 		SourceDate: sourceDate,
 		StartTime:  time.Now(),
 		Config:     conf,
@@ -79,12 +82,17 @@ var monitoringHTMLIndex = template.Must(
 <body>
 <h1>chasquid @{{.Config.Hostname}}</h1>
 
+<p>
 chasquid {{.Version}}<br>
-source date {{.SourceDate.Format "2006-01-02 15:04:05 -0700"}}<p>
+source date {{.SourceDate.Format "2006-01-02 15:04:05 -0700"}}<br>
+built with {{.GoVersion}}<br>
+</p>
 
+<p>
 started {{.StartTime.Format "Mon, 2006-01-02 15:04:05 -0700"}}<br>
 up for {{.StartTime | since | roundDuration}}<br>
-os hostname <i>{{.Hostname}}</i><p>
+os hostname <i>{{.Hostname}}</i><br>
+</p>
 
 <ul>
   <li><a href="/debug/queue">queue</a>
