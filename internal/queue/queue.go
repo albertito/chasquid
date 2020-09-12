@@ -6,6 +6,7 @@ package queue
 //go:generate protoc --go_out=. --go_opt=paths=source_relative -I=${GOPATH}/src -I. queue.proto
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -16,8 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"bytes"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/courier"
@@ -30,7 +29,6 @@ import (
 	"blitiri.com.ar/go/log"
 
 	"golang.org/x/net/idna"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -491,12 +489,12 @@ func mustIDNAToASCII(s string) string {
 	return s
 }
 
-func timeFromProto(ts *timestamppb.Timestamp) time.Time {
+func timeFromProto(ts *Timestamp) time.Time {
 	return time.Unix(ts.Seconds, int64(ts.Nanos)).UTC()
 }
 
-func timeToProto(t time.Time) *timestamppb.Timestamp {
-	return &timestamppb.Timestamp{
+func timeToProto(t time.Time) *Timestamp {
+	return &Timestamp{
 		Seconds: t.Unix(),
 		Nanos:   int32(t.Nanosecond()),
 	}

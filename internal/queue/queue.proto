@@ -4,9 +4,6 @@ syntax = "proto3";
 package queue;
 option go_package = "blitiri.com.ar/go/chasquid/internal/queue";
 
-import "github.com/golang/protobuf/ptypes/timestamp/timestamp.proto";
-
-
 message Message {
 	// Message ID. Uniquely identifies this message, it is used for
 	// auditing and troubleshooting.
@@ -19,7 +16,7 @@ message Message {
 	bytes data = 5;
 
 	// Creation timestamp.
-	google.protobuf.Timestamp created_at_ts = 6;
+	Timestamp created_at_ts = 6;
 }
 
 message Recipient {
@@ -46,5 +43,16 @@ message Recipient {
 	// This is before expanding aliases and only used in very particular
 	// cases.
 	string original_address = 5;
+}
+
+// Timestamp representation, for convenience.
+// We used to use the well-known type, but the dependency makes packaging much
+// more convoluted and adds very little value, so we now just include it here.
+message Timestamp {
+  // Represents seconds of UTC time since Unix epoch.
+  int64 seconds = 1;
+
+  // Non-negative fractions of a second at nanosecond resolution.
+  int32 nanos = 2;
 }
 
