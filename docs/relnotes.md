@@ -5,6 +5,15 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.5 (2020-09-12)
+
+- Add OpenMetrics exporter (compatible with Prometheus).
+- Support log rotation via SIGHUP, and other misc. logging improvements.
+- Fix error code on transient authentication issues.
+- Fix rspamd greylist action handling in the default hook.
+- Miscellaneous monitoring server improvements.
+
+
 ## 1.4 (2020-05-22)
 
 - Use the configured hostname in outgoing SMTP HELO/EHLO.
