@@ -5,7 +5,9 @@
 
 ### Debian/Ubuntu
 
-If you're using Debian or Ubuntu, chasquid can be installed by running:
+If you're using [Debian](https://packages.debian.org/chasquid) or
+[Ubuntu](https://packages.ubuntu.com/chasquid), chasquid can be installed by
+running:
 
 ```shell
 sudo apt install chasquid
@@ -23,6 +25,10 @@ how to install it.  If you use the [pacaur](https://github.com/E5ten/pacaur)
 ```shell
 pacaur -S chasquid
 ```
+
+[Binary packages](https://foxcpp.dev/archlinux/README.txt) are also available,
+courtesy of foxcpp.
+
 
 ### From source
 

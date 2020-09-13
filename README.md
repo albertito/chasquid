@@ -40,8 +40,8 @@ It's written in [Go](https://golang.org), and distributed under the
     * [SPF] and [MTA-STS] checking.
 
 
-[Arch]: https://www.archlinux.org/
-[Debian]: https://debian.org
+[Arch]: https://blitiri.com.ar/p/chasquid/install/#arch
+[Debian]: https://blitiri.com.ar/p/chasquid/install/#debianubuntu
 [Dovecot]: https://blitiri.com.ar/p/chasquid/dovecot/
 [Hooks]: https://blitiri.com.ar/p/chasquid/hooks/
 [IDNA]: https://en.wikipedia.org/wiki/Internationalized_domain_name
@@ -51,7 +51,7 @@ It's written in [Go](https://golang.org), and distributed under the
 [SMTPUTF8]: https://en.wikipedia.org/wiki/Extended_SMTP#SMTPUTF8
 [SPF]: https://en.wikipedia.org/wiki/Sender_Policy_Framework
 [Tracking]: https://blitiri.com.ar/p/chasquid/sec-levels/
-[Ubuntu]: https://ubuntu.com
+[Ubuntu]: https://blitiri.com.ar/p/chasquid/install/#debianubuntu
 
 
 ## Documentation
