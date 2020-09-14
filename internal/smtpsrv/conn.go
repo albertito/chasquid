@@ -767,6 +767,31 @@ func checkData(data []byte) error {
 	return nil
 }
 
+// Sanitize HELO/EHLO domain.
+// RFC is extremely flexible with EHLO domain values, allowing all printable
+// ASCII characters. They can be tricky to use in shell scripts (commonly used
+// as post-data hooks), so this function sanitizes the value to make it
+// shell-safe.
+func sanitizeEHLODomain(s string) string {
+	n := ""
+	for _, c := range s {
+		// Allow a-zA-Z0-9 and []-.:
+		// That's enough for all domains, IPv4 and IPv6 literals, and also
+		// shell-safe.
+		// Non-ASCII are forbidden as EHLO domains per RFC.
+		switch {
+		case c >= 'a' && c <= 'z',
+			c >= 'A' && c <= 'Z',
+			c >= '0' && c <= '9',
+			c == '-', c == '.',
+			c == '[', c == ']', c == ':':
+			n += string(c)
+		}
+	}
+
+	return n
+}
+
 // runPostDataHook and return the new headers to add, and on error a boolean
 // indicating if it's permanent, and the error itself.
 func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
@@ -789,6 +814,8 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 		cmd.Env = append(cmd.Env, v+"="+os.Getenv(v))
 	}
 	cmd.Env = append(cmd.Env, "REMOTE_ADDR="+c.conn.RemoteAddr().String())
+	cmd.Env = append(cmd.Env, "EHLO_DOMAIN="+sanitizeEHLODomain(c.ehloDomain))
+	cmd.Env = append(cmd.Env, "EHLO_DOMAIN_RAW="+c.ehloDomain)
 	cmd.Env = append(cmd.Env, "MAIL_FROM="+c.mailFrom)
 	cmd.Env = append(cmd.Env, "RCPT_TO="+strings.Join(c.rcptTo, " "))
 

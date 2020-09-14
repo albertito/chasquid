@@ -41,6 +41,10 @@ The environment will contain the following variables:
  - `$PATH`: The server's `$PATH` env variable.
  - `$PWD`: The working directory, which will be the config directory.
  - `$REMOTE_ADDR`: IP address of the remote side of the connection.
+ - `$EHLO_DOMAIN`: EHLO/HELO domain, as given by the client; sanitized for
+   safety.
+ - `$EHLO_DOMAIN_RAW`: Same as `$EHLO_DOMAIN`, but not sanitized; be careful as
+   it can contain problematic characters.
  - `$MAIL_FROM`: MAIL FROM address.
  - `$RCPT_TO`: RCPT TO addresses, space separated.
  - `$AUTH_AS`: Authenticated user; empty if the connection has not

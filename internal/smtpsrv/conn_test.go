@@ -169,3 +169,33 @@ func TestAddrLiteral(t *testing.T) {
 		}
 	}
 }
+
+func TestSanitizeEHLODomain(t *testing.T) {
+	equal := []string{
+		"domain", "do.main", "do-main",
+		"1.2.3.4", "a:b:c", "[a:b:c]",
+		"abz", "AbZ",
+	}
+	for _, str := range equal {
+		if got := sanitizeEHLODomain(str); got != str {
+			t.Errorf("sanitizeEHLODomain(%q) returned %q, expected %q",
+				str, got, str)
+		}
+	}
+
+	invalid := []struct {
+		str      string
+		expected string
+	}{
+		{"ñaca", "aca"}, {"a\nb", "ab"}, {"a\x00b", "ab"}, {"a\x7fb", "ab"},
+		{"a/z", "az"}, {"a;b", "ab"}, {"a$b", "ab"}, {"a^b", "ab"},
+		{"a b", "ab"}, {"a+b", "ab"}, {"a@b", "ab"}, {`a"b`, "ab"},
+		{`a\b`, "ab"},
+	}
+	for _, c := range invalid {
+		if got := sanitizeEHLODomain(c.str); got != c.expected {
+			t.Errorf("sanitizeEHLODomain(%q) returned %q, expected %q",
+				c.str, got, c.expected)
+		}
+	}
+}
