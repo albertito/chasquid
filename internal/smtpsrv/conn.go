@@ -115,8 +115,8 @@ type Conn struct {
 	// TLS configuration.
 	tlsConfig *tls.Config
 
-	// Address given at HELO/EHLO, used for tracing purposes.
-	ehloAddress string
+	// Domain given at HELO/EHLO.
+	ehloDomain string
 
 	// Envelope.
 	mailFrom string
@@ -305,7 +305,7 @@ func (c *Conn) HELO(params string) (code int, msg string) {
 	if len(strings.TrimSpace(params)) == 0 {
 		return 501, "Invisible customers are not welcome!"
 	}
-	c.ehloAddress = strings.Fields(params)[0]
+	c.ehloDomain = strings.Fields(params)[0]
 
 	types := []string{
 		"general store", "used armor dealership", "second-hand bookstore",
@@ -323,7 +323,7 @@ func (c *Conn) EHLO(params string) (code int, msg string) {
 	if len(strings.TrimSpace(params)) == 0 {
 		return 501, "Invisible customers are not welcome!"
 	}
-	c.ehloAddress = strings.Fields(params)[0]
+	c.ehloDomain = strings.Fields(params)[0]
 	c.isESMTP = true
 
 	buf := bytes.NewBuffer(nil)
@@ -575,7 +575,7 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 
 // DATA SMTP command handler.
 func (c *Conn) DATA(params string) (code int, msg string) {
-	if c.ehloAddress == "" {
+	if c.ehloDomain == "" {
 		return 503, "5.5.1 Invisible customers are not welcome!"
 	}
 	if c.mailFrom == "" {
@@ -669,15 +669,15 @@ func (c *Conn) addReceivedHeader() {
 	// https://tools.ietf.org/html/rfc5321#section-4.4
 
 	if c.completedAuth {
-		// For authenticated users, only show the EHLO address they gave;
+		// For authenticated users, only show the EHLO domain they gave;
 		// explicitly hide their network address.
-		v += fmt.Sprintf("from %s\n", c.ehloAddress)
+		v += fmt.Sprintf("from %s\n", c.ehloDomain)
 	} else {
 		// For non-authenticated users we show the real address as canonical,
-		// and then the given EHLO address for convenience and
+		// and then the given EHLO domain for convenience and
 		// troubleshooting.
 		v += fmt.Sprintf("from [%s] (%s)\n",
-			addrLiteral(c.conn.RemoteAddr()), c.ehloAddress)
+			addrLiteral(c.conn.RemoteAddr()), c.ehloDomain)
 	}
 
 	v += fmt.Sprintf("by %s (chasquid) ", c.hostname)
