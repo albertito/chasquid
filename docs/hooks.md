@@ -36,17 +36,18 @@ privileges.
 
 The environment will contain the following variables:
 
- - USER
- - SHELL
- - PATH
- - PWD
- - REMOTE_ADDR
- - MAIL_FROM
- - RCPT_TO (space separated)
- - AUTH_AS (empty if not completed AUTH)
- - ON_TLS (0 if not, 1 if yes)
- - FROM_LOCAL_DOMAIN (0 if not, 1 if yes)
- - SPF_PASS (0 if not, 1 if yes)
+ - `$USER`: The server's `$USER` env variable.
+ - `$SHELL`: The server's `$SHELL` env variable.
+ - `$PATH`: The server's `$PATH` env variable.
+ - `$PWD`: The working directory, which will be the config directory.
+ - `$REMOTE_ADDR`: IP address of the remote side of the connection.
+ - `$MAIL_FROM`: MAIL FROM address.
+ - `$RCPT_TO`: RCPT TO addresses, space separated.
+ - `$AUTH_AS`: Authenticated user; empty if the connection has not
+   authenticated successfully.
+ - `$ON_TLS`: 1 if using TLS, 0 if not.
+ - `$FROM_LOCAL_DOMAIN`: 1 if the mail comes from a local domain, 0 if not.
+ - `$SPF_PASS`: 1 if it passed SPF, 0 if not.
 
 There is a 1 minute timeout for hook execution.
 It will be run at the config directory.
