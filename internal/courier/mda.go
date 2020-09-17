@@ -18,12 +18,11 @@ var (
 	errTimeout = fmt.Errorf("operation timed out")
 )
 
-// Procmail delivers local mail by executing a local binary, like procmail or
-// maildrop.  It is named after procmail just for reference, it works with any
-// binary that:
+// MDA delivers local mail by executing a local binary, like procmail or
+// maildrop.  It works with any binary that:
 //  - Receives the email to deliver via stdin.
 //  - Exits with code EX_TEMPFAIL (75) for transient issues.
-type Procmail struct {
+type MDA struct {
 	Binary  string        // Path to the binary.
 	Args    []string      // Arguments to pass.
 	Timeout time.Duration // Timeout for each invocation.
@@ -31,13 +30,13 @@ type Procmail struct {
 
 // Deliver an email. On failures, returns an error, and whether or not it is
 // permanent.
-func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
-	tr := trace.New("Courier.Procmail", to)
+func (p *MDA) Deliver(from string, to string, data []byte) (error, bool) {
+	tr := trace.New("Courier.MDA", to)
 	defer tr.Finish()
 
 	// Sanitize, just in case.
-	from = sanitizeForProcmail(from)
-	to = sanitizeForProcmail(to)
+	from = sanitizeForMDA(from)
+	to = sanitizeForMDA(to)
 
 	tr.Debugf("%s -> %s", from, to)
 
@@ -78,7 +77,7 @@ func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 				permanent = status.ExitStatus() != 75
 			}
 		}
-		err = tr.Errorf("procmail failed: %v - %q", err, string(output))
+		err = tr.Errorf("MDA delivery failed: %v - %q", err, string(output))
 		return err, permanent
 	}
 
@@ -86,12 +85,12 @@ func (p *Procmail) Deliver(from string, to string, data []byte) (error, bool) {
 	return nil, false
 }
 
-// sanitizeForProcmail cleans the string, removing characters that could be
+// sanitizeForMDA cleans the string, removing characters that could be
 // problematic considering we will run an external command.
 //
 // The server does not rely on this to do substitution or proper filtering,
 // that's done at a different layer; this is just for defense in depth.
-func sanitizeForProcmail(s string) string {
+func sanitizeForMDA(s string) string {
 	valid := func(r rune) rune {
 		switch {
 		case unicode.IsSpace(r), unicode.IsControl(r),

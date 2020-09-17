@@ -159,7 +159,7 @@ func main() {
 	}
 	go stsCache.PeriodicallyRefresh(context.Background())
 
-	localC := &courier.Procmail{
+	localC := &courier.MDA{
 		Binary:  conf.MailDeliveryAgentBin,
 		Args:    conf.MailDeliveryAgentArgs,
 		Timeout: 30 * time.Second,

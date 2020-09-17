@@ -257,7 +257,7 @@ func init() {
 	s.AddAddr(submissionAddr, ModeSubmission)
 	s.AddAddr(submissionTLSAddr, ModeSubmissionTLS)
 
-	localC := &courier.Procmail{}
+	localC := &courier.MDA{}
 	remoteC := &courier.SMTP{}
 	s.InitQueue(tmpDir+"/queue", localC, remoteC)
 	s.InitDomainInfo(tmpDir + "/domaininfo")

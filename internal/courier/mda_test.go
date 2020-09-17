@@ -10,11 +10,11 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
-func TestProcmail(t *testing.T) {
+func TestMDA(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
 
-	p := Procmail{
+	p := MDA{
 		Binary:  "tee",
 		Args:    []string{dir + "/%to_user%"},
 		Timeout: 1 * time.Minute,
@@ -31,8 +31,8 @@ func TestProcmail(t *testing.T) {
 	}
 }
 
-func TestProcmailTimeout(t *testing.T) {
-	p := Procmail{"/bin/sleep", []string{"1"}, 100 * time.Millisecond}
+func TestMDATimeout(t *testing.T) {
+	p := MDA{"/bin/sleep", []string{"1"}, 100 * time.Millisecond}
 
 	err, permanent := p.Deliver("from", "to@local", []byte("data"))
 	if err != errTimeout {
@@ -43,9 +43,9 @@ func TestProcmailTimeout(t *testing.T) {
 	}
 }
 
-func TestProcmailBadCommandLine(t *testing.T) {
+func TestMDABadCommandLine(t *testing.T) {
 	// Non-existent binary.
-	p := Procmail{"thisdoesnotexist", nil, 1 * time.Minute}
+	p := MDA{"thisdoesnotexist", nil, 1 * time.Minute}
 	err, permanent := p.Deliver("from", "to", []byte("data"))
 	if err == nil {
 		t.Errorf("unexpected success for non-existent binary")
@@ -55,7 +55,7 @@ func TestProcmailBadCommandLine(t *testing.T) {
 	}
 
 	// Incorrect arguments.
-	p = Procmail{"cat", []string{"--fail_unknown_option"}, 1 * time.Minute}
+	p = MDA{"cat", []string{"--fail_unknown_option"}, 1 * time.Minute}
 	err, _ = p.Deliver("from", "to", []byte("data"))
 	if err == nil {
 		t.Errorf("unexpected success for incorrect arguments")
@@ -82,7 +82,7 @@ func TestExitCode(t *testing.T) {
 		{"../../test/util/exitcode", []string{"75"}, false},
 	}
 	for _, c := range cases {
-		p := &Procmail{c.cmd, c.args, 5 * time.Second}
+		p := &MDA{c.cmd, c.args, 5 * time.Second}
 		err, permanent := p.Deliver("from", "to", []byte("data"))
 		if err == nil {
 			t.Errorf("%q: pipe delivery worked, expected failure", c.cmd)
@@ -116,7 +116,7 @@ func TestSanitize(t *testing.T) {
 		{"موزه‌ها", "موزه\u200cها"},
 	}
 	for _, c := range cases {
-		out := sanitizeForProcmail(c.v)
+		out := sanitizeForMDA(c.v)
 		if out != c.expected {
 			t.Errorf("%q: expected %q, got %q", c.v, c.expected, out)
 		}
