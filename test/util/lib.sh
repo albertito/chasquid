@@ -153,6 +153,15 @@ function wait_for_file() {
 	done
 }
 
+function wait_until() {
+	while true; do
+		if eval "$@"; then
+			return 0
+		fi
+		sleep 0.05
+	done
+}
+
 # Generate certs for the given hostname.
 function generate_certs_for() {
 	CONFDIR="${CONFDIR:-config}"

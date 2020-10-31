@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"html/template"
@@ -49,11 +50,16 @@ func launchMonitoringServer(conf *config.Config) {
 		}
 	})
 
+	srv := &http.Server{Addr: conf.MonitoringAddress}
+
+	http.HandleFunc("/exit", exitHandler(srv))
 	http.HandleFunc("/metrics", expvarom.MetricsHandler)
 	http.HandleFunc("/debug/flags", debugFlagsHandler)
 	http.HandleFunc("/debug/config", debugConfigHandler(conf))
 
-	go http.ListenAndServe(conf.MonitoringAddress, nil)
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("Monitoring server failed: %v", err)
+	}
 }
 
 // Functions available inside the templates.
@@ -122,6 +128,28 @@ os hostname <i>{{.Hostname}}</i><br>
 
 </html>
 `))
+
+func exitHandler(srv *http.Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Use POST method for exiting", http.StatusMethodNotAllowed)
+			return
+		}
+
+		log.Infof("Received /exit")
+		http.Error(w, "OK exiting", http.StatusOK)
+
+		// Launch srv.Shutdown asynchronously, and then exit.
+		// The http documentation says to wait for Shutdown to return before
+		// exiting, to gracefully close all ongoing requests.
+		go func() {
+			if err := srv.Shutdown(context.Background()); err != nil {
+				log.Fatalf("Monitoring server shutdown failed: %v", err)
+			}
+			os.Exit(0)
+		}()
+	}
+}
 
 func debugFlagsHandler(w http.ResponseWriter, r *http.Request) {
 	visited := make(map[string]bool)

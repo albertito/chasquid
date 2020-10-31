@@ -62,4 +62,15 @@ then
 	fail "new chasquid log did not have the expected entry"
 fi
 
+
+# Test that we can make the server exit using the /exit endpoint.
+# First, a GET should fail with status 405.
+fexp http://localhost:1099/exit -status 405
+
+# A POST should succeed, return an OK body, and the daemon should
+# eventually exit.
+CHASQUID_PID=$(pgrep -s 0 chasquid)
+fexp http://localhost:1099/exit -method POST -bodyre "OK"
+wait_until ! kill -s 0 $CHASQUID_PID 2> /dev/null
+
 success
