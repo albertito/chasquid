@@ -34,29 +34,22 @@ run_msmtp aliasB@srv-B < content
 
 # Get some of the debugging pages, for troubleshooting, and to make sure they
 # work reasonably well.
-function fetch() {
-	wget -q -o /dev/null -O $2 $1
+function fexp_gt10() {
+	fexp $1 -save $2 && \
+		[ $( cat $2 | wc -l ) -gt 10 ]
 }
 
-function linesgt10() {
-	[ $( cat $1 | wc -l ) -gt 10 ]
-}
-
-fetch http://localhost:1099/ .data-A/dbg-root \
-	&& linesgt10 .data-A/dbg-root \
+fexp_gt10 http://localhost:1099/ .data-A/dbg-root \
 	|| fail "failed to fetch /"
-fetch http://localhost:1099/debug/flags .data-A/dbg-flags \
-	&& linesgt10 .data-A/dbg-flags \
+fexp_gt10 http://localhost:1099/debug/flags .data-A/dbg-flags \
 	|| fail "failed to fetch /debug/flags"
-fetch http://localhost:1099/debug/queue .data-A/dbg-queue \
+fexp http://localhost:1099/debug/queue -save .data-A/dbg-queue \
 	|| fail "failed to fetch /debug/queue"
-fetch http://localhost:1099/debug/config .data-A/dbg-config \
-	&& linesgt10 .data-A/dbg-config \
+fexp_gt10 http://localhost:1099/debug/config .data-A/dbg-config \
 	|| fail "failed to fetch /debug/config"
-fetch http://localhost:1099/404 .data-A/dbg-404 \
-	&& fail "fetch /404 worked, should have failed"
-fetch http://localhost:1099/metrics .data-A/metrics \
-	&& linesgt10 .data-A/metrics \
+fexp http://localhost:1099/404 -status 404 \
+	|| fail "fetch /404 worked, should have failed"
+fexp_gt10 http://localhost:1099/metrics .data-A/metrics \
 	|| fail "failed to fetch /metrics"
 
 # Quick sanity-check of the /metrics page, just in case.
@@ -65,8 +58,8 @@ grep -q '^chasquid_queue_itemsWritten [0-9]\+$' .data-A/metrics \
 
 # Wait until one of them has noticed and stopped the loop.
 while sleep 0.1; do
-	wget -q -o /dev/null -O .data-A/vars http://localhost:1099/debug/vars
-	wget -q -o /dev/null -O .data-B/vars http://localhost:2099/debug/vars
+	fexp http://localhost:1099/debug/vars -save .data-A/vars
+	fexp http://localhost:2099/debug/vars -save .data-B/vars
 	# Allow for up to 2 loops to be detected, because if chasquid is fast
 	# enough the DSN will also loop before this check notices it.
 	if grep -q '"chasquid/smtpIn/loopsDetected": [12],' .data-?/vars; then

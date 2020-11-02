@@ -118,6 +118,11 @@ function minidns_bg() {
 	MINIDNS=$!
 }
 
+function fexp() {
+	( cd ${UTILDIR}; go build fexp.go )
+	${UTILDIR}/fexp "$@"
+}
+
 function success() {
 	echo success
 }

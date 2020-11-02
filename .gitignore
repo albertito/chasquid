@@ -20,6 +20,7 @@ cmd/spf-check/spf-check
 cmd/mda-lmtp/mda-lmtp
 cmd/dovecot-auth-cli/dovecot-auth-cli
 test/util/minidns
+test/util/fexp
 
 # Test binary, generated during coverage tests.
 chasquid.test
