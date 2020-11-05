@@ -29,9 +29,9 @@ import (
 // Usage, which doubles as parameter definitions thanks to docopt.
 const usage = `
 Usage:
-  chasquid-util [options] user-add <username> [--password=<password>]
-  chasquid-util [options] user-remove <username>
-  chasquid-util [options] authenticate <username> [--password=<password>]
+  chasquid-util [options] user-add <user@domain> [--password=<password>]
+  chasquid-util [options] user-remove <user@domain>
+  chasquid-util [options] authenticate <user@domain> [--password=<password>]
   chasquid-util [options] check-userdb <domain>
   chasquid-util [options] aliases-resolve <address>
   chasquid-util [options] domaininfo-remove <domain>
@@ -90,7 +90,7 @@ func userDBForDomain(domain string) string {
 }
 
 func userDBFromArgs(create bool) (string, string, *userdb.DB) {
-	username := args["<username>"].(string)
+	username := args["<user@domain>"].(string)
 	user, domain := envelope.Split(username)
 	if domain == "" {
 		Fatalf("Domain missing, username should be of the form 'user@domain'")
@@ -127,7 +127,7 @@ func checkUserDB() {
 	fmt.Println("Database loaded")
 }
 
-// chasquid-util user-add <username> [--password=<password>]
+// chasquid-util user-add <user@domain> [--password=<password>]
 func userAdd() {
 	user, _, db := userDBFromArgs(true)
 	password := getPassword()
@@ -145,7 +145,7 @@ func userAdd() {
 	fmt.Println("Added user")
 }
 
-// chasquid-util authenticate <username> [--password=<password>]
+// chasquid-util authenticate <user@domain> [--password=<password>]
 func authenticate() {
 	user, _, db := userDBFromArgs(false)
 
@@ -185,7 +185,7 @@ func getPassword() string {
 	return string(p1)
 }
 
-// chasquid-util user-remove <username>
+// chasquid-util user-remove <user@domain>
 func userRemove() {
 	user, _, db := userDBFromArgs(false)
 
