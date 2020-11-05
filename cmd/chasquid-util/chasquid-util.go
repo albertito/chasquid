@@ -29,9 +29,9 @@ import (
 // Usage, which doubles as parameter definitions thanks to docopt.
 const usage = `
 Usage:
-  chasquid-util [options] user-add <username> [--password=<password>]
-  chasquid-util [options] user-remove <username>
-  chasquid-util [options] authenticate <username> [--password=<password>]
+  chasquid-util [options] user-add <username@domain> [--password=<password>]
+  chasquid-util [options] user-remove <username@domain>
+  chasquid-util [options] authenticate <username@domain> [--password=<password>]
   chasquid-util [options] check-userdb <domain>
   chasquid-util [options] aliases-resolve <address>
   chasquid-util [options] domaininfo-remove <domain>
