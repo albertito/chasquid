@@ -68,7 +68,8 @@ type Server struct {
 	queue *queue.Queue
 
 	// Path to the hooks.
-	HookPath string
+	HookPath   string
+	proxyProto bool
 }
 
 // NewServer returns a new empty Server.
@@ -82,6 +83,7 @@ func NewServer() *Server {
 		localDomains:   &set.String{},
 		authr:          auth.NewAuthenticator(),
 		aliasesR:       aliases.NewResolver(),
+		proxyProto:     false,
 	}
 }
 
@@ -265,7 +267,12 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 			deadline:       time.Now().Add(s.connTimeout),
 			commandTimeout: s.commandTimeout,
 			queue:          s.queue,
+			proxyProto:     s.proxyProto,
 		}
 		go sc.Handle()
 	}
+}
+
+func (s *Server) EnableProxyProto() {
+	s.proxyProto = true
 }

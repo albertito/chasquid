@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -158,6 +159,11 @@ type Conn struct {
 
 	// Time we wait for network operations.
 	commandTimeout time.Duration
+
+	// Use HAProxy Proxy Protocol
+	// (http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)
+	proxyProto bool
+	sourceIp   net.IP
 }
 
 // Close the connection.
@@ -198,6 +204,19 @@ func (c *Conn) Handle() {
 	// They will be used to do line-oriented, limited I/O.
 	c.reader = bufio.NewReader(c.conn)
 	c.writer = bufio.NewWriter(c.conn)
+
+	if c.proxyProto {
+		proxyLine, isPrefix, err := c.reader.ReadLine()
+		if err != nil {
+			c.tr.Errorf("unable to read line: %v", err)
+		}
+
+		err = c.PROXY(proxyLine)
+		if err != nil {
+			c.tr.Errorf("unable to parse PROXY line: %v", err)
+		}
+		c.tr.Printf("proxyLine=%v, isPrefix=%v", string(proxyLine), isPrefix)
+	}
 
 	c.printfLine("220 %s ESMTP chasquid", c.hostname)
 
@@ -463,17 +482,26 @@ func (c *Conn) checkSPF(addr string) (spf.Result, error) {
 		return "", nil
 	}
 
-	if tcp, ok := c.conn.RemoteAddr().(*net.TCPAddr); ok {
-		res, err := spf.CheckHostWithSender(
-			tcp.IP, envelope.DomainOf(addr), addr)
-
-		c.tr.Debugf("SPF %v (%v)", res, err)
-		spfResultCount.Add(string(res), 1)
-
-		return res, err
+	var sourceIp net.IP
+	if c.proxyProto {
+		sourceIp = c.sourceIp
+	} else {
+		tcp, ok := c.conn.RemoteAddr().(*net.TCPAddr)
+		if !ok {
+			return "", nil
+		}
+		sourceIp = tcp.IP
 	}
 
-	return "", nil
+	if sourceIp == nil {
+		return "", nil
+	}
+
+	res, err := spf.CheckHostWithSender(sourceIp, envelope.DomainOf(addr), addr)
+	c.tr.Debugf("SPF %v (%v)", res, err)
+	spfResultCount.Add(string(res), 1)
+
+	return res, err
 }
 
 // secLevelCheck checks if the security level is acceptable for the given
@@ -1130,6 +1158,144 @@ func (c *Conn) writeResponse(code int, msg string) error {
 func (c *Conn) printfLine(format string, args ...interface{}) {
 	fmt.Fprintf(c.writer, format+"\r\n", args...)
 	c.writer.Flush()
+}
+
+func readerMustMatch(reader *bytes.Reader, expected string) error {
+	if reader == nil {
+		return errors.New("reader is nil")
+	}
+
+	byteIndex := int64(0)
+	lenBytes := int64(len([]byte(expected)))
+
+	if reader.Len() < len([]byte(expected)) {
+		return fmt.Errorf("expected %v but the reader doesn't contain enough bytes", expected)
+	}
+	for ; ; {
+		if byteIndex >= lenBytes {
+			break
+		}
+		b, err := reader.ReadByte()
+		if err != nil {
+			// Attempt to seek back to the beginning
+			_, err := reader.Seek(-byteIndex, io.SeekCurrent)
+			if err != nil {
+				return err
+			}
+			return err
+		}
+
+		if b == expected[byteIndex] {
+			byteIndex++
+		}
+	}
+	return nil
+}
+
+func readUntilWhitespace(r *bytes.Reader) ([]byte, error) {
+	var output []byte
+	for ; ; {
+		b, err := r.ReadByte()
+		if err != nil {
+			if err == io.EOF {
+				return output, nil
+			}
+			return output, err
+		}
+
+		if b == ([]byte(" "))[0] {
+			err = r.UnreadByte()
+			if err != nil {
+				return output, err
+			}
+			return output, nil
+		}
+
+		output = append(output, b)
+	}
+}
+
+func (c *Conn) PROXY(line []byte) error {
+	r := bytes.NewReader(line)
+	err := readerMustMatch(r, "PROXY ")
+	if err != nil {
+		return err
+	}
+
+	tcpVersion := -1
+	err = readerMustMatch(r, "TCP4")
+	if err != nil {
+		err = readerMustMatch(r, "TCP6")
+		if err != nil {
+			return err
+		}
+		tcpVersion = 6
+	} else {
+		tcpVersion = 4
+	}
+
+	err = readerMustMatch(r, " ")
+	if err != nil {
+		return err
+	}
+	sourceIpString, err := readUntilWhitespace(r)
+	if err != nil {
+		return err
+	}
+	err = readerMustMatch(r, " ")
+	if err != nil {
+		return err
+	}
+
+	destIpString, err := readUntilWhitespace(r)
+	if err != nil {
+		return err
+	}
+
+	err = readerMustMatch(r, " ")
+	if err != nil {
+		return err
+	}
+
+	sourcePortStr, err := readUntilWhitespace(r)
+	if err != nil {
+		return err
+	}
+
+	err = readerMustMatch(r, " ")
+	if err != nil {
+		return err
+	}
+
+	destPortStr, err := readUntilWhitespace(r)
+	if err != nil {
+		return err
+	}
+
+	sourceIp := net.ParseIP(string(sourceIpString))
+	destIp := net.ParseIP(string(destIpString))
+
+	if sourceIp == nil {
+		return errors.New("invalid source ip")
+	}
+
+	if destIp == nil {
+		return errors.New("invalid dest ip")
+	}
+
+	sourcePort, err := strconv.ParseInt(string(sourcePortStr), 10, 16)
+	destPort, err := strconv.ParseInt(string(destPortStr), 10, 16)
+
+	c.tr.Printf("PROXY: tcpVersion=%d sourceIp=%s sourcePort=%d destIp=%s destPort=%d",
+		tcpVersion,
+		sourceIp,
+		sourcePort,
+		destIp,
+		destPort,
+	)
+
+	c.sourceIp = sourceIp
+	return nil
 }
 
 // writeResponse writes a multi-line response to the given writer.

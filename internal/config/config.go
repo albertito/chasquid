@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"blitiri.com.ar/go/log"
-
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
@@ -31,6 +30,7 @@ var defaultConfig = &Config{
 	DropCharacters:   ".",
 
 	MailLogPath: "<syslog>",
+	ProxyProtocol: false,
 }
 
 // Load the config from the given file, with the given overrides.
@@ -122,6 +122,10 @@ func override(c, o *Config) {
 	}
 	if o.DovecotClientPath != "" {
 		c.DovecotClientPath = o.DovecotClientPath
+	}
+	
+	if o.ProxyProtocol {
+		c.ProxyProtocol = true
 	}
 }
 

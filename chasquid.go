@@ -187,6 +187,10 @@ func main() {
 	if naddr == 0 {
 		log.Fatalf("No address to listen on")
 	}
+	
+	if conf.ProxyProtocol {
+		s.EnableProxyProto()
+	}
 
 	s.ListenAndServe()
 }

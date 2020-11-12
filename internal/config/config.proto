@@ -95,4 +95,8 @@ message Config {
 	// is not, we will try to autodetect it.
 	// Example: /var/run/dovecot/auth-client
 	string dovecot_client_path = 15;
+
+	// Use HAProxy Proxy Protocol
+	// http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+	bool proxy_protocol = 16;
 }
