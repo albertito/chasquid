@@ -40,6 +40,8 @@ if the dependencies are not found:
 - `t-15-driusan_dkim` DKIM integration tests:
     - The `dkimsign dkimverify dkimkeygen` binaries, from
       [driusan/dkim](https://github.com/driusan/dkim) (no Debian package yet).
+- `t-18-haproxy` HAProxy integration tests:
+    - `haproxy`
 
 For some tests, python >= 3.5 is required; they will be skipped if it's not
 available.

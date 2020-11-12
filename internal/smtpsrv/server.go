@@ -45,6 +45,9 @@ type Server struct {
 	// TLS config (including loaded certificates).
 	tlsConfig *tls.Config
 
+	// Use HAProxy on incoming connections.
+	HAProxyEnabled bool
+
 	// Local domains.
 	localDomains *set.String
 
@@ -257,6 +260,7 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 			conn:           conn,
 			mode:           mode,
 			tlsConfig:      s.tlsConfig,
+			haproxyEnabled: s.HAProxyEnabled,
 			onTLS:          mode.TLS,
 			authr:          s.authr,
 			aliasesR:       s.aliasesR,

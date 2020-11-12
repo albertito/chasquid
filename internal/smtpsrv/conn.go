@@ -25,6 +25,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/expvarom"
+	"blitiri.com.ar/go/chasquid/internal/haproxy"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/queue"
@@ -104,6 +105,7 @@ type Conn struct {
 	conn         net.Conn
 	mode         SocketMode
 	tlsConnState *tls.ConnectionState
+	remoteAddr   net.Addr
 
 	// Reader and text writer, so we can control limits.
 	reader *bufio.Reader
@@ -158,6 +160,9 @@ type Conn struct {
 
 	// Time we wait for network operations.
 	commandTimeout time.Duration
+
+	// Enable HAProxy on incoming connections.
+	haproxyEnabled bool
 }
 
 // Close the connection.
@@ -198,6 +203,17 @@ func (c *Conn) Handle() {
 	// They will be used to do line-oriented, limited I/O.
 	c.reader = bufio.NewReader(c.conn)
 	c.writer = bufio.NewWriter(c.conn)
+
+	c.remoteAddr = c.conn.RemoteAddr()
+	if c.haproxyEnabled {
+		src, dst, err := haproxy.Handshake(c.reader)
+		if err != nil {
+			c.tr.Errorf("error in haproxy handshake: %v", err)
+			return
+		}
+		c.remoteAddr = src
+		c.tr.Debugf("haproxy handshake: %v -> %v", src, dst)
+	}
 
 	c.printfLine("220 %s ESMTP chasquid", c.hostname)
 
@@ -428,21 +444,21 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 		c.spfResult, c.spfError = c.checkSPF(addr)
 		if c.spfResult == spf.Fail {
 			// https://tools.ietf.org/html/rfc7208#section-8.4
-			maillog.Rejected(c.conn.RemoteAddr(), addr, nil,
+			maillog.Rejected(c.remoteAddr, addr, nil,
 				fmt.Sprintf("failed SPF: %v", c.spfError))
 			return 550, fmt.Sprintf(
 				"5.7.23 SPF check failed: %v", c.spfError)
 		}
 
 		if !c.secLevelCheck(addr) {
-			maillog.Rejected(c.conn.RemoteAddr(), addr, nil,
+			maillog.Rejected(c.remoteAddr, addr, nil,
 				"security level check failed")
 			return 550, "5.7.3 Security level check failed"
 		}
 
 		addr, err = normalize.DomainToUnicode(addr)
 		if err != nil {
-			maillog.Rejected(c.conn.RemoteAddr(), addr, nil,
+			maillog.Rejected(c.remoteAddr, addr, nil,
 				fmt.Sprintf("malformed address: %v", err))
 			return 501, "5.1.8 Malformed sender domain (IDNA conversion failed)"
 		}
@@ -463,7 +479,7 @@ func (c *Conn) checkSPF(addr string) (spf.Result, error) {
 		return "", nil
 	}
 
-	if tcp, ok := c.conn.RemoteAddr().(*net.TCPAddr); ok {
+	if tcp, ok := c.remoteAddr.(*net.TCPAddr); ok {
 		res, err := spf.CheckHostWithSender(
 			tcp.IP, envelope.DomainOf(addr), addr)
 
@@ -549,7 +565,7 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 
 	localDst := envelope.DomainIn(addr, c.localDomains)
 	if !localDst && !c.completedAuth {
-		maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, []string{addr},
+		maillog.Rejected(c.remoteAddr, c.mailFrom, []string{addr},
 			"relay not allowed")
 		return 503, "5.7.1 Relay not allowed"
 	}
@@ -557,13 +573,13 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 	if localDst {
 		addr, err = normalize.Addr(addr)
 		if err != nil {
-			maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, []string{addr},
+			maillog.Rejected(c.remoteAddr, c.mailFrom, []string{addr},
 				fmt.Sprintf("invalid address: %v", err))
 			return 550, "5.1.3 Destination address is invalid"
 		}
 
 		if !c.userExists(addr) {
-			maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, []string{addr},
+			maillog.Rejected(c.remoteAddr, c.mailFrom, []string{addr},
 				"local user does not exist")
 			return 550, "5.1.1 Destination address is unknown (user does not exist)"
 		}
@@ -621,7 +637,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	c.tr.Debugf("-> ... %d bytes of data", len(c.data))
 
 	if err := checkData(c.data); err != nil {
-		maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, c.rcptTo, err.Error())
+		maillog.Rejected(c.remoteAddr, c.mailFrom, c.rcptTo, err.Error())
 		return 554, err.Error()
 	}
 
@@ -629,7 +645,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 
 	hookOut, permanent, err := c.runPostDataHook(c.data)
 	if err != nil {
-		maillog.Rejected(c.conn.RemoteAddr(), c.mailFrom, c.rcptTo, err.Error())
+		maillog.Rejected(c.remoteAddr, c.mailFrom, c.rcptTo, err.Error())
 		if permanent {
 			return 554, err.Error()
 		}
@@ -646,7 +662,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	}
 
 	c.tr.Printf("Queued from %s to %s - %s", c.mailFrom, c.rcptTo, msgID)
-	maillog.Queued(c.conn.RemoteAddr(), c.mailFrom, c.rcptTo, msgID)
+	maillog.Queued(c.remoteAddr, c.mailFrom, c.rcptTo, msgID)
 
 	// It is very important that we reset the envelope before returning,
 	// so clients can send other emails right away without needing to RSET.
@@ -677,7 +693,7 @@ func (c *Conn) addReceivedHeader() {
 		// and then the given EHLO domain for convenience and
 		// troubleshooting.
 		v += fmt.Sprintf("from [%s] (%s)\n",
-			addrLiteral(c.conn.RemoteAddr()), c.ehloDomain)
+			addrLiteral(c.remoteAddr), c.ehloDomain)
 	}
 
 	v += fmt.Sprintf("by %s (chasquid) ", c.hostname)
@@ -800,7 +816,7 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 		hookResults.Add("post-data:skip", 1)
 		return nil, false, nil
 	}
-	tr := trace.New("Hook.Post-DATA", c.conn.RemoteAddr().String())
+	tr := trace.New("Hook.Post-DATA", c.remoteAddr.String())
 	defer tr.Finish()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
@@ -813,7 +829,7 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 	for _, v := range strings.Fields("USER PWD SHELL PATH") {
 		cmd.Env = append(cmd.Env, v+"="+os.Getenv(v))
 	}
-	cmd.Env = append(cmd.Env, "REMOTE_ADDR="+c.conn.RemoteAddr().String())
+	cmd.Env = append(cmd.Env, "REMOTE_ADDR="+c.remoteAddr.String())
 	cmd.Env = append(cmd.Env, "EHLO_DOMAIN="+sanitizeEHLODomain(c.ehloDomain))
 	cmd.Env = append(cmd.Env, "EHLO_DOMAIN_RAW="+c.ehloDomain)
 	cmd.Env = append(cmd.Env, "MAIL_FROM="+c.mailFrom)
@@ -1042,18 +1058,18 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 	authOk, err := c.authr.Authenticate(user, domain, passwd)
 	if err != nil {
 		c.tr.Errorf("error authenticating %q@%q: %v", user, domain, err)
-		maillog.Auth(c.conn.RemoteAddr(), user+"@"+domain, false)
+		maillog.Auth(c.remoteAddr, user+"@"+domain, false)
 		return 454, "4.7.0 Temporary authentication failure"
 	}
 	if authOk {
 		c.authUser = user
 		c.authDomain = domain
 		c.completedAuth = true
-		maillog.Auth(c.conn.RemoteAddr(), user+"@"+domain, true)
+		maillog.Auth(c.remoteAddr, user+"@"+domain, true)
 		return 235, "2.7.0 Authentication successful"
 	}
 
-	maillog.Auth(c.conn.RemoteAddr(), user+"@"+domain, false)
+	maillog.Auth(c.remoteAddr, user+"@"+domain, false)
 	return 535, "5.7.8 Incorrect user or password"
 }
 

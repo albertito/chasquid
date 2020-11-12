@@ -26,6 +26,7 @@ nav:
     - hooks.md
     - dovecot.md
     - dkim.md
+    - haproxy.md
     - docker.md
     - flow.md
     - monitoring.md

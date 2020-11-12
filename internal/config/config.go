@@ -123,6 +123,10 @@ func override(c, o *Config) {
 	if o.DovecotClientPath != "" {
 		c.DovecotClientPath = o.DovecotClientPath
 	}
+
+	if o.HaproxyIncoming {
+		c.HaproxyIncoming = true
+	}
 }
 
 // LogConfig logs the given configuration, in a human-friendly way.
@@ -141,4 +145,5 @@ func LogConfig(c *Config) {
 	log.Infof("  Mail log: %s", c.MailLogPath)
 	log.Infof("  Dovecot auth: %v (%q, %q)",
 		c.DovecotAuth, c.DovecotUserdbPath, c.DovecotClientPath)
+	log.Infof("  HAProxy incoming: %v", c.HaproxyIncoming)
 }

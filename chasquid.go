@@ -100,6 +100,7 @@ func main() {
 	s.Hostname = conf.Hostname
 	s.MaxDataSize = conf.MaxDataSizeMb * 1024 * 1024
 	s.HookPath = "hooks/"
+	s.HAProxyEnabled = conf.HaproxyIncoming
 
 	s.SetAliasesConfig(conf.SuffixSeparators, conf.DropCharacters)
 

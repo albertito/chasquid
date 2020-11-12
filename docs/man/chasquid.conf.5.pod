@@ -113,6 +113,15 @@ The path to dovecot's auth sockets is autodetected, but can be manually
 overridden using the C<dovecot_userdb_path> and C<dovecot_client_path> if
 needed.
 
+=item B<haproxy_incoming> (bool):
+
+B<EXPERIMENTAL>, might change in backwards-incompatible ways.
+
+If true, expect incoming SMTP connections to use the HAProxy protocol.
+This allows deploying chasquid behind a HAProxy server, as the address
+information is preserved, and SPF checks can be performed properly.
+Default: C<false>.
+
 =back
 
 =head1 SEE ALSO

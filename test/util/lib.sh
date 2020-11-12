@@ -123,6 +123,15 @@ function fexp() {
 	${UTILDIR}/fexp "$@"
 }
 
+function timeout() {
+	MYPID=$$
+	(
+		sleep $1
+		echo "timed out after $1, killing test"
+		kill -9 $MYPID
+	) &
+}
+
 function success() {
 	echo success
 }

@@ -95,4 +95,9 @@ message Config {
 	// is not, we will try to autodetect it.
 	// Example: /var/run/dovecot/auth-client
 	string dovecot_client_path = 15;
+
+	// Expect incoming SMTP connections to use the HAProxy protocol.
+	// This allows deploying chasquid behind a HAProxy server, as the
+	// address information is preserved.
+	bool haproxy_incoming = 16;
 }
