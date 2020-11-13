@@ -36,7 +36,15 @@ integration_stable:
     - docker info
     - docker build -t chasquid-test -f test/Dockerfile .
     - docker run chasquid-test  env
-    - docker run chasquid-test  make test
+    - docker run --name test1 chasquid-test  make test
+  after_script:
+    - docker cp test1:/go/src/blitiri.com.ar/go/chasquid docker-out/
+  artifacts:
+    when: always
+    expire_in: 1 hour
+    paths:
+      - docker-out/
+
 
 # Integration test, using the latest module versions.
 integration_latest:
@@ -48,7 +56,14 @@ integration_latest:
     - docker info
     - docker build -t chasquid-test --build-arg GO_GET_ARGS="-u=patch" -f test/Dockerfile .
     - docker run chasquid-test  env
-    - docker run chasquid-test  make test
+    - docker run --name test1 chasquid-test  make test
+  after_script:
+    - docker cp test1:/go/src/blitiri.com.ar/go/chasquid docker-out/
+  artifacts:
+    when: always
+    expire_in: 1 hour
+    paths:
+      - docker-out/
 
 # Build docker image, upload to gitlab registry.
 gitlab:
