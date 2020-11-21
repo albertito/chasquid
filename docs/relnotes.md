@@ -5,6 +5,14 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.6 (2020-11-22)
+
+- Pass the EHLO domain to the post-data hook.
+- Add /exit endpoint to monitoring server.
+- Implement HAProxy protocol support (experimental).
+- Documentation updates.
+
+
 ## 1.5 (2020-09-12)
 
 - Add OpenMetrics exporter (compatible with Prometheus).
