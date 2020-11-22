@@ -1,3 +1,5 @@
+// +build ignore
+
 // Fetch an URL, and check if the response matches what we expect.
 //
 // Useful for testing HTTP(s) servers.
