@@ -68,6 +68,8 @@ integration_latest:
 # Build docker image, upload to gitlab registry.
 gitlab:
   stage: image
+  rules:
+    - if: '$CI_REGISTRY_IMAGE'
   image: docker:stable
   services:
     - docker:dind
@@ -80,6 +82,8 @@ gitlab:
 # Build docker image, upload to dockerhub registry.
 dockerhub:
   stage: image
+  rules:
+    - if: '$DOCKER_REGISTRY_USER'
   image: docker:stable
   services:
     - docker:dind
