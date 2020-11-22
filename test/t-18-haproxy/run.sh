@@ -19,7 +19,7 @@ timeout 2m
 # Launch haproxy in the background, checking config first to fail fast in that
 # case.
 haproxy -f haproxy.cfg -c
-haproxy -f haproxy.cfg > .logs/haproxy.log 2>&1 &
+haproxy -f haproxy.cfg -d > .logs/haproxy.log 2>&1 &
 
 generate_certs_for testserver
 add_user user@testserver secretpassword
