@@ -5,6 +5,14 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.7 (TODO)
+
+- chasquid-util no longer depends on the unmaintained docopt-go.
+  If you relied on undocumented parsing behaviour before, your invocations may
+  need adjustment.  In particular, `--a b` is no longer supported, and `--a=b`
+  must be used instead.
+
+
 ## 1.6 (2020-11-22)
 
 - Pass the EHLO domain to the post-data hook.

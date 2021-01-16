@@ -8,7 +8,7 @@ init
 go build || exit 1
 
 function r() {
-	./chasquid-util -C .config "$@"
+	./chasquid-util -C=.config "$@"
 }
 
 function check_userdb() {
@@ -43,6 +43,22 @@ if r authenticate user@domain --password=abcd > /dev/null; then
 	echo authenticate with bad password worked
 	exit 1
 fi
+
+# Interactive authentication.
+# Need to wrap the execution under "script" since the interaction requires an
+# actual TTY, and that's a fairly portable way to do that.
+if hash script 2>/dev/null; then
+	if ! (echo passwd; echo passwd ) \
+		| script \
+			-qfec "./chasquid-util -C=.config authenticate user@domain" \
+			".script-out" \
+		| grep -q "Authentication succeeded";
+	then
+		echo interactive authenticate failed
+		exit 1
+	fi
+fi
+
 
 if ! r user-remove user@domain > /dev/null; then
 	echo user-remove failed
@@ -96,6 +112,11 @@ fi
 
 if r aliases-add alias3@notexist target > /dev/null; then
 	echo aliases-add on non-existing domain worked
+	exit 1
+fi
+
+if r aliases-add alias4@domain > /dev/null; then
+	echo aliases-add without target worked
 	exit 1
 fi
 

@@ -65,9 +65,9 @@ function add_user() {
 	DOMAIN=$(echo $1 | cut -d @ -f 2)
 	mkdir -p "${CONFDIR}/domains/$DOMAIN/"
 	go run ${TBASE}/../../cmd/chasquid-util/chasquid-util.go \
-		-C "${CONFDIR}" \
+		-C="${CONFDIR}" \
 		user-add "$1" \
-		--password "$2" \
+		--password="$2" \
 		>> .add_user_logs
 }
 

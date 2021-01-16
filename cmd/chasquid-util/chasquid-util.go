@@ -6,14 +6,15 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
-
-	"bytes"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/config"
@@ -22,11 +23,12 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 	"google.golang.org/protobuf/encoding/prototext"
 
-	"github.com/docopt/docopt-go"
+	// TODO: Move to golang.org/x/term once we don't support Go 1.11 anymore,
+	// since this one is deprecated (but still fully functional, so no rush).
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-// Usage, which doubles as parameter definitions thanks to docopt.
+// Usage to show users on --help or invocation errors.
 const usage = `
 Usage:
   chasquid-util [options] user-add <user@domain> [--password=<password>]
@@ -39,11 +41,16 @@ Usage:
   chasquid-util [options] aliases-add <source> <target>
 
 Options:
-  -C --configdir=<path>  Configuration directory
+  -C=<path>, --configdir=<path>  Configuration directory
 `
 
 // Command-line arguments.
-var args map[string]interface{}
+// Arguments starting with "-" will be parsed as key-value pairs, and
+// positional arguments will appear as "$POS" -> value.
+//
+// For example, "--abc=def x y -p=q -r" will result in:
+// {"--abc": "def", "$1": "x", "$2": "y", "-p": "q", "-r": ""}
+var args map[string]string
 
 // Globals, loaded from top-level options.
 var (
@@ -51,10 +58,18 @@ var (
 )
 
 func main() {
-	args, _ = docopt.ParseDoc(usage)
+	args = parseArgs(usage)
+
+	if _, ok := args["--help"]; ok {
+		fmt.Print(usage)
+		return
+	}
 
 	// Load globals.
-	if d, ok := args["--configdir"].(string); ok {
+	if d, ok := args["--configdir"]; ok {
+		configDir = d
+	}
+	if d, ok := args["-C"]; ok {
 		configDir = d
 	}
 
@@ -69,10 +84,12 @@ func main() {
 		"aliases-add":       aliasesAdd,
 	}
 
-	for cmd, f := range commands {
-		if args[cmd].(bool) {
-			f()
-		}
+	cmd := args["$1"]
+	if f, ok := commands[cmd]; ok {
+		f()
+	} else {
+		fmt.Printf("Unknown argument %q\n", cmd)
+		Fatalf(usage)
 	}
 }
 
@@ -84,13 +101,13 @@ func Fatalf(s string, arg ...interface{}) {
 
 func userDBForDomain(domain string) string {
 	if domain == "" {
-		domain = args["<domain>"].(string)
+		domain = args["$2"]
 	}
 	return configDir + "/domains/" + domain + "/users"
 }
 
 func userDBFromArgs(create bool) (string, string, *userdb.DB) {
-	username := args["<user@domain>"].(string)
+	username := args["$2"]
 	user, domain := envelope.Split(username)
 	if domain == "" {
 		Fatalf("Domain missing, username should be of the form 'user@domain'")
@@ -159,7 +176,7 @@ func authenticate() {
 }
 
 func getPassword() string {
-	password, ok := args["--password"].(string)
+	password, ok := args["--password"]
 	if ok {
 		return password
 	}
@@ -236,7 +253,7 @@ func aliasesResolve() {
 		}
 	}
 
-	rcpts, err := r.Resolve(args["<address>"].(string))
+	rcpts, err := r.Resolve(args["$2"])
 	if err != nil {
 		Fatalf("Error resolving: %v", err)
 	}
@@ -258,7 +275,7 @@ func printConfig() {
 
 // chasquid-util domaininfo-remove <domain>
 func domaininfoRemove() {
-	domain := args["<domain>"].(string)
+	domain := args["$2"]
 
 	conf, err := config.Load(configDir+"/chasquid.conf", "")
 	if err != nil {
@@ -277,12 +294,16 @@ func domaininfoRemove() {
 
 // chasquid-util aliases-add <source> <target>
 func aliasesAdd() {
-	source := args["<source>"].(string)
-	target := args["<target>"].(string)
+	source := args["$2"]
+	target := args["$3"]
 
 	user, domain := envelope.Split(source)
 	if domain == "" {
 		Fatalf("Domain required in source address")
+	}
+
+	if target == "" {
+		Fatalf("Target must be present")
 	}
 
 	// Ensure the domain exists.
@@ -323,4 +344,34 @@ func aliasesAdd() {
 	}
 	aliasesFile.Close()
 	fmt.Println("Added alias")
+}
+
+// parseArgs parses the command line arguments, and returns a map.
+//
+// Arguments starting with "-" will be parsed as key-value pairs, and
+// positional arguments will appear as "$POS" -> value.
+//
+// For example, "--abc=def x y -p=q -r" will result in:
+// {"--abc": "def", "$1": "x", "$2": "y", "-p": "q", "-r": ""}
+func parseArgs(usage string) map[string]string {
+	args := map[string]string{}
+
+	pos := 1
+	for _, a := range os.Args[1:] {
+		// Note: Consider handling end of args marker "--" explicitly in
+		// the future if needed.
+		if strings.HasPrefix(a, "-") {
+			sp := strings.SplitN(a, "=", 2)
+			if len(sp) < 2 {
+				args[a] = ""
+			} else {
+				args[sp[0]] = sp[1]
+			}
+		} else {
+			args["$"+strconv.Itoa(pos)] = a
+			pos++
+		}
+	}
+
+	return args
 }
