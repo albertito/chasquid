@@ -16,6 +16,11 @@ else
 	go build $GOFLAGS -tags="$GOTAGS" dovecot-auth-cli.go
 fi
 
+if ! ./dovecot-auth-cli lalala 2>&1 | grep -q "invalid arguments"; then
+	echo "cli worked with invalid arguments"
+	exit 1
+fi
+
 for i in *.cmy; do
 	if ! chamuyero $i > $i.log 2>&1 ; then
 		echo "# Test $i failed, log follows"

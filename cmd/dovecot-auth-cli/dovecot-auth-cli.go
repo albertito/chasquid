@@ -1,7 +1,6 @@
 // CLI used for testing the dovecot authentication package.
 //
 // NOT for production use.
-// +build !coverage
 
 package main
 
