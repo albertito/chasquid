@@ -95,8 +95,9 @@ done >> /etc/dovecot/auto-ssl.conf
 # Pick the default domain as default hostname for chasquid. This is only used
 # in plain text sessions and on very rare cases, and it's mostly for aesthetic
 # purposes.
-echo "hostname: '$ONE_DOMAIN'" >> /etc/chasquid/chasquid.conf
-
+if ! grep -iq "hostname:" /etc/chasquid/chasquid.conf; then
+	echo "hostname: '$ONE_DOMAIN'" >> /etc/chasquid/chasquid.conf
+fi
 
 # Start the services: dovecot in background, chasquid in foreground.
 start-stop-daemon --start --quiet --pidfile /run/dovecot.pid \

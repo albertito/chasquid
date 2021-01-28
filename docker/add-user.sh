@@ -30,6 +30,7 @@ ENCPASS=$(doveadm pw -u "${EMAIL}" -p "${PASSWORD}")
 
 # Edit dovecot users: remove user if it exits.
 mkdir -p /data/dovecot
+touch /data/dovecot/users
 if grep -q "^${EMAIL}:" /data/dovecot/users; then
 	cp /data/dovecot/users /data/dovecot/users.old
 	cat /data/dovecot/users.old | grep -v "^${EMAIL}:" \
