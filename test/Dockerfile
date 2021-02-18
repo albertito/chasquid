@@ -39,10 +39,9 @@ RUN mkdir -p test/t-02-exim/.exim4 \
 RUN chmod g-s /usr/bin/msmtp
 
 # Install binaries for the (optional) DKIM integration test.
-RUN go get github.com/driusan/dkim/... \
-	&& go install github.com/driusan/dkim/cmd/dkimsign \
-	&& go install github.com/driusan/dkim/cmd/dkimverify \
-	&& go install github.com/driusan/dkim/cmd/dkimkeygen
+RUN go install github.com/driusan/dkim/cmd/dkimsign@latest \
+	&& go install github.com/driusan/dkim/cmd/dkimverify@latest \
+	&& go install github.com/driusan/dkim/cmd/dkimkeygen@latest
 
 # Copy into the container. Everything below this line will not be cached.
 COPY . .
