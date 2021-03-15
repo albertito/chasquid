@@ -52,10 +52,10 @@ selecting a provider:
  - Make sure they allow traffic on TCP port 25 (SMTP). While almost all VPS
    and dedicated server providers are fine, some "cloud" providers (like
    Google Cloud) block port 25, which is used for sending and receiving mails.
- - Once you get a server, make sure the IP address is not listed in any
+ - Once you get a server, make sure the IP addresses are not listed in any
    [blackhole lists].
-   There are many services to check them, for example the one from [the
-   Anti-Abuse project].
+   There are many services to check them, for example [the
+   Anti-Abuse project] or [multirbl.valli.org].
 
 Remember to update your server regularly, setting up [unattended upgrades] is
 highly recommended.
@@ -63,6 +63,7 @@ highly recommended.
 [the Anti-Abuse project]: http://www.anti-abuse.org/multi-rbl-check/
 [blackhole lists]: https://en.wikipedia.org/wiki/DNSBL
 [unattended upgrades]: https://wiki.debian.org/UnattendedUpgrades
+[multirbl.valli.org]: http://multirbl.valli.org/
 
 
 ## DNS
@@ -175,7 +176,7 @@ sudo mkdir -p /etc/chasquid/domains/example.com
 cat <<EOF | sudo tee -a /etc/chasquid/chasquid.conf
 
 # Deliver email via lmtp to dovecot.
-mail_delivery_agent_bin: "/usr/local/bin/mda-lmtp"
+mail_delivery_agent_bin: "/usr/bin/mda-lmtp"
 mail_delivery_agent_args: "--addr"
 mail_delivery_agent_args: "/run/dovecot/lmtp"
 mail_delivery_agent_args: "-f"
