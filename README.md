@@ -14,7 +14,7 @@ It's written in [Go](https://golang.org), and distributed under the
 [![Go Report Card](https://goreportcard.com/badge/github.com/albertito/chasquid)](https://goreportcard.com/report/github.com/albertito/chasquid)
 [![Coverage](https://img.shields.io/badge/coverage-next-brightgreen.svg)](https://blitiri.com.ar/p/chasquid/coverage.html)  
 [![Docs](https://img.shields.io/badge/docs-reference-blue.svg)](https://blitiri.com.ar/p/chasquid/)
-[![Freenode](https://img.shields.io/badge/chat-freenode-blue.svg)](https://webchat.freenode.net/#chasquid)
+[![OFTC IRC](https://img.shields.io/badge/chat-oftc-blue.svg)](https://webchat.oftc.net/?channels=%23chasquid)
 
 
 ## Features
@@ -71,7 +71,6 @@ chasquid@googlegroups.com.
 
 To subscribe, send an email to chasquid+subscribe@googlegroups.com.
 
-You can also reach out via IRC, `#chasquid` on
-[freenode](https://freenode.net/).
+You can also reach out via IRC, `#chasquid` on [OFTC](https://oftc.net/).
 
 

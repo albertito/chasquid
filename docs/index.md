@@ -19,6 +19,6 @@ chasquid@googlegroups.com.
 To subscribe, send an email to chasquid+subscribe@googlegroups.com.
 
 You can also reach out via IRC, `#chasquid` on
-[freenode](https://freenode.net/).
+[OFTC](https://oftc.net/).
 
 
