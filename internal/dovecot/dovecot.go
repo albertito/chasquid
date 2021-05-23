@@ -17,6 +17,7 @@ import (
 	"net/textproto"
 	"os"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 )
@@ -27,6 +28,9 @@ const DefaultTimeout = 5 * time.Second
 
 var (
 	errUsernameNotSafe = errors.New("username not safe (contains spaces)")
+	errFailedToConnect = errors.New("failed to connect to dovecot")
+	errNoUserdbSocket  = errors.New("unable to find userdb socket")
+	errNoClientSocket  = errors.New("unable to find client socket")
 )
 
 var defaultUserdbPaths = []string{
@@ -41,8 +45,11 @@ var defaultClientPaths = []string{
 
 // Auth represents a particular Dovecot auth service to use.
 type Auth struct {
-	userdbAddr string
-	clientAddr string
+	addr struct {
+		mu     *sync.Mutex
+		userdb string
+		client string
+	}
 
 	// Timeout for connection and I/O operations (applies on each call).
 	// Set to DefaultTimeout by NewAuth.
@@ -53,30 +60,30 @@ type Auth struct {
 // takes the addresses of userdb and client sockets (usually paths as
 // configured in dovecot).
 func NewAuth(userdb, client string) *Auth {
-	return &Auth{
-		userdbAddr: userdb,
-		clientAddr: client,
-		Timeout:    DefaultTimeout,
-	}
+	a := &Auth{}
+	a.addr.mu = &sync.Mutex{}
+	a.addr.userdb = userdb
+	a.addr.client = client
+	a.Timeout = DefaultTimeout
+	return a
 }
 
 // String representation of this Auth, for human consumption.
 func (a *Auth) String() string {
-	return fmt.Sprintf("DovecotAuth(%q, %q)", a.userdbAddr, a.clientAddr)
+	a.addr.mu.Lock()
+	defer a.addr.mu.Unlock()
+	return fmt.Sprintf("DovecotAuth(%q, %q)", a.addr.userdb, a.addr.client)
 }
 
-// Check to see if this auth is valid (but may not be working).
+// Check to see if this auth is functional.
 func (a *Auth) Check() error {
-	// We intentionally don't connect or complete any handshakes because
-	// dovecot may not be up yet, even thought it may be configured properly.
-	// Just check that the addresses are valid sockets.
-	if !isUnixSocket(a.userdbAddr) {
-		return fmt.Errorf("userdb is not an unix socket")
+	u, c, err := a.getAddrs()
+	if err != nil {
+		return err
 	}
-	if !isUnixSocket(a.clientAddr) {
-		return fmt.Errorf("client is not an unix socket")
+	if !(a.canDial(u) && a.canDial(c)) {
+		return errFailedToConnect
 	}
-
 	return nil
 }
 
@@ -86,7 +93,12 @@ func (a *Auth) Exists(user string) (bool, error) {
 		return false, errUsernameNotSafe
 	}
 
-	conn, err := a.dial("unix", a.userdbAddr)
+	userdbAddr, _, err := a.getAddrs()
+	if err != nil {
+		return false, err
+	}
+
+	conn, err := a.dial("unix", userdbAddr)
 	if err != nil {
 		return false, err
 	}
@@ -134,7 +146,12 @@ func (a *Auth) Authenticate(user, passwd string) (bool, error) {
 		return false, errUsernameNotSafe
 	}
 
-	conn, err := a.dial("unix", a.clientAddr)
+	_, clientAddr, err := a.getAddrs()
+	if err != nil {
+		return false, err
+	}
+
+	conn, err := a.dial("unix", clientAddr)
 	if err != nil {
 		return false, err
 	}
@@ -233,48 +250,43 @@ func isUsernameSafe(user string) bool {
 	return true
 }
 
-// Autodetect where the dovecot authentication paths are, and return an Auth
-// instance for them. If any of userdb or client are != "", they will be used
-// and not autodetected.
-func Autodetect(userdb, client string) *Auth {
-	// If both are given, no need to autodtect.
-	if userdb != "" && client != "" {
-		return NewAuth(userdb, client)
-	}
+// getAddrs returns the addresses to the userdb and client sockets.
+func (a *Auth) getAddrs() (string, string, error) {
+	a.addr.mu.Lock()
+	defer a.addr.mu.Unlock()
 
-	var userdbs, clients []string
-	if userdb != "" {
-		userdbs = append(userdbs, userdb)
-	}
-	if client != "" {
-		clients = append(clients, client)
-	}
-
-	if len(userdbs) == 0 {
-		userdbs = append(userdbs, defaultUserdbPaths...)
-	}
-
-	if len(clients) == 0 {
-		clients = append(clients, defaultClientPaths...)
-	}
-
-	// Go through each possiblity, return the first auth that works.
-	for _, u := range userdbs {
-		for _, c := range clients {
-			a := NewAuth(u, c)
-			if a.Check() == nil {
-				return a
+	if a.addr.userdb == "" {
+		for _, u := range defaultUserdbPaths {
+			if a.canDial(u) {
+				a.addr.userdb = u
+				break
 			}
+		}
+		if a.addr.userdb == "" {
+			return "", "", errNoUserdbSocket
 		}
 	}
 
-	return nil
+	if a.addr.client == "" {
+		for _, c := range defaultClientPaths {
+			if a.canDial(c) {
+				a.addr.client = c
+				break
+			}
+		}
+		if a.addr.client == "" {
+			return "", "", errNoClientSocket
+		}
+	}
+
+	return a.addr.userdb, a.addr.client, nil
 }
 
-func isUnixSocket(path string) bool {
-	fi, err := os.Stat(path)
+func (a *Auth) canDial(path string) bool {
+	conn, err := a.dial("unix", path)
 	if err != nil {
 		return false
 	}
-	return fi.Mode()&os.ModeSocket != 0
+	conn.Close()
+	return true
 }

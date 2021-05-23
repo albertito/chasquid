@@ -31,13 +31,11 @@ func TestUsernameNotSafe(t *testing.T) {
 }
 
 func TestAutodetect(t *testing.T) {
-	// If we give both parameters to autodetect, it should return a new Auth
-	// using them, even if they're not valid.
-	a := Autodetect("uDoesNotExist", "cDoesNotExist")
-	if a == nil {
-		t.Errorf("Autodetection with two params failed")
-	} else if *a != *NewAuth("uDoesNotExist", "cDoesNotExist") {
-		t.Errorf("Autodetection with two params: got %v", a)
+	// Check on a pair that does not exist.
+	a := NewAuth("uDoesNotExist", "cDoesNotExist")
+	err := a.Check()
+	if err != errFailedToConnect {
+		t.Errorf("Expected failure to connect, got %v", err)
 	}
 
 	// We override the default paths, so we can point the "defaults" to our
@@ -46,9 +44,18 @@ func TestAutodetect(t *testing.T) {
 	defaultClientPaths = []string{"/dev/null"}
 
 	// Autodetect failure: no valid sockets on the list.
-	a = Autodetect("", "")
-	if a != nil {
-		t.Errorf("Autodetection worked with only /dev/null, got %v", a)
+	a = NewAuth("", "")
+	err = a.Check()
+	if err != errNoUserdbSocket {
+		t.Errorf("Expected failure to find userdb socket, got %v", err)
+	}
+	ok, err := a.Exists("user")
+	if ok != false || err != errNoUserdbSocket {
+		t.Errorf("Expected {false, no userdb socket}, got {%v, %v}", ok, err)
+	}
+	ok, err = a.Authenticate("user", "password")
+	if ok != false || err != errNoUserdbSocket {
+		t.Errorf("Expected {false, no userdb socket}, got {%v, %v}", ok, err)
 	}
 
 	// Create a temporary directory, and two sockets on it.
@@ -61,45 +68,54 @@ func TestAutodetect(t *testing.T) {
 	uL := mustListen(t, userdb)
 	cL := mustListen(t, client)
 
-	defaultUserdbPaths = append(defaultUserdbPaths, userdb)
-	defaultClientPaths = append(defaultClientPaths, client)
-
-	// Autodetect should work fine against open sockets.
-	a = Autodetect("", "")
-	if a == nil {
-		t.Errorf("Autodetection failed (open sockets)")
-	} else if a.userdbAddr != userdb || a.clientAddr != client {
-		t.Errorf("Expected autodetect to pick {%q, %q}, but got {%q, %q}",
-			userdb, client, a.userdbAddr, a.clientAddr)
-	}
-
-	// Close the two sockets, and re-do the test from above: Autodetect should
-	// work fine against closed sockets.
-	// We need to tell Go to keep the socket files around explicitly, as the
-	// default is to delete them since they were creeated by the net library.
-	uL.SetUnlinkOnClose(false)
-	uL.Close()
-	cL.SetUnlinkOnClose(false)
-	cL.Close()
-
-	a = Autodetect("", "")
-	if a == nil {
-		t.Errorf("Autodetection failed (closed sockets)")
-	} else if a.userdbAddr != userdb || a.clientAddr != client {
-		t.Errorf("Expected autodetect to pick {%q, %q}, but got {%q, %q}",
-			userdb, client, a.userdbAddr, a.clientAddr)
+	// Autodetect finds the user, but fails to find the client.
+	defaultUserdbPaths = []string{"/dev/null", userdb}
+	defaultClientPaths = []string{"/dev/null"}
+	a = NewAuth("", "")
+	err = a.Check()
+	if err != errNoClientSocket {
+		t.Errorf("Expected failure to find userdb socket, got %v", err)
 	}
 
 	// Autodetect should pick the suggestions passed as parameters (if
 	// possible).
 	defaultUserdbPaths = []string{"/dev/null"}
 	defaultClientPaths = []string{"/dev/null", client}
-	a = Autodetect(userdb, "")
-	if a == nil {
-		t.Errorf("Autodetection failed (single parameter)")
-	} else if a.userdbAddr != userdb || a.clientAddr != client {
+	a = NewAuth(userdb, "")
+	err = a.Check()
+	if err != nil {
+		t.Errorf("Expected successful check, got %v", err)
+	}
+	if a.addr.userdb != userdb || a.addr.client != client {
 		t.Errorf("Expected autodetect to pick {%q, %q}, but got {%q, %q}",
-			userdb, client, a.userdbAddr, a.clientAddr)
+			userdb, client, a.addr.userdb, a.addr.client)
+	}
+
+	// Successful autodetection against open sockets.
+	defaultUserdbPaths = append(defaultUserdbPaths, userdb)
+	defaultClientPaths = append(defaultClientPaths, client)
+	a = NewAuth("", "")
+	err = a.Check()
+	if err != nil {
+		t.Errorf("Expected successful check, got %v", err)
+	}
+
+	// Close the two sockets, and re-do the check: now we have pinned the
+	// paths, and check should fail to connect.
+	// We need to tell Go to keep the socket files around explicitly, as the
+	// default is to delete them since they were created by the net library.
+	uL.SetUnlinkOnClose(false)
+	uL.Close()
+	err = a.Check()
+	if err != errFailedToConnect {
+		t.Errorf("Expected failed to connect, got %v", err)
+	}
+
+	cL.SetUnlinkOnClose(false)
+	cL.Close()
+	err = a.Check()
+	if err != errFailedToConnect {
+		t.Errorf("Expected failed to connect, got %v", err)
 	}
 }
 
@@ -123,10 +139,4 @@ func mustListen(t *testing.T, path string) *net.UnixListener {
 	}
 
 	return l
-}
-
-func TestNotASocket(t *testing.T) {
-	if isUnixSocket("/doesnotexist") {
-		t.Errorf("isUnixSocket(/doesnotexist) returned true")
-	}
 }

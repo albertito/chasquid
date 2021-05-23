@@ -281,18 +281,12 @@ func loadDomain(name, dir string, s *smtpsrv.Server) {
 }
 
 func loadDovecot(s *smtpsrv.Server, userdb, client string) {
-	a := dovecot.Autodetect(userdb, client)
-	if a == nil {
-		log.Errorf("Dovecot autodetection failed, no dovecot fallback")
-		return
-	}
+	a := dovecot.NewAuth(userdb, client)
+	s.SetAuthFallback(a)
+	log.Infof("Fallback authenticator: %v", a)
 
-	if a != nil {
-		s.SetAuthFallback(a)
-		log.Infof("Fallback authenticator: %v", a)
-		if err := a.Check(); err != nil {
-			log.Errorf("Failed dovecot authenticator check: %v", err)
-		}
+	if err := a.Check(); err != nil {
+		log.Errorf("Warning: Dovecot auth is not responding: %v", err)
 	}
 }
 

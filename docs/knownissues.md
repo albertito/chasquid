@@ -9,6 +9,28 @@ Entries are eventually be purged once their affected versions become uncommon,
 to prevent confusion.
 
 
+## Dovecot auth occasionally not functional after a reboot (0.04 to 1.6)
+
+After a reboot, if chasquid starts *before* dovecot, it's possible that
+chasquid fails to autodetect the dovecot addresses, and the dovecot
+authentication will not be functional until chasquid is restarted.
+
+This condition can be identified by seeing
+`Dovecot autodetection failed, no dovecot fallback` in the chasquid logs, at
+start-up time.
+
+As a workaround, you can create the following systemd dropin file at
+`/etc/systemd/system/chasquid.service.d/after-dovecot.conf`, to make chasquid
+be started *after* dovecot:
+
+```
+[Unit]
+After=dovecot.service
+```
+
+The issue is fixed in 1.7.
+
+
 ## `dkimsign` causes parsing errors in post-data hook (0.07 to 1.5)
 
 The default post-data hook in versions 0.07 to 1.5 has a bug where if the
