@@ -308,7 +308,7 @@ func TestTooManyRecipients(t *testing.T) {
 	}
 }
 
-func TestRcptFailsExistsCheck(t *testing.T) {
+func TestRcptBrokenExists(t *testing.T) {
 	c := mustDial(t, ModeSMTP, true)
 	defer c.Close()
 
@@ -319,6 +319,24 @@ func TestRcptFailsExistsCheck(t *testing.T) {
 	err := c.Rcpt("to@broken")
 	if err == nil {
 		t.Errorf("Accepted RCPT with broken Exists")
+	}
+	expect := "451 4.4.3 Temporary error checking address"
+	if err.Error() != expect {
+		t.Errorf("RCPT returned unexpected error %q", err.Error())
+	}
+}
+
+func TestRcptUserDoesNotExist(t *testing.T) {
+	c := mustDial(t, ModeSMTP, true)
+	defer c.Close()
+
+	if err := c.Mail("from@localhost"); err != nil {
+		t.Fatalf("Mail: %v", err)
+	}
+
+	err := c.Rcpt("doesnotexist@localhost")
+	if err == nil {
+		t.Errorf("Accepted RCPT for non-existent user")
 	}
 	expect := "550 5.1.1 Destination address is unknown (user does not exist)"
 	if err.Error() != expect {

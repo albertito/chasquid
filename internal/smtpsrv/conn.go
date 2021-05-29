@@ -578,7 +578,14 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 			return 550, "5.1.3 Destination address is invalid"
 		}
 
-		if !c.userExists(addr) {
+		ok, err := c.userExists(addr)
+		if err != nil {
+			c.tr.Errorf("error checking if user %q exists: %v", addr, err)
+			maillog.Rejected(c.remoteAddr, c.mailFrom, []string{addr},
+				fmt.Sprintf("error checking if user exists: %v", err))
+			return 451, "4.4.3 Temporary error checking address"
+		}
+		if !ok {
 			maillog.Rejected(c.remoteAddr, c.mailFrom, []string{addr},
 				"local user does not exist")
 			return 550, "5.1.1 Destination address is unknown (user does not exist)"
@@ -1081,11 +1088,11 @@ func (c *Conn) resetEnvelope() {
 	c.spfError = nil
 }
 
-func (c *Conn) userExists(addr string) bool {
+func (c *Conn) userExists(addr string) (bool, error) {
 	var ok bool
 	addr, ok = c.aliasesR.Exists(addr)
 	if ok {
-		return true
+		return true, nil
 	}
 
 	// Note we used the address returned by the aliases resolver, which has
@@ -1093,11 +1100,7 @@ func (c *Conn) userExists(addr string) bool {
 	// look up "user" in our databases if the domain is local, which is what
 	// we want.
 	user, domain := envelope.Split(addr)
-	ok, err := c.authr.Exists(user, domain)
-	if err != nil {
-		c.tr.Errorf("error checking if user %q exists: %v", addr, err)
-	}
-	return ok
+	return c.authr.Exists(user, domain)
 }
 
 func (c *Conn) readCommand() (cmd, params string, err error) {
