@@ -4,29 +4,10 @@
 env:
   GOPROXY: https://proxy.golang.org
 
-# Run go tests under a Linux container.
+# Run go tests under a FreeBSD VM.
 # Note that by default it is run as root, which causes the tests to fail since
 # they expect to get permission denied on some cases, so we create a separate
 # user and use that instead.
-linux_task:
-  name: Go tests (Linux)
-  container:
-    image: golang:latest
-  modules_cache:
-    fingerprint_script: cat go.sum
-    folder: $GOPATH/pkg/mod
-  get_script: |
-    useradd --create-home --user-group testing
-    chown -R testing:testing $GOPATH/
-    su testing -c "go mod download"
-    su testing -c "go get ./..."
-  build_script: |
-    su testing -c "go build ./..."
-  test_script: |
-    su testing -c "go test ./..."
-
-# Run go tests under a FreeBSD VM.
-# Same as linux_task, we need to use a separate non-root user.
 freebsd_task:
   name: Go tests (FreeBSD)
   freebsd_instance:
