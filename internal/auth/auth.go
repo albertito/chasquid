@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/normalize"
+	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
 // Backend is the common interface for all authentication backends.
@@ -65,6 +66,9 @@ func (a *Authenticator) Register(domain string, be Backend) {
 
 // Authenticate the user@domain with the given password.
 func (a *Authenticator) Authenticate(user, domain, password string) (bool, error) {
+	tr := trace.New("Auth.Authenticate", user+"@"+domain)
+	defer tr.Finish()
+
 	// Make sure the call takes a.AuthDuration + 0-20% regardless of the
 	// outcome, to prevent basic timing attacks.
 	defer func(start time.Time) {
@@ -79,31 +83,42 @@ func (a *Authenticator) Authenticate(user, domain, password string) (bool, error
 
 	if be, ok := a.backends[domain]; ok {
 		ok, err := be.Authenticate(user, password)
+		tr.Debugf("Backend: %v %v", ok, err)
 		if ok || err != nil {
 			return ok, err
 		}
 	}
 
 	if a.Fallback != nil {
-		return a.Fallback.Authenticate(user+"@"+domain, password)
+		ok, err := a.Fallback.Authenticate(user+"@"+domain, password)
+		tr.Debugf("Fallback: %v %v", ok, err)
+		return ok, err
 	}
 
+	tr.Debugf("Rejected by default")
 	return false, nil
 }
 
 // Exists checks that user@domain exists.
 func (a *Authenticator) Exists(user, domain string) (bool, error) {
+	tr := trace.New("Auth.Exists", user+"@"+domain)
+	defer tr.Finish()
+
 	if be, ok := a.backends[domain]; ok {
 		ok, err := be.Exists(user)
+		tr.Debugf("Backend: %v %v", ok, err)
 		if ok || err != nil {
 			return ok, err
 		}
 	}
 
 	if a.Fallback != nil {
-		return a.Fallback.Exists(user + "@" + domain)
+		ok, err := a.Fallback.Exists(user + "@" + domain)
+		tr.Debugf("Fallback: %v %v", ok, err)
+		return ok, err
 	}
 
+	tr.Debugf("Rejected by default")
 	return false, nil
 }
 
@@ -112,16 +127,22 @@ func (a *Authenticator) Reload() error {
 	msgs := []string{}
 
 	for domain, be := range a.backends {
+		tr := trace.New("Auth.Reload", domain)
 		err := be.Reload()
 		if err != nil {
+			tr.Error(err)
 			msgs = append(msgs, fmt.Sprintf("%q: %v", domain, err))
 		}
+		tr.Finish()
 	}
 	if a.Fallback != nil {
+		tr := trace.New("Auth.Reload", "<fallback>")
 		err := a.Fallback.Reload()
 		if err != nil {
+			tr.Error(err)
 			msgs = append(msgs, fmt.Sprintf("<fallback>: %v", err))
 		}
+		tr.Finish()
 	}
 
 	if len(msgs) > 0 {

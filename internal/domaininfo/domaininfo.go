@@ -20,8 +20,6 @@ type DB struct {
 
 	info map[string]*Domain
 	sync.Mutex
-
-	ev *trace.EventLog
 }
 
 // New opens a domain information database on the given dir, creating it if
@@ -36,7 +34,6 @@ func New(dir string) (*DB, error) {
 		store: st,
 		info:  map[string]*Domain{},
 	}
-	l.ev = trace.NewEventLog("DomainInfo", dir)
 
 	err = l.Reload()
 	if err != nil {
@@ -48,6 +45,9 @@ func New(dir string) (*DB, error) {
 
 // Reload the database from disk.
 func (db *DB) Reload() error {
+	tr := trace.New("DomainInfo.Reload", "reload")
+	defer tr.Finish()
+
 	db.Lock()
 	defer db.Unlock()
 
@@ -56,6 +56,7 @@ func (db *DB) Reload() error {
 
 	ids, err := db.store.ListIDs()
 	if err != nil {
+		tr.Error(err)
 		return err
 	}
 
@@ -63,28 +64,36 @@ func (db *DB) Reload() error {
 		d := &Domain{}
 		_, err := db.store.Get(id, d)
 		if err != nil {
+			tr.Errorf("id %q: %v", id, err)
 			return fmt.Errorf("error loading %q: %v", id, err)
 		}
 
 		db.info[d.Name] = d
 	}
 
-	db.ev.Debugf("loaded %d domains", len(ids))
+	tr.Debugf("loaded %d domains", len(ids))
 	return nil
 }
 
 func (db *DB) write(d *Domain) {
+	tr := trace.New("DomainInfo.write", d.Name)
+	defer tr.Finish()
+
 	err := db.store.Put(d.Name, d)
 	if err != nil {
-		db.ev.Errorf("%s error saving: %v", d.Name, err)
+		tr.Error(err)
 	} else {
-		db.ev.Debugf("%s saved", d.Name)
+		tr.Debugf("saved")
 	}
 }
 
 // IncomingSecLevel checks an incoming security level for the domain.
 // Returns true if allowed, false otherwise.
 func (db *DB) IncomingSecLevel(domain string, level SecLevel) bool {
+	tr := trace.New("DomainInfo.Incoming", domain)
+	defer tr.Finish()
+	tr.Debugf("incoming at level %s", level)
+
 	db.Lock()
 	defer db.Unlock()
 
@@ -96,15 +105,15 @@ func (db *DB) IncomingSecLevel(domain string, level SecLevel) bool {
 	}
 
 	if level < d.IncomingSecLevel {
-		db.ev.Errorf("%s incoming denied: %s < %s",
+		tr.Errorf("%s incoming denied: %s < %s",
 			d.Name, level, d.IncomingSecLevel)
 		return false
 	} else if level == d.IncomingSecLevel {
-		db.ev.Debugf("%s incoming allowed: %s == %s",
+		tr.Debugf("%s incoming allowed: %s == %s",
 			d.Name, level, d.IncomingSecLevel)
 		return true
 	} else {
-		db.ev.Printf("%s incoming level raised: %s > %s",
+		tr.Printf("%s incoming level raised: %s > %s",
 			d.Name, level, d.IncomingSecLevel)
 		d.IncomingSecLevel = level
 		if exists {
@@ -117,6 +126,10 @@ func (db *DB) IncomingSecLevel(domain string, level SecLevel) bool {
 // OutgoingSecLevel checks an incoming security level for the domain.
 // Returns true if allowed, false otherwise.
 func (db *DB) OutgoingSecLevel(domain string, level SecLevel) bool {
+	tr := trace.New("DomainInfo.Outgoing", domain)
+	defer tr.Finish()
+	tr.Debugf("outgoing at level %s", level)
+
 	db.Lock()
 	defer db.Unlock()
 
@@ -128,15 +141,15 @@ func (db *DB) OutgoingSecLevel(domain string, level SecLevel) bool {
 	}
 
 	if level < d.OutgoingSecLevel {
-		db.ev.Errorf("%s outgoing denied: %s < %s",
+		tr.Errorf("%s outgoing denied: %s < %s",
 			d.Name, level, d.OutgoingSecLevel)
 		return false
 	} else if level == d.OutgoingSecLevel {
-		db.ev.Debugf("%s outgoing allowed: %s == %s",
+		tr.Debugf("%s outgoing allowed: %s == %s",
 			d.Name, level, d.OutgoingSecLevel)
 		return true
 	} else {
-		db.ev.Printf("%s outgoing level raised: %s > %s",
+		tr.Printf("%s outgoing level raised: %s > %s",
 			d.Name, level, d.OutgoingSecLevel)
 		d.OutgoingSecLevel = level
 		if exists {
