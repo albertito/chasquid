@@ -65,12 +65,15 @@ You will find [all documentation here](https://blitiri.com.ar/p/chasquid/).
 
 ## Contact
 
-If you have any questions, comments or patches please send them to the [mailing
+If you have any questions, comments or patches, please send them to the [mailing
 list](https://groups.google.com/forum/#!forum/chasquid),
-chasquid@googlegroups.com.
-
+chasquid@googlegroups.com.  
 To subscribe, send an email to chasquid+subscribe@googlegroups.com.
 
-You can also reach out via IRC, `#chasquid` on [OFTC](https://oftc.net/).
+Security issues can be reported privately to albertito@blitiri.com.ar.
 
+Bug reports and pull requests on
+[GitHub](https://github.com/albertito/chasquid) are also welcome.
+
+You can also reach out via IRC, `#chasquid` on [OFTC](https://oftc.net/).
 
