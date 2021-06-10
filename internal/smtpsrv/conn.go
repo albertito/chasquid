@@ -51,6 +51,8 @@ var (
 		"result", "incoming security level check results")
 	hookResults = expvarom.NewMap("chasquid/smtpIn/hookResults",
 		"result", "count of hook invocations, by result")
+	wrongProtoCount = expvarom.NewMap("chasquid/smtpIn/wrongProtoCount",
+		"command", "count of commands for other protocols")
 )
 
 var (
@@ -271,6 +273,14 @@ loop:
 			code, msg = c.AUTH(params)
 		case "QUIT":
 			_ = c.writeResponse(221, "2.0.0 Be seeing you...")
+			break loop
+		case "GET", "POST", "CONNECT":
+			// HTTP protocol detection, to prevent cross-protocol attacks
+			// (e.g. https://alpaca-attack.com/).
+			wrongProtoCount.Add(cmd, 1)
+			c.tr.Errorf("http command, closing connection")
+			_ = c.writeResponse(502,
+				"5.7.0 You hear someone cursing shoplifters")
 			break loop
 		default:
 			// Sanitize it a bit to avoid filling the logs and events with

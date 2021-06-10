@@ -1,0 +1,15 @@
+
+c tcp_connect localhost:1025
+c <~ 220
+c -> GET /evil HTTP/1.1
+c <- 502 5.7.0 You hear someone cursing shoplifters
+
+c tcp_connect localhost:1025
+c <~ 220
+c -> POST /evil HTTP/1.1
+c <- 502 5.7.0 You hear someone cursing shoplifters
+
+c tcp_connect localhost:1025
+c <~ 220
+c -> CONNECT www.evil.com:80 HTTP/1.1
+c <- 502 5.7.0 You hear someone cursing shoplifters

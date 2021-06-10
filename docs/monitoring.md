@@ -66,6 +66,8 @@ List of exported variables:
   count of SPF checks, by result.
 - **chasquid/smtpIn/tlsCount** (tls status -> counter)  
   count of TLS statuses (plain/tls) for incoming SMTP connections.
+- **chasquid/smtpIn/wrongProtoCount** (command -> counter)  
+  count of commands for other protocols (e.g. HTTP commands).
 - **chasquid/smtpOut/securityLevelChecks** (result -> counter)  
   count of security level checks on outgoing connections, by result.
 - **chasquid/smtpOut/sts/mode** (mode -> counter)  
