@@ -214,25 +214,25 @@ func TestBrokenAuth(t *testing.T) {
 }
 
 func TestWrongMailParsing(t *testing.T) {
-	c := mustDial(t, ModeSMTP, false)
-	defer c.Close()
-
 	addrs := []string{"from", "a b c", "a @ b", "<x>", "<x y>", "><"}
-
 	for _, addr := range addrs {
+		c := mustDial(t, ModeSMTP, false)
+
 		if err := c.Mail(addr); err == nil {
 			t.Errorf("Mail not failed as expected with %q", addr)
 		}
-	}
 
-	if err := c.Mail("from@plain"); err != nil {
-		t.Errorf("Mail: %v", err)
-	}
-
-	for _, addr := range addrs {
-		if err := c.Rcpt(addr); err == nil {
-			t.Errorf("Rcpt not failed as expected with %q", addr)
+		if err := c.Mail("from@plain"); err != nil {
+			t.Errorf("Mail: %v", err)
 		}
+
+		for _, addr := range addrs {
+			if err := c.Rcpt(addr); err == nil {
+				t.Errorf("Rcpt not failed as expected with %q", addr)
+			}
+		}
+
+		c.Close()
 	}
 }
 

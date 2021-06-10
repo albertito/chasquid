@@ -11,6 +11,13 @@ c <~ 250
 c -> DATA
 c <- 503 5.5.1 Sender not yet given
 
+# Reconnect to avoid getting rejected due to too many errors.
+c close
+c tcp_connect localhost:1025
+c <~ 220
+c -> HELO localhost
+c <~ 250
+
 c -> MAIL FROM:<a@b>
 c <~ 250
 c -> RCPT TO: user@testserver

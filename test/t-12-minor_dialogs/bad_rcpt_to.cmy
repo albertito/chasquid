@@ -13,11 +13,29 @@ c <- 500 5.5.2 Unknown command
 c -> RCPT TO:
 c <~ 500
 
+# Reconnect to avoid getting rejected due to too many errors.
+c close
+c tcp_connect localhost:1025
+c <~ 220
+c -> HELO localhost
+c <~ 250
+c -> MAIL FROM:<test@testy.com>
+c <~ 250
+
 c -> RCPT TO:<pepe>
 c <~ 501
 
 c -> RCPT TO:<a@xn--->
 c <- 501 5.1.2 Malformed destination domain (IDNA conversion failed)
+
+# Reconnect to avoid getting rejected due to too many errors.
+c close
+c tcp_connect localhost:1025
+c <~ 220
+c -> HELO localhost
+c <~ 250
+c -> MAIL FROM:<test@testy.com>
+c <~ 250
 
 c -> RCPT TO:<henryⅣ@testserver>
 c <- 550 5.1.3 Destination address is invalid

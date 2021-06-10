@@ -10,11 +10,25 @@ c <- 500 5.5.2 Unknown command
 c -> MAIL FROM:
 c <~ 500
 
+# Reconnect to avoid getting rejected due to too many errors.
+c close
+c tcp_connect localhost:1025
+c <~ 220
+c -> HELO localhost
+c <~ 250
+
 c -> MAIL FROM:<pepe>
 c <~ 501
 
 c -> MAIL FROM:<a@xn--->
 c <- 501 5.1.8 Malformed sender domain (IDNA conversion failed)
+
+# Reconnect to avoid getting rejected due to too many errors.
+c close
+c tcp_connect localhost:1025
+c <~ 220
+c -> HELO localhost
+c <~ 250
 
 c -> MAIL FROM:<aaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaX@bbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbX>
 c <- 501 5.1.7 Sender address too long

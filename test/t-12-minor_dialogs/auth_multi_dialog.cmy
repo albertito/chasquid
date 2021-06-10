@@ -13,6 +13,13 @@ c <~ 334
 c -> dXNlckB0ZXN0c2VydmVyAHlalala==
 c <~ 501 5.5.2 Error decoding AUTH response
 
+# Reconnect to avoid getting rejected due to too many errors.
+c close
+c tls_connect localhost:1465
+c <~ 220
+c -> EHLO localhost
+c <... 250 HELP
+
 c -> AUTH PLAIN
 c <~ 334
 c -> dXNlckB0ZXN0c2VydmVyAHVzZXJAdGVzdHNlcnZlcgB3cm9uZ3Bhc3N3b3Jk

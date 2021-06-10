@@ -145,9 +145,6 @@ type Conn struct {
 	// Have we successfully completed AUTH?
 	completedAuth bool
 
-	// How many times have we attempted AUTH?
-	authAttempts int
-
 	// Authenticated user and domain, empty if !completedAuth.
 	authUser   string
 	authDomain string
@@ -291,8 +288,10 @@ loop:
 				// Be verbose about errors, to help troubleshooting.
 				c.tr.Errorf("%s failed: %d  %s", cmd, code, msg)
 
+				// Close the connection after 3 errors.
+				// This helps prevent cross-protocol attacks.
 				errCount++
-				if errCount > 10 {
+				if errCount >= 3 {
 					// https://tools.ietf.org/html/rfc5321#section-4.3.2
 					c.tr.Errorf("too many errors, breaking connection")
 					_ = c.writeResponse(421, "4.5.0 Too many errors, bye")
@@ -1015,11 +1014,6 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 		// https://tools.ietf.org/html/rfc4954#section-4
 		return 503, "5.5.1 You are already wearing that!"
 	}
-
-	if c.authAttempts > 3 {
-		return 503, "5.7.8 Too many attempts, go away"
-	}
-	c.authAttempts++
 
 	// We only support PLAIN for now, so no need to make this too complicated.
 	// Params should be either "PLAIN" or "PLAIN <response>".
