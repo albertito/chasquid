@@ -278,7 +278,7 @@ loop:
 		default:
 			// Sanitize it a bit to avoid filling the logs and events with
 			// noisy data. Keep the first 6 bytes for debugging.
-			cmd = fmt.Sprintf("unknown<%.6s>", cmd)
+			cmd = fmt.Sprintf("unknown<%.6q>", cmd)
 			code = 500
 			msg = "5.5.1 Unknown command"
 		}
