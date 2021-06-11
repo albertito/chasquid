@@ -3,12 +3,22 @@ package trace
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"blitiri.com.ar/go/log"
 
 	nettrace "golang.org/x/net/trace"
 )
+
+func init() {
+	// golang.org/x/net/trace has its own authorization which by default only
+	// allows localhost. This can be confusing and limiting in environments
+	// which access the monitoring server remotely.
+	nettrace.AuthRequest = func(req *http.Request) (any, sensitive bool) {
+		return true, true
+	}
+}
 
 // A Trace represents an active request.
 type Trace struct {
