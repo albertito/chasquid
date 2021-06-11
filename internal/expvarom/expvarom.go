@@ -53,11 +53,8 @@ var (
 // MetricsHandler implements an http.HandlerFunc which serves the registered
 // metrics, using the OpenMetrics text-based format.
 func MetricsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-
-	// Update to this once it's standard and Prometheus and other ingesters
-	// can handle this.
-	//w.Header().Set("Content-Type", "application/openmetrics-text; version=1.0.0; charset=utf-8")
+	w.Header().Set("Content-Type",
+		"application/openmetrics-text; version=1.0.0; charset=utf-8")
 
 	vars := []exportedVar{}
 	ignored := []string{}
