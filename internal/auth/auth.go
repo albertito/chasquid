@@ -42,7 +42,7 @@ type Authenticator struct {
 	// Fallback backend, to use when backends[domain] (which may not exist)
 	// did not yield a positive result.
 	// Note that this backend gets the user with the domain included, of the
-	// form "user@domain".
+	// form "user@domain" (if available).
 	Fallback Backend
 
 	// How long Authenticate calls should last, approximately.
@@ -90,7 +90,11 @@ func (a *Authenticator) Authenticate(user, domain, password string) (bool, error
 	}
 
 	if a.Fallback != nil {
-		ok, err := a.Fallback.Authenticate(user+"@"+domain, password)
+		id := user
+		if domain != "" {
+			id = user + "@" + domain
+		}
+		ok, err := a.Fallback.Authenticate(id, password)
 		tr.Debugf("Fallback: %v %v", ok, err)
 		return ok, err
 	}
@@ -113,7 +117,11 @@ func (a *Authenticator) Exists(user, domain string) (bool, error) {
 	}
 
 	if a.Fallback != nil {
-		ok, err := a.Fallback.Exists(user + "@" + domain)
+		id := user
+		if domain != "" {
+			id = user + "@" + domain
+		}
+		ok, err := a.Fallback.Exists(id)
 		tr.Debugf("Fallback: %v %v", ok, err)
 		return ok, err
 	}
@@ -158,9 +166,11 @@ func (a *Authenticator) Reload() error {
 //
 // https://tools.ietf.org/html/rfc4954#section-4.1.
 //
-// Either both ID match, or one of them is empty.
-// We expect the ID to be "user@domain", which is NOT an RFC requirement but
-// our own.
+// Either both IDs match, or one of them is empty.
+//
+// We split the id into user@domain, since in most cases we expect that to be
+// the used form, and normalize them. If there is no domain, we just return
+// "" for it. The rest of the stack will know how to handle it.
 func DecodeResponse(response string) (user, domain, passwd string, err error) {
 	buf, err := base64.StdEncoding.DecodeString(response)
 	if err != nil {
@@ -201,16 +211,13 @@ func DecodeResponse(response string) (user, domain, passwd string, err error) {
 		return
 	}
 
-	// Identity must be in the form "user@domain".
-	// This is NOT an RFC requirement, it's our own.
+	// Split identity into "user@domain", if possible.
+	user = identity
 	idsp := strings.SplitN(identity, "@", 2)
-	if len(idsp) != 2 {
-		err = fmt.Errorf("identity must be in the form user@domain")
-		return
+	if len(idsp) >= 2 {
+		user = idsp[0]
+		domain = idsp[1]
 	}
-
-	user = idsp[0]
-	domain = idsp[1]
 
 	// Normalize the user and domain. This is so users can write the username
 	// in their own style and still can log in.  For the domain, we use IDNA

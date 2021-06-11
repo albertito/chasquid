@@ -51,10 +51,21 @@ mkdir -p .logs
 chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025
 
-# Send an email as user@srv successfully.
+# Send an email as "user@srv" successfully.
 run_msmtp user@srv < content
 wait_for_file .mail/user@srv
 mail_diff content .mail/user@srv
+
+# Send an email as "naked" successfully.
+rm .mail/user@srv
+run_msmtp -a naked user@srv < content
+wait_for_file .mail/user@srv
+mail_diff content .mail/user@srv
+
+# Send an email to the "naked" user successfully.
+run_msmtp naked@srv < content
+wait_for_file .mail/naked@srv
+mail_diff content .mail/naked@srv
 
 # Fail to send to nobody@srv (user does not exist).
 if run_msmtp nobody@srv < content 2> /dev/null; then

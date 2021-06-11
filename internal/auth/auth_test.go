@@ -19,6 +19,7 @@ func TestDecodeResponse(t *testing.T) {
 		{"dUBkAABwYXNz", "u", "d", "pass"},         // u@d\0\0pass
 		{"AHVAZABwYXNz", "u", "d", "pass"},         // \0u@d\0pass
 		{"dUBkAABwYXNz/w==", "u", "d", "pass\xff"}, // u@d\0\0pass\xff
+		{"dQB1AHBhc3M=", "u", "", "pass"},          // u\0u\0pass
 
 		// "ñaca@ñeque\0\0clavaré"
 		{"w7FhY2FAw7FlcXVlAABjbGF2YXLDqQ==", "ñaca", "ñeque", "clavaré"},
@@ -42,7 +43,7 @@ func TestDecodeResponse(t *testing.T) {
 
 	failedCases := []string{
 		"", "\x00", "\x00\x00", "\x00\x00\x00", "\x00\x00\x00\x00",
-		"a\x00b", "a\x00b\x00c", "a@a\x00b@b\x00pass", "a\x00a\x00pass",
+		"a\x00b", "a\x00b\x00c", "a@a\x00b@b\x00pass",
 		"\xffa@b\x00\xffa@b\x00pass",
 	}
 	for _, c := range failedCases {
