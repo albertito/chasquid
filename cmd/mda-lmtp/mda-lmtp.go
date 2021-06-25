@@ -14,6 +14,8 @@ import (
 	"net/textproto"
 	"os"
 	"strings"
+
+	"golang.org/x/net/idna"
 )
 
 // Command-line flags
@@ -24,6 +26,9 @@ var (
 	addrNetwork = flag.String("addr_network", "",
 		"Network of the LMTP address (e.g. unix or tcp)")
 	addr = flag.String("addr", "", "LMTP server address")
+
+	toPuny = flag.Bool("to_puny", false,
+		"Encode addresses using punycode")
 )
 
 func usage() {
@@ -51,13 +56,29 @@ func tempExit(format string, args ...interface{}) {
 	os.Exit(75)
 }
 
+func permExit(format string, args ...interface{}) {
+	fmt.Printf(format+"\n", args...)
+	os.Exit(2)
+}
+
 func main() {
+	var err error
 	flag.Usage = usage
 	flag.Parse()
 
 	if *addr == "" {
-		fmt.Printf("No LMTP server address given (use --addr)\n")
-		os.Exit(2)
+		permExit("No LMTP server address given (use --addr)")
+	}
+
+	if *toPuny {
+		*fromwhom, err = idna.ToASCII(*fromwhom)
+		if err != nil {
+			permExit("cannot puny-encode from: %v", err)
+		}
+		*recipient, err = idna.ToASCII(*recipient)
+		if err != nil {
+			permExit("cannot puny-encode recipient: %v", err)
+		}
 	}
 
 	// Try to autodetect the network if it's missing.

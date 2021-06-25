@@ -1,0 +1,9 @@
+mda = ./mda-lmtp --addr=.test-sock --addr_network=unix \
+        -to_puny -f fröm -d xn--t < test-email
+mda <- cannot puny-encode recipient: idna: invalid label "t"
+mda wait 2
+
+mda = ./mda-lmtp --addr=.test-sock --addr_network=unix \
+        -to_puny -f xn--f -d to < test-email
+mda <- cannot puny-encode from: idna: invalid label "f"
+mda wait 2
