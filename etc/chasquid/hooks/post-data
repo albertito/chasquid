@@ -5,7 +5,7 @@
 #
 #  - greylist (from greylistd) to do greylisting.
 #  - spamc (from Spamassassin) to filter spam.
-#  - rspamc (from rspamd) to filter spam.
+#  - rspamc (from rspamd) or chasquid-rspamd to filter spam.
 #  - clamdscan (from ClamAV) to filter virus.
 #  - dkimsign (from driusan/dkim) to do DKIM signing.
 #
@@ -47,7 +47,13 @@ if command -v spamc >/dev/null; then
 fi
 
 
-if command -v rspamc >/dev/null; then
+# Spam filter through rspamd.
+#
+# Use chasquid-rspamd (from https://github.com/Thor77/chasquid-rspamd) if
+# available, otherwise fall back to rspamc.
+if command -v chasquid-rspamd >/dev/null; then
+	chasquid-rspamd < "$TF" 2>/dev/null
+elif command -v rspamc >/dev/null; then
 	# Note the actions emitted by rspamc come from the thresholds
 	# configured in /etc/rspamd/actions.conf.
 	# The ones handled here are common defaults, but they might require
