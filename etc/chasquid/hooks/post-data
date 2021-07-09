@@ -7,7 +7,7 @@
 #  - spamc (from Spamassassin) to filter spam.
 #  - rspamc (from rspamd) or chasquid-rspamd to filter spam.
 #  - clamdscan (from ClamAV) to filter virus.
-#  - dkimsign (from driusan/dkim) to do DKIM signing.
+#  - dkimsign (from driusan/dkim or dkimpy) to do DKIM signing.
 #
 # If it exits with code 20, it will be considered a permanent error.
 # Otherwise, temporary.
@@ -79,7 +79,7 @@ if command -v clamdscan >/dev/null; then
         echo "X-Virus-Scanned: pass"
 fi
 
-# DKIM sign with https://github.com/driusan/dkim.
+# DKIM sign with either driusan/dkim or dkimpy.
 #
 # Do it only if all the following are true:
 #  - User has authenticated.
@@ -90,12 +90,34 @@ fi
 # Note this has not been thoroughly tested, so might need further adjustments.
 if [ "$AUTH_AS" != "" ] && command -v dkimsign >/dev/null; then
 	DOMAIN=$( echo "$MAIL_FROM" | cut -d '@' -f 2 )
+
 	if [ -f "domains/$DOMAIN/dkim_selector" ] \
-			&& [ -f "certs/$DOMAIN/dkim_privkey.pem" ]; then
-		dkimsign -n -hd \
-			-key "certs/$DOMAIN/dkim_privkey.pem" \
-			-s "$(cat "domains/$DOMAIN/dkim_selector")" \
-			-d "$DOMAIN" \
-			< "$TF"
+		&& [ -f "certs/$DOMAIN/dkim_privkey.pem" ];
+	then
+		# driusan/dkim and dkimpy both provide the same binary (dkimsign) but
+		# take different arguments, so we need to tell them apart.
+		# This is awful but it should work reasonably well.
+		if dkimsign --help 2>&1 | grep -q -- --identity; then
+			# dkimpy
+			dkimsign \
+				"$(cat "domains/$DOMAIN/dkim_selector")" \
+				"$DOMAIN" \
+				"certs/$DOMAIN/dkim_privkey.pem" \
+				< "$TF" > "$TF.dkimout"
+			# dkimpy doesn't provide a way to just show the new
+			# headers, so we have to compute the difference.
+			# ALSOCHANGE(test/t-19-dkimpy/config/hooks/post-data)
+			! diff --changed-group-format='%>' \
+				--unchanged-group-format='' \
+				"$TF" "$TF.dkimout"
+			rm "$TF.dkimout"
+		else
+			# driusan/dkim
+			dkimsign -n -hd \
+				-key "certs/$DOMAIN/dkim_privkey.pem" \
+				-s "$(cat "domains/$DOMAIN/dkim_selector")" \
+				-d "$DOMAIN" \
+				< "$TF"
+		fi
 	fi
 fi

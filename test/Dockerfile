@@ -26,7 +26,8 @@ RUN apt-get install -y -q python3 msmtp
 RUN apt-get install -y -q \
 	gettext-base dovecot-imapd \
 	exim4-daemon-light \
-	haproxy
+	haproxy \
+	python3-dkim
 
 # Install sudo, needed for the docker entrypoint.
 RUN apt-get install -y -q sudo

@@ -8,8 +8,8 @@ mechanism.
 ## Signing
 
 The example hook in this repository contains an example of integration with
-[driusan/dkim](https://github.com/driusan/dkim) tools, and assumes the
-following:
+[driusan/dkim](https://github.com/driusan/dkim) and
+[dkimpy](https://launchpad.net/dkimpy/), and assumes the following:
 
 - The [selector](https://tools.ietf.org/html/rfc6376#section-3.1) for a domain
   can be found in the file `domains/$DOMAIN/dkim_selector`.
