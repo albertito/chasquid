@@ -26,6 +26,7 @@ set -e
 . $(dirname ${0})/../util/lib.sh
 
 init
+check_hostaliases
 
 if ! .exim4/exim4 --version > /dev/null; then
 	skip "exim4 binary at .exim4/exim4 is not functional"

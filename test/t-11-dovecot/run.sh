@@ -10,6 +10,7 @@ set -e
 . $(dirname ${0})/../util/lib.sh
 
 init
+check_hostaliases
 
 if ! dovecot --version > /dev/null; then
 	skip "dovecot not installed"

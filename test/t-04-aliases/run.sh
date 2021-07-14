@@ -4,6 +4,7 @@ set -e
 . $(dirname ${0})/../util/lib.sh
 
 init
+check_hostaliases
 
 generate_certs_for testserver
 add_user user@testserver secretpassword

@@ -8,6 +8,7 @@ set -e
 . $(dirname ${0})/../util/lib.sh
 
 init
+check_hostaliases
 
 # Build with the DNS override, so we can fake DNS records.
 export GOTAGS="dnsoverride"

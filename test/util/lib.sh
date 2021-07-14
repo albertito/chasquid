@@ -146,6 +146,12 @@ function fail() {
 	exit 1
 }
 
+function check_hostaliases() {
+	if ! "${UTILDIR}/check-hostaliases"; then
+		skip '$HOSTALIASES not working (probably systemd-resolved)'
+	fi
+}
+
 # Wait until there's something listening on the given port.
 function wait_until_ready() {
 	PORT=$1

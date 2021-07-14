@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+
+import argparse
+import tempfile
+import os
+import socket
+import subprocess
+import sys
+
+parser = argparse.ArgumentParser(
+    description="Check that $HOSTALIASES is working"
+)
+parser.add_argument(
+    "--child",
+    action="store_true",
+    help="run in child mode, for internal use only",
+)
+parser.add_argument(
+    "-v",
+    action="store_true",
+    help="verbose mode",
+)
+args = parser.parse_args()
+
+
+def dprint(*a):
+    if args.v:
+        print(*a)
+
+
+if args.child:
+    dprint("child mode, getting hosts")
+    lo = socket.gethostbyname("localhost")
+    ts = socket.gethostbyname("testserver")
+    dprint(ts, lo, ts == lo)
+    if ts != lo:
+        sys.exit(1)
+else:
+    dprint("## parent mode")
+    # Create the hostaliases file.
+    fd = tempfile.NamedTemporaryFile(mode="w+")
+    fd.write("testserver localhost\n")
+    fd.flush()
+
+    # Re-execute ourselves with --child, to do the check.
+    env = dict(os.environ)
+    env["HOSTALIASES"] = fd.name
+    cargs = [sys.argv[0], "--child"]
+    if args.v:
+        cargs.append("-v")
+    cmd = subprocess.run(
+        cargs,
+        env=env,
+        text=True,
+        encoding="ascii",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    dprint("## child output:")
+    dprint(cmd.stdout)
+    dprint("## child returned", cmd.returncode)
+    sys.exit(cmd.returncode)

@@ -46,6 +46,12 @@ if the dependencies are not found:
 For some tests, python >= 3.5 is required; they will be skipped if it's not
 available.
 
+Most tests depend on the
+[`$HOSTALIASES`](https://man7.org/linux/man-pages/man7/hostname.7.html)
+environment variable being functional, and will be skipped if it isn't. This
+works by default in most Linux systems, but note that the use of
+`systemd-resolved` can prevent it from working properly.
+
 
 ## Stress tests
 
@@ -54,6 +60,7 @@ load against chasquid to measure performance and resource consumption.
 
 While they are not exhaustive, they are useful to catch regressions and track
 improvements on the main code paths.
+
 
 ## Fuzz tests
 

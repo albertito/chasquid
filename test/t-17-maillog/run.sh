@@ -4,6 +4,7 @@ set -e
 . $(dirname ${0})/../util/lib.sh
 
 init
+check_hostaliases
 
 mkdir -p .logs
 
