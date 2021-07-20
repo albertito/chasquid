@@ -8,7 +8,7 @@ mechanism.
 ## Signing
 
 The example hook in this repository contains an example of integration with
-[driusan/dkim](https://github.com/driusan/dkim) tools, and assumes the
+[dkimpy](https://launchpad.net/dkimpy/) tools, and assumes the
 following:
 
 - The [selector](https://tools.ietf.org/html/rfc6376#section-3.1) for a domain
@@ -18,6 +18,23 @@ following:
 
 Only authenticated email will be signed.
 
+```
+# for Ubuntu 20.04
+apt install dkimpy-milter opendkim-tools
+cd $(mktemp -d)
+DKIM_DOMAINS='example.com example.org'
+DKIM_SELECTOR="$(date +%y%b%d)"
+for i in ${DKIM_DOMAINS}; do
+	mkdir $i /etc/chasquid/certs/$i /etc/chasquid/domains/$i
+	opendkim-genkey -rSd $i -s $DKIM_SELECTOR -d $i
+	mv $i/${DKIM_SELECTOR}.private /etc/chasquid/certs/$i/dkim_privkey.pem
+	setfacl -m u:chasquid:r /etc/chasquid/certs/$i/dkim_privkey.pem
+	mv $i/${DKIM_SELECTOR}.txt /etc/chasquid/domains/$i/dkim_dns_record
+	echo ${DKIM_SELECTOR} > /etc/chasquid/domains/$i/dkim_selector
+done
+# add DKIM record to DNS
+cat /etc/chasquid/domains/*/dkim_dns_record
+```
 
 ## Verification
 
