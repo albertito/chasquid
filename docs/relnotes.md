@@ -5,6 +5,19 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.8 (2021-07-30)
+
+- Stricter error checking to help prevent cross-protocol attacks
+  (like [ALPACA](https://alpaca-attack.com/)).
+- Allow authenticating users without an `@domain` part.
+- Add integration for
+  [chasquid-rspamd](https://github.com/Thor77/chasquid-rspamd) and
+  [dkimpy](https://launchpad.net/dkimpy/) in the example hook.
+- Add a `-to_puny` option to mda-lmtp, to punycode-encode addresses.
+- Use `application/openmetrics-text` as content type in the openmetrics
+  exporter.
+
+
 ## 1.7 (2021-05-31)
 
 - chasquid-util no longer depends on the unmaintained docopt-go.
