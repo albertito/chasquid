@@ -76,8 +76,13 @@ gitlab:
   script:
     - docker info
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_BUILD_REF_NAME -f docker/Dockerfile .
-    - docker push $CI_REGISTRY_IMAGE:$CI_BUILD_REF_NAME
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME -f docker/Dockerfile .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+    - |
+      if [ $CI_COMMIT_REF_NAME == master ]; then
+          docker tag $CI_REGISTRY_IMAGE:master $CI_REGISTRY_IMAGE:latest
+          docker push $CI_REGISTRY_IMAGE:latest
+      fi
 
 # Build docker image, upload to dockerhub registry.
 dockerhub:
@@ -90,5 +95,10 @@ dockerhub:
   script:
     - docker info
     - docker login -u $DOCKER_REGISTRY_USER -p $DOCKER_REGISTRY_PASSWORD docker.io
-    - docker build -t index.docker.io/albertito/chasquid:$CI_BUILD_REF_NAME -f docker/Dockerfile .
-    - docker push index.docker.io/albertito/chasquid:$CI_BUILD_REF_NAME
+    - docker build -t index.docker.io/albertito/chasquid:$CI_COMMIT_REF_NAME -f docker/Dockerfile .
+    - docker push index.docker.io/albertito/chasquid:$CI_COMMIT_REF_NAME
+    - |
+      if [ $CI_COMMIT_REF_NAME == master ]; then
+          docker tag index.docker.io/albertito/chasquid:master index.docker.io/albertito/chasquid:latest
+          docker push index.docker.io/albertito/chasquid:latest
+      fi
