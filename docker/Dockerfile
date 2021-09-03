@@ -28,7 +28,7 @@ RUN apt-get install -y -q \
 	chasquid \
 	dovecot-lmtpd dovecot-imapd dovecot-pop3d \
 	dovecot-sieve dovecot-managesieved \
-	acl sudo certbot
+	acl libcap2-bin sudo certbot
 
 # Copy the binaries. This overrides the debian packages with the ones we just
 # built above.
