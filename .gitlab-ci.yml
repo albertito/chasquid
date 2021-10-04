@@ -16,11 +16,9 @@ stages:
     - su testing -c "go test ./..."
     - su testing -c "go test -race ./..."
 
-golang_1.11:
+golang_1.15:
   <<: *golang
-  image: golang:1.11    # Version in Debian stable.
-  variables:
-    GO111MODULE: "on"
+  image: golang:1.15    # Version in Debian stable.
 
 golang_latest:
   <<: *golang
