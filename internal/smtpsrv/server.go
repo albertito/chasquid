@@ -203,12 +203,6 @@ func (s *Server) ListenAndServe() {
 		log.Fatalf("At least one valid certificate is needed")
 	}
 
-	// At this point the TLS config should be done, build the
-	// name->certificate map (used by the TLS library for SNI).
-	// TODO: Once we support only Go >= 1.14, we can drop this, as it is no
-	// longer necessary.
-	s.tlsConfig.BuildNameToCertificate()
-
 	go s.periodicallyReload()
 
 	for m, addrs := range s.addrs {
