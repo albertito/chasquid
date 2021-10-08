@@ -249,22 +249,19 @@ func lookupMXs(tr *trace.Trace, domain string) ([]string, error, bool) {
 	if err != nil {
 		// There was an error. It could be that the domain has no MX, in which
 		// case we have to fall back to A, or a bigger problem.
-		// Unfortunately, go's API doesn't let us easily distinguish between
-		// them. For now, if the error is permanent, we assume it's because
-		// there was no MX and fall back, otherwise we return.
-		// TODO: Use dnsErr.IsNotFound once we can use Go >= 1.13.
 		dnsErr, ok := err.(*net.DNSError)
 		if !ok {
-			tr.Debugf("MX lookup error: %v", err)
-			return nil, err, true
-		} else if dnsErr.Temporary() {
-			tr.Debugf("temporary DNS error: %v", dnsErr)
+			tr.Debugf("Error resolving MX on %q: %v", domain, err)
 			return nil, err, false
+		} else if dnsErr.IsNotFound {
+			// MX not found, fall back to A.
+			tr.Debugf("MX for %s not found, falling back to A", domain)
+			mxs = []string{domain}
+		} else {
+			tr.Debugf("MX lookup error on %q: %v", domain, dnsErr)
+			return nil, err, !dnsErr.Temporary()
 		}
 
-		// Permanent error, we assume MX does not exist and fall back to A.
-		tr.Debugf("failed to resolve MX for %s, falling back to A", domain)
-		mxs = []string{domain}
 	} else {
 		// Convert the DNS records to a plain string slice. They're already
 		// sorted by priority.

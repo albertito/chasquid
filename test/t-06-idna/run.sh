@@ -10,6 +10,12 @@ rm -rf .data-A .data-B .mail
 
 skip_if_python_is_too_old
 
+# Build with the DNS override, so we can fake DNS records.
+export GOTAGS="dnsoverride"
+
+# Launch minidns in the background using our configuration.
+minidns_bg --addr=":9053" -zones=zones >> .minidns.log 2>&1
+
 # Two servers:
 # A - listens on :1025, hosts srv-ñ
 # B - listens on :2015, hosts srv-ü
@@ -25,12 +31,15 @@ CONFDIR=B add_user nadaB@nadaB nadaB
 mkdir -p .logs-A .logs-B
 
 chasquid -v=2 --logfile=.logs-A/chasquid.log --config_dir=A \
+	--testing__dns_addr=127.0.0.1:9053 \
 	--testing__outgoing_smtp_port=2025 &
 chasquid -v=2 --logfile=.logs-B/chasquid.log --config_dir=B \
+	--testing__dns_addr=127.0.0.1:9053 \
 	--testing__outgoing_smtp_port=1025 &
 
 wait_until_ready 1025
 wait_until_ready 2025
+wait_until_ready 9053
 
 # Send from A to B.
 smtpc.py --server=localhost:1025 --user=nadaA@nadaA --password=nadaA \

@@ -231,14 +231,15 @@ func TestFallbackToA(t *testing.T) {
 	testMXErr["domain"] = &net.DNSError{
 		Err:         "no such host (test)",
 		IsTemporary: false,
+		IsNotFound:  true,
 	}
 
 	mxs, err, perm := lookupMXs(tr, "domain")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Errorf("unexpected error: %v", err)
 	}
 	if perm != true {
-		t.Fatalf("expected perm == true")
+		t.Errorf("expected perm == true")
 	}
 	if !(len(mxs) == 1 && mxs[0] == "domain") {
 		t.Errorf("expected mxs == [domain], got: %v", mxs)
@@ -271,8 +272,8 @@ func TestMXLookupError(t *testing.T) {
 	if !(mxs == nil && err == testMXErr["domain"]) {
 		t.Errorf("expected mxs == nil, err == test error, got: %v, %v", mxs, err)
 	}
-	if perm != true {
-		t.Fatalf("expected perm == true")
+	if perm != false {
+		t.Errorf("expected perm == false")
 	}
 }
 

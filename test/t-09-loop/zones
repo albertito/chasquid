@@ -1,0 +1,4 @@
+srv-a  A     127.0.0.1
+srv-a  AAAA  ::1
+srv-b  A     127.0.0.1
+srv-b  AAAA  ::1

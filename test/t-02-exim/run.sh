@@ -38,6 +38,12 @@ fi
 mkdir -p .exim4
 EXIMDIR="$PWD/.exim4" envsubst < config/exim4.in > .exim4/config
 
+# Build with the DNS override, so we can fake DNS records.
+export GOTAGS="dnsoverride"
+
+# Launch minidns in the background using our configuration.
+minidns_bg --addr=":9053" -zones=zones >> .minidns.log 2>&1
+
 generate_certs_for srv-chasquid
 add_user user@srv-chasquid secretpassword
 add_user someone@srv-chasquid secretpassword
@@ -47,9 +53,11 @@ add_user someone@srv-chasquid secretpassword
 # Bypass MX lookup, so it can find srv-exim (via our host alias).
 mkdir -p .logs
 chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config \
+	--testing__dns_addr=127.0.0.1:9053 \
 	--testing__outgoing_smtp_port=2025 &
 
 wait_until_ready 1025
+wait_until_ready 9053
 
 # Launch exim at port 2025
 .exim4/exim4 -bd -d -C "$PWD/.exim4/config" > .exim4/log 2>&1 &

@@ -209,6 +209,11 @@ func (m *miniDNS) handle(msg *dnsmessage.Message) *dnsmessage.Message {
 			ID:       msg.ID,
 			Response: true,
 			RCode:    dnsmessage.RCodeSuccess,
+
+			// We're authoritative for the zones we're serving.
+			// We should either set this, or RecursionAvailable, otherwise
+			// some client libraries will complain.
+			Authoritative: true,
 		},
 		Questions: msg.Questions,
 	}

@@ -1,0 +1,6 @@
+# srv-chasquid and srv-exim to localhost.
+# Neither have an MX record, but that's okay.
+srv-chasquid A    127.0.0.1
+srv-chasquid AAAA ::1
+srv-exim A    127.0.0.1
+srv-exim AAAA ::1
