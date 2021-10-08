@@ -21,11 +21,8 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
+	"golang.org/x/term"
 	"google.golang.org/protobuf/encoding/prototext"
-
-	// TODO: Move to golang.org/x/term once we don't support Go 1.11 anymore,
-	// since this one is deprecated (but still fully functional, so no rush).
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Usage to show users on --help or invocation errors.
@@ -182,14 +179,14 @@ func getPassword() string {
 	}
 
 	fmt.Printf("Password: ")
-	p1, err := terminal.ReadPassword(syscall.Stdin)
+	p1, err := term.ReadPassword(syscall.Stdin)
 	fmt.Printf("\n")
 	if err != nil {
 		Fatalf("Error reading password: %v\n", err)
 	}
 
 	fmt.Printf("Confirm password: ")
-	p2, err := terminal.ReadPassword(syscall.Stdin)
+	p2, err := term.ReadPassword(syscall.Stdin)
 	fmt.Printf("\n")
 	if err != nil {
 		Fatalf("Error reading password: %v", err)
