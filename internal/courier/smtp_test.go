@@ -2,9 +2,11 @@ package courier
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/textproto"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -40,18 +42,60 @@ func newSMTP(t *testing.T) (*SMTP, string) {
 }
 
 // Fake server, to test SMTP out.
-func fakeServer(t *testing.T, responses map[string]string) (string, *sync.WaitGroup) {
-	l, err := net.Listen("tcp", "localhost:0")
+type FakeServer struct {
+	t         *testing.T
+	responses map[string]string
+	wg        *sync.WaitGroup
+	addr      string
+	tlsConfig *tls.Config
+}
+
+func newFakeServer(t *testing.T, responses map[string]string) *FakeServer {
+	s := &FakeServer{
+		t:         t,
+		responses: responses,
+		wg:        &sync.WaitGroup{},
+	}
+	s.start()
+	return s
+}
+
+func (s *FakeServer) loadTLS() string {
+	tmpDir := testlib.MustTempDir(s.t)
+	var err error
+	s.tlsConfig, err = testlib.GenerateCert(tmpDir)
 	if err != nil {
-		t.Fatalf("fake server listen: %v", err)
+		os.RemoveAll(tmpDir)
+		s.t.Fatalf("error generating cert: %v", err)
 	}
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	cert, err := tls.LoadX509KeyPair(tmpDir+"/cert.pem", tmpDir+"/key.pem")
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		s.t.Fatalf("error loading temp cert: %v", err)
+	}
+
+	s.tlsConfig.Certificates = []tls.Certificate{cert}
+
+	return tmpDir
+}
+
+func (s *FakeServer) start() string {
+	s.t.Helper()
+	l, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		s.t.Fatalf("fake server listen: %v", err)
+	}
+	s.addr = l.Addr().String()
+
+	s.wg.Add(1)
 
 	go func() {
-		defer wg.Done()
+		defer s.wg.Done()
 		defer l.Close()
+
+		tmpDir := s.loadTLS()
+		defer os.RemoveAll(tmpDir)
 
 		c, err := l.Accept()
 		if err != nil {
@@ -59,32 +103,58 @@ func fakeServer(t *testing.T, responses map[string]string) (string, *sync.WaitGr
 		}
 		defer c.Close()
 
-		t.Logf("fakeServer got connection")
+		s.t.Logf("fakeServer got connection")
 
 		r := textproto.NewReader(bufio.NewReader(c))
-		c.Write([]byte(responses["_welcome"]))
+		c.Write([]byte(s.responses["_welcome"]))
 		for {
 			line, err := r.ReadLine()
 			if err != nil {
-				t.Logf("fakeServer exiting: %v\n", err)
+				s.t.Logf("fakeServer exiting: %v\n", err)
 				return
 			}
 
-			t.Logf("fakeServer read: %q\n", line)
-			c.Write([]byte(responses[line]))
+			s.t.Logf("fakeServer read: %q\n", line)
+			if line == "STARTTLS" && s.responses["_STARTTLS"] == "ok" {
+				c.Write([]byte(s.responses["STARTTLS"]))
 
+				tlssrv := tls.Server(c, s.tlsConfig)
+				err = tlssrv.Handshake()
+				if err != nil {
+					s.t.Logf("starttls handshake error: %v", err)
+					return
+				}
+
+				// Replace the connection with the wrapped one.
+				// Don't send a reply, as per the protocol.
+				c = tlssrv
+				defer c.Close()
+				r = textproto.NewReader(bufio.NewReader(c))
+				continue
+			}
+
+			c.Write([]byte(s.responses[line]))
 			if line == "DATA" {
 				_, err = r.ReadDotBytes()
 				if err != nil {
-					t.Logf("fakeServer exiting: %v\n", err)
+					s.t.Logf("fakeServer exiting: %v\n", err)
 					return
 				}
-				c.Write([]byte(responses["_DATA"]))
+				c.Write([]byte(s.responses["_DATA"]))
 			}
 		}
 	}()
 
-	return l.Addr().String(), wg
+	return s.addr
+}
+
+func (s *FakeServer) HostPort() (string, string) {
+	host, port, _ := net.SplitHostPort(s.addr)
+	return host, port
+}
+
+func (s *FakeServer) Wait() {
+	s.wg.Wait()
 }
 
 func TestSMTP(t *testing.T) {
@@ -101,8 +171,8 @@ func TestSMTP(t *testing.T) {
 		"_DATA":             "250 data ok\n",
 		"QUIT":              "250 quit ok\n",
 	}
-	addr, wg := fakeServer(t, responses)
-	host, port, _ := net.SplitHostPort(addr)
+	srv := newFakeServer(t, responses)
+	host, port := srv.HostPort()
 
 	// Put a non-existing host first, so we check that if the first host
 	// doesn't work, we try with the rest.
@@ -123,7 +193,7 @@ func TestSMTP(t *testing.T) {
 		t.Errorf("deliver failed: %v", err)
 	}
 
-	wg.Wait()
+	srv.Wait()
 }
 
 func TestSMTPErrors(t *testing.T) {
@@ -173,8 +243,8 @@ func TestSMTPErrors(t *testing.T) {
 	}
 
 	for _, rs := range responses {
-		addr, wg := fakeServer(t, rs)
-		host, port, _ := net.SplitHostPort(addr)
+		srv := newFakeServer(t, rs)
+		host, port := srv.HostPort()
 
 		testMX["to"] = []*net.MX{{Host: host, Pref: 10}}
 		*smtpPort = port
@@ -187,7 +257,7 @@ func TestSMTPErrors(t *testing.T) {
 		}
 		t.Logf("failed as expected: %v", err)
 
-		wg.Wait()
+		srv.Wait()
 	}
 }
 
@@ -289,4 +359,87 @@ func TestLookupInvalidDomain(t *testing.T) {
 	}
 }
 
-// TODO: Test STARTTLS negotiation.
+func TestTLS(t *testing.T) {
+	smtpTotalTimeout = 5 * time.Second
+
+	responses := map[string]string{
+		"_welcome":          "220 welcome\n",
+		"EHLO hello":        "250-ehlo ok\n250 STARTTLS\n",
+		"STARTTLS":          "220 starttls go\n",
+		"_STARTTLS":         "ok",
+		"MAIL FROM:<me@me>": "250 mail ok\n",
+		"RCPT TO:<to@to>":   "250 rcpt ok\n",
+		"DATA":              "354 send data\n",
+		"_DATA":             "250 data ok\n",
+		"QUIT":              "250 quit ok\n",
+	}
+	srv := newFakeServer(t, responses)
+	_, *smtpPort = srv.HostPort()
+
+	testMX["to"] = []*net.MX{
+		{Host: "localhost", Pref: 20},
+	}
+
+	s, tmpDir := newSMTP(t)
+	defer testlib.RemoveIfOk(t, tmpDir)
+	err, _ := s.Deliver("me@me", "to@to", []byte("data"))
+	if err != nil {
+		t.Errorf("deliver failed: %v", err)
+	}
+
+	srv.Wait()
+
+	// Now do another delivery, but without TLS, to check that the detection
+	// of connection downgrade is working.
+	responses = map[string]string{
+		"_welcome":          "220 welcome\n",
+		"EHLO hello":        "250 ehlo ok\n",
+		"MAIL FROM:<me@me>": "250 mail ok\n",
+		"RCPT TO:<to@to>":   "250 rcpt ok\n",
+		"DATA":              "354 send data\n",
+		"_DATA":             "250 data ok\n",
+		"QUIT":              "250 quit ok\n",
+	}
+	srv = newFakeServer(t, responses)
+	_, *smtpPort = srv.HostPort()
+
+	err, permanent := s.Deliver("me@me", "to@to", []byte("data"))
+	if !strings.Contains(err.Error(),
+		"Security level check failed (level:PLAIN)") {
+		t.Errorf("expected sec level check failed, got: %v", err)
+	}
+	if permanent != false {
+		t.Errorf("expected transient failure, got permanent")
+	}
+
+	srv.Wait()
+}
+
+func TestTLSError(t *testing.T) {
+	smtpTotalTimeout = 5 * time.Second
+
+	responses := map[string]string{
+		"_welcome":   "220 welcome\n",
+		"EHLO hello": "250-ehlo ok\n250 STARTTLS\n",
+		"STARTTLS":   "500 starttls err\n",
+		"_STARTTLS":  "no",
+	}
+	srv := newFakeServer(t, responses)
+	_, *smtpPort = srv.HostPort()
+
+	testMX["to"] = []*net.MX{
+		{Host: "localhost", Pref: 20},
+	}
+
+	s, tmpDir := newSMTP(t)
+	defer testlib.RemoveIfOk(t, tmpDir)
+	err, permanent := s.Deliver("me@me", "to@to", []byte("data"))
+	if !strings.Contains(err.Error(), "TLS error:") {
+		t.Errorf("expected TLS error, got: %v", err)
+	}
+	if permanent != false {
+		t.Errorf("expected transient failure, got permanent")
+	}
+
+	srv.Wait()
+}

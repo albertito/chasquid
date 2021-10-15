@@ -3,6 +3,7 @@ package courier
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"net"
 	"time"
@@ -119,12 +120,6 @@ type attempt struct {
 }
 
 func (a *attempt) deliver(mx string) (error, bool) {
-	// Do we use insecure TLS?
-	// Set as fallback when retrying.
-	insecure := false
-	secLevel := domaininfo.SecLevel_PLAIN
-
-retry:
 	conn, err := net.DialTimeout("tcp", mx+":"+*smtpPort, smtpDialTimeout)
 	if err != nil {
 		return a.tr.Errorf("Could not dial: %v", err), false
@@ -141,33 +136,26 @@ retry:
 		return a.tr.Errorf("Error saying hello: %v", err), false
 	}
 
+	secLevel := domaininfo.SecLevel_PLAIN
 	if ok, _ := c.Extension("STARTTLS"); ok {
 		config := &tls.Config{
-			ServerName:         mx,
-			InsecureSkipVerify: insecure,
+			ServerName: mx,
+
+			// Unfortunately, many servers use self-signed and invalid
+			// certificates. So we use a custom verification (identical to
+			// Go's) to distinguish between invalid and valid certificates.
+			// That information is used to track the security level, to
+			// prevent downgrade attacks.
+			InsecureSkipVerify: true,
+			VerifyConnection: func(cs tls.ConnectionState) error {
+				secLevel = a.verifyConnection(cs)
+				return nil
+			},
 		}
 		err = c.StartTLS(config)
 		if err != nil {
-			// Unfortunately, many servers use self-signed certs, so if we
-			// fail verification we just try again without validating.
-			if insecure {
-				tlsCount.Add("tls:failed", 1)
-				return a.tr.Errorf("TLS error: %v", err), false
-			}
-
-			insecure = true
-			a.tr.Debugf("TLS error, retrying insecurely")
-			goto retry
-		}
-
-		if config.InsecureSkipVerify {
-			a.tr.Debugf("Insecure - using TLS, but cert does not match %s", mx)
-			tlsCount.Add("tls:insecure", 1)
-			secLevel = domaininfo.SecLevel_TLS_INSECURE
-		} else {
-			tlsCount.Add("tls:secure", 1)
-			a.tr.Debugf("Secure - using TLS")
-			secLevel = domaininfo.SecLevel_TLS_SECURE
+			tlsCount.Add("tls:failed", 1)
+			return a.tr.Errorf("TLS error: %v", err), false
 		}
 	} else {
 		tlsCount.Add("plain", 1)
@@ -216,6 +204,31 @@ retry:
 	a.tr.Debugf("done")
 
 	return nil, false
+}
+
+func (a *attempt) verifyConnection(cs tls.ConnectionState) domaininfo.SecLevel {
+	// Validate certificates, using the same logic Go does, and following the
+	// official example at
+	// https://pkg.go.dev/crypto/tls#example-Config-VerifyConnection.
+	opts := x509.VerifyOptions{
+		DNSName:       cs.ServerName,
+		Intermediates: x509.NewCertPool(),
+	}
+	for _, cert := range cs.PeerCertificates[1:] {
+		opts.Intermediates.AddCert(cert)
+	}
+	_, err := cs.PeerCertificates[0].Verify(opts)
+
+	if err != nil {
+		// Invalid TLS cert, since it could not be verified.
+		a.tr.Debugf("Insecure - using TLS, but with an invalid cert")
+		tlsCount.Add("tls:insecure", 1)
+		return domaininfo.SecLevel_TLS_INSECURE
+	} else {
+		tlsCount.Add("tls:secure", 1)
+		a.tr.Debugf("Secure - using TLS")
+		return domaininfo.SecLevel_TLS_SECURE
+	}
 }
 
 func (s *SMTP) fetchSTSPolicy(tr *trace.Trace, domain string) *sts.Policy {
