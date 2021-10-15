@@ -96,3 +96,25 @@ func TestWaitFor(t *testing.T) {
 		t.Errorf("WaitFor(false) worked")
 	}
 }
+
+func TestGenerateCert(t *testing.T) {
+	dir := MustTempDir(t)
+	defer os.RemoveAll(dir)
+	conf, err := GenerateCert(dir)
+	if err != nil {
+		t.Errorf("GenerateCert returned error: %v", err)
+	}
+	if conf.ServerName != "localhost" {
+		t.Errorf("Config server name %q != localhost", conf.ServerName)
+	}
+	if conf.RootCAs == nil {
+		t.Errorf("Config had an empty RootCAs pool")
+	}
+}
+
+func TestGenerateCertBadDir(t *testing.T) {
+	conf, err := GenerateCert("/doesnotexist/")
+	if err == nil || conf != nil {
+		t.Fatalf("GenerateCert returned non-error: %v / %v", conf, err)
+	}
+}

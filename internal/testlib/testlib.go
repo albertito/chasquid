@@ -2,7 +2,14 @@
 package testlib
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"io/ioutil"
+	"math/big"
 	"net"
 	"os"
 	"strings"
@@ -129,3 +136,76 @@ func (c dumbCourier) Deliver(from string, to string, data []byte) (error, bool) 
 
 // DumbCourier always succeeds delivery, and ignores everything.
 var DumbCourier = dumbCourier{}
+
+// generateCert generates a new, INSECURE self-signed certificate and writes
+// it to a pair of (cert.pem, key.pem) files to the given path.
+// Note the certificate is only useful for testing purposes.
+func GenerateCert(path string) (*tls.Config, error) {
+	tmpl := x509.Certificate{
+		SerialNumber: big.NewInt(1234),
+		Subject: pkix.Name{
+			Organization: []string{"chasquid_test.go"},
+		},
+
+		DNSNames:    []string{"localhost"},
+		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")},
+
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(30 * time.Minute),
+
+		KeyUsage: x509.KeyUsageKeyEncipherment |
+			x509.KeyUsageDigitalSignature |
+			x509.KeyUsageCertSign,
+
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+
+	priv, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		return nil, err
+	}
+
+	derBytes, err := x509.CreateCertificate(
+		rand.Reader, &tmpl, &tmpl, &priv.PublicKey, priv)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a global config for convenience.
+	srvCert, err := x509.ParseCertificate(derBytes)
+	if err != nil {
+		return nil, err
+	}
+	rootCAs := x509.NewCertPool()
+	rootCAs.AddCert(srvCert)
+	tlsConfig := &tls.Config{
+		ServerName: "localhost",
+		RootCAs:    rootCAs,
+	}
+
+	certOut, err := os.Create(path + "/cert.pem")
+	if err != nil {
+		return nil, err
+	}
+	defer certOut.Close()
+	err = pem.Encode(certOut,
+		&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	if err != nil {
+		return nil, err
+	}
+
+	keyOut, err := os.OpenFile(
+		path+"/key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return nil, err
+	}
+	defer keyOut.Close()
+
+	block := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(priv),
+	}
+	err = pem.Encode(keyOut, block)
+	return tlsConfig, err
+}
