@@ -152,6 +152,7 @@ func (a *attempt) deliver(mx string) (error, bool) {
 				return nil
 			},
 		}
+
 		err = c.StartTLS(config)
 		if err != nil {
 			tlsCount.Add("tls:failed", 1)
@@ -206,6 +207,9 @@ func (a *attempt) deliver(mx string) (error, bool) {
 	return nil, false
 }
 
+// CA roots to validate against, so we can override it for testing.
+var certRoots *x509.CertPool = nil
+
 func (a *attempt) verifyConnection(cs tls.ConnectionState) domaininfo.SecLevel {
 	// Validate certificates, using the same logic Go does, and following the
 	// official example at
@@ -213,6 +217,7 @@ func (a *attempt) verifyConnection(cs tls.ConnectionState) domaininfo.SecLevel {
 	opts := x509.VerifyOptions{
 		DNSName:       cs.ServerName,
 		Intermediates: x509.NewCertPool(),
+		Roots:         certRoots,
 	}
 	for _, cert := range cs.PeerCertificates[1:] {
 		opts.Intermediates.AddCert(cert)
