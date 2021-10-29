@@ -82,7 +82,7 @@ function run_msmtp() {
 	# msmtp binary is often g+s, which causes $HOSTALIASES to not be
 	# honoured, which breaks the tests. Copy the binary to remove the
 	# setgid bit as a workaround.
-	cp -u "`which msmtp`" "${UTILDIR}/.msmtp-bin"
+	cp -u "`command -v msmtp`" "${UTILDIR}/.msmtp-bin"
 
 	HOSTALIASES=${TBASE}/hosts \
 		${UTILDIR}/.msmtp-bin -C msmtprc "$@"
