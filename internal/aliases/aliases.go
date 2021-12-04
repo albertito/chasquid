@@ -93,6 +93,11 @@ const (
 	PIPE  RType = "(pipe)"
 )
 
+// Special token used to define the catch-all addresses.
+const (
+	CATCH_ALL_TOKEN = "_"
+)
+
 var (
 	// ErrRecursionLimitExceeded is returned when the resolving lookup
 	// exceeded the recursion limit. Usually caused by aliases loops.
@@ -124,6 +129,9 @@ type Resolver struct {
 	// Map of address -> aliases.
 	aliases map[string][]Recipient
 
+	// Map of domain -> catch-all user for the domain
+	catchAll map[string]Recipient
+
 	// Mutex protecting the structure.
 	mu sync.Mutex
 }
@@ -131,9 +139,10 @@ type Resolver struct {
 // NewResolver returns a new, empty Resolver.
 func NewResolver() *Resolver {
 	return &Resolver{
-		files:   map[string][]string{},
-		domains: map[string]bool{},
-		aliases: map[string][]Recipient{},
+		files:    map[string][]string{},
+		domains:  map[string]bool{},
+		aliases:  map[string][]Recipient{},
+		catchAll: map[string]Recipient{},
 	}
 }
 
@@ -225,6 +234,17 @@ func (v *Resolver) AddDomain(domain string) {
 	v.mu.Unlock()
 }
 
+// CatchAllAddress returns catch-all address, if such a
+// catch-all address for the given domain was set up, otherwise
+// an empty string is returned.
+func (v *Resolver) CatchAllAddress(domain string) string {
+	rcpt, exists := v.catchAll[domain]
+	if exists {
+		return rcpt.Addr
+	}
+	return ""
+}
+
 // AddAliasesFile to the resolver. The file will be parsed, and an error
 // returned if it does not exist or parse correctly.
 func (v *Resolver) AddAliasesFile(domain, path string) error {
@@ -249,7 +269,11 @@ func (v *Resolver) AddAliasesFile(domain, path string) error {
 	// Add the aliases to the resolver, overriding any previous values.
 	v.mu.Lock()
 	for addr, rs := range aliases {
-		v.aliases[addr] = rs
+		if addr != CATCH_ALL_TOKEN {
+			v.aliases[addr] = rs
+		} else {
+			v.catchAll[domain] = rs[0]
+		}
 	}
 	v.mu.Unlock()
 
@@ -265,6 +289,7 @@ func (v *Resolver) AddAliasForTesting(addr, rcpt string, rType RType) {
 // Reload aliases files for all known domains.
 func (v *Resolver) Reload() error {
 	newAliases := map[string][]Recipient{}
+	catchAll := map[string]Recipient{}
 
 	for domain, paths := range v.files {
 		for _, path := range paths {
@@ -278,13 +303,18 @@ func (v *Resolver) Reload() error {
 
 			// Add the aliases to the resolver, overriding any previous values.
 			for addr, rs := range aliases {
-				newAliases[addr] = rs
+				if addr != CATCH_ALL_TOKEN {
+					newAliases[addr] = rs
+				} else {
+					catchAll[domain] = rs[0]
+				}
 			}
 		}
 	}
 
 	v.mu.Lock()
 	v.aliases = newAliases
+	v.catchAll = catchAll
 	v.mu.Unlock()
 
 	return nil
@@ -327,6 +357,16 @@ func parseReader(domain string, r io.Reader) (map[string][]Recipient, error) {
 		if strings.Contains(addr, "@") {
 			// It's invalid for lhs addresses to contain @ (for now).
 			continue
+		}
+
+		// catch-all parsing
+		if addr == CATCH_ALL_TOKEN {
+			catchAll := parseRHS(rawalias, domain)
+			if catchAll == nil || len(catchAll) != 1 || catchAll[0].Type != EMAIL {
+				return nil, fmt.Errorf("catch-all rule may contain exactly one (email) address")
+			}
+			aliases[CATCH_ALL_TOKEN] = catchAll
+			return aliases, nil
 		}
 
 		addr = addr + "@" + domain

@@ -595,9 +595,15 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 			return 451, "4.4.3 Temporary error checking address"
 		}
 		if !ok {
-			maillog.Rejected(c.remoteAddr, c.mailFrom, []string{addr},
-				"local user does not exist")
-			return 550, "5.1.1 Destination address is unknown (user does not exist)"
+			domain := envelope.DomainOf(addr)
+			ca := c.aliasesR.CatchAllAddress(domain)
+			if ca != "" {
+				addr = ca
+			} else {
+				maillog.Rejected(c.remoteAddr, c.mailFrom, []string{addr},
+					"local user does not exist")
+				return 550, "5.1.1 Destination address is unknown (user does not exist)"
+			}
 		}
 	}
 

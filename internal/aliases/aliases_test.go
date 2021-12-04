@@ -315,3 +315,28 @@ func TestManyFiles(t *testing.T) {
 
 	check()
 }
+
+const noCatchAllFile = `
+	a: b@dom
+	b: c@dom
+	_: a
+`
+
+func TestHaveCatchAllNoAliasIsSet(t *testing.T) {
+	fname := mustWriteFile(t, noCatchAllFile)
+	defer os.Remove(fname)
+
+	resolver := NewResolver()
+	err := resolver.AddAliasesFile("dom", fname)
+	if err != nil {
+		t.Fatalf("failed to add file: %v", err)
+	}
+	rcpts, err := resolver.Resolve("e@dom")
+	if err != nil || len(rcpts) != 1 || rcpts[0].Addr != "e@dom" {
+		t.Fatalf("expected to have no error and same recipient returned, got %v, %v", rcpts, err)
+	}
+	expected := "a@dom"
+	if ca := resolver.CatchAllAddress("dom"); ca != expected {
+		t.Fatalf("expected %v, got %v catch-all address", expected, ca)
+	}
+}
