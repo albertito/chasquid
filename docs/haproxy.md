@@ -15,6 +15,8 @@ of the PROXY protocol against chasquid.
 
 You need to set this for each of the ports that are forwarded.
 
+Only PROXY protocol v1 is supported for now.
+
 
 ## Configuring chasquid
 
