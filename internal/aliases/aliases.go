@@ -24,6 +24,9 @@
 // Usually there will be one database per domain, and there's no need to
 // include the "@" in the user (in this case, "@" will be forbidden).
 //
+// If the user is the string "*", then it is considered a "catch-all alias":
+// emails that don't match any known users or other aliases will be sent here.
+//
 //
 // Recipients
 //
@@ -104,6 +107,9 @@ var (
 	recursionLimit = 10
 )
 
+// Type of the "does this user exist" function", for convenience.
+type existsFn func(user, domain string) (bool, error)
+
 // Resolver represents the aliases resolver.
 type Resolver struct {
 	// Suffix separator, to perform suffix removal.
@@ -114,6 +120,9 @@ type Resolver struct {
 
 	// Path to the resolve hook.
 	ResolveHook string
+
+	// Function to check if a user exists in the userdb.
+	userExistsInDB existsFn
 
 	// Map of domain -> alias files for that domain.
 	// We keep track of them for reloading purposes.
@@ -128,11 +137,13 @@ type Resolver struct {
 }
 
 // NewResolver returns a new, empty Resolver.
-func NewResolver() *Resolver {
+func NewResolver(userExists existsFn) *Resolver {
 	return &Resolver{
 		files:   map[string][]string{},
 		domains: map[string]bool{},
 		aliases: map[string][]Recipient{},
+
+		userExistsInDB: userExists,
 	}
 }
 
@@ -155,7 +166,17 @@ func (v *Resolver) Exists(addr string) (string, bool) {
 	addr = v.cleanIfLocal(addr)
 
 	rcpts, _ := v.lookup(addr, tr)
-	return addr, len(rcpts) > 0
+	if len(rcpts) > 0 {
+		return addr, true
+	}
+
+	domain := envelope.DomainOf(addr)
+	catchAll, _ := v.lookup("*@"+domain, tr)
+	if len(catchAll) > 0 {
+		return addr, true
+	}
+
+	return addr, false
 }
 
 func (v *Resolver) lookup(addr string, tr *trace.Trace) ([]Recipient, error) {
@@ -183,7 +204,8 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 	// If the address is not local, we return it as-is, so delivery is
 	// attempted against it.
 	// Example: an alias that resolves to a non-local address.
-	if _, ok := v.domains[envelope.DomainOf(addr)]; !ok {
+	user, domain := envelope.Split(addr)
+	if _, ok := v.domains[domain]; !ok {
 		tr.Debugf("%d| non-local domain, returning %q", rcount, addr)
 		return []Recipient{{addr, EMAIL}}, nil
 	}
@@ -200,9 +222,43 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 		return nil, err
 	}
 
+	// No alias for this local address.
 	if len(rcpts) == 0 {
-		tr.Debugf("%d| no aliases found, returning %q", rcount, addr)
-		return []Recipient{{addr, EMAIL}}, nil
+		tr.Debugf("%d| no alias found", rcount)
+		// If the user exists, then use it as-is, no need to recurse further.
+		ok, err := v.userExistsInDB(user, domain)
+		if err != nil {
+			tr.Debugf("%d| error checking if user exists: %v", rcount, err)
+			return nil, err
+		}
+		if ok {
+			tr.Debugf("%d| user exists, returning %q", rcount, addr)
+			return []Recipient{{addr, EMAIL}}, nil
+		}
+
+		catchAll, err := v.lookup("*@"+domain, tr)
+		if err != nil {
+			tr.Debugf("%d| error in catchall lookup: %v", rcount, err)
+			return nil, err
+		}
+		if len(catchAll) > 0 {
+			// If there's a catch-all, then use it and keep resolving
+			// recursively (since the catch-all destination could be an
+			// alias).
+			tr.Debugf("%d| using catch-all: %v", rcount, catchAll)
+			rcpts = catchAll
+		} else {
+			// Otherwise, return the original address unchanged.
+			// The caller will handle that situation, and we don't need to
+			// invalidate the whole resolution (there could be other valid
+			// aliases).
+			// The queue will attempt delivery against this local (but
+			// evidently non-existing) address, and the courier will emit a
+			// clearer failure, re-using the existing codepaths and
+			// simplifying the logic.
+			tr.Debugf("%d| no catch-all, returning %q", rcount, addr)
+			return []Recipient{{addr, EMAIL}}, nil
+		}
 	}
 
 	ret := []Recipient{}
@@ -229,7 +285,11 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 func (v *Resolver) cleanIfLocal(addr string) string {
 	user, domain := envelope.Split(addr)
 
-	if !v.domains[domain] {
+	v.mu.Lock()
+	isLocal := v.domains[domain]
+	v.mu.Unlock()
+
+	if !isLocal {
 		return addr
 	}
 

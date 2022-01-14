@@ -65,6 +65,16 @@ user: | /usr/bin/email-handler --work
 null: | cat
 ```
 
+### Catch-all
+
+If the aliased user is `*`, then mail sent to an unknown user will not be
+rejected, but redirected to the indicated destination instead.
+
+```
+pepe: jose
+
+*: pepe, rose@backgarden
+```
 
 ## Processing
 
@@ -80,7 +90,7 @@ will fail.  If the command exits with an error (non-0 exit code), the delivery
 will be considered failed.
 
 The `chasquid-util` command-line tool can be used to check and resolve
-aliases.
+aliases. Note that it doesn't run aliases hooks, or handle catch-all aliases.
 
 
 ## Hooks

@@ -1,27 +1,32 @@
 package aliases
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"reflect"
+	"strings"
 	"testing"
 )
 
 type Cases []struct {
 	addr   string
 	expect []Recipient
+	err    error
 }
 
 func (cases Cases) check(t *testing.T, r *Resolver) {
 	t.Helper()
 	for _, c := range cases {
 		got, err := r.Resolve(c.addr)
-		if err != nil {
-			t.Errorf("case %q, got error: %v", c.addr, err)
-			continue
+		if err != c.err {
+			t.Errorf("case %q: expected error %v, got %v",
+				c.addr, c.err, err)
 		}
 		if !reflect.DeepEqual(got, c.expect) {
-			t.Errorf("case %q, got %+v, expected %+v", c.addr, got, c.expect)
+			t.Errorf("case %q: got %+v, expected %+v",
+				c.addr, got, c.expect)
 		}
 	}
 }
@@ -44,8 +49,31 @@ func mustNotExist(t *testing.T, r *Resolver, addrs ...string) {
 	}
 }
 
+func allUsersExist(user, domain string) (bool, error) {
+	return true, nil
+}
+
+func usersWithXDontExist(user, domain string) (bool, error) {
+	if strings.HasPrefix(user, "x") {
+		return false, nil
+	}
+	return true, nil
+}
+
+var userLookupError = errors.New("test error userLookupError")
+
+func usersWithXErrorYDontExist(user, domain string) (bool, error) {
+	if strings.HasPrefix(user, "x") {
+		return false, userLookupError
+	}
+	if strings.HasPrefix(user, "y") {
+		return false, nil
+	}
+	return true, nil
+}
+
 func TestBasic(t *testing.T) {
-	resolver := NewResolver()
+	resolver := NewResolver(allUsersExist)
 	resolver.AddDomain("localA")
 	resolver.AddDomain("localB")
 	resolver.aliases = map[string][]Recipient{
@@ -55,9 +83,9 @@ func TestBasic(t *testing.T) {
 	}
 
 	cases := Cases{
-		{"a@localA", []Recipient{{"c@d", EMAIL}, {"cmd", PIPE}}},
-		{"e@localB", []Recipient{{"cmd", PIPE}}},
-		{"x@y", []Recipient{{"x@y", EMAIL}}},
+		{"a@localA", []Recipient{{"c@d", EMAIL}, {"cmd", PIPE}}, nil},
+		{"e@localB", []Recipient{{"cmd", PIPE}}, nil},
+		{"x@y", []Recipient{{"x@y", EMAIL}}, nil},
 	}
 	cases.check(t, resolver)
 
@@ -65,8 +93,59 @@ func TestBasic(t *testing.T) {
 	mustNotExist(t, resolver, "x@y")
 }
 
+func TestCatchAll(t *testing.T) {
+	resolver := NewResolver(usersWithXDontExist)
+	resolver.AddDomain("dom")
+	resolver.aliases = map[string][]Recipient{
+		"a@dom": {{"a@remote", EMAIL}},
+		"b@dom": {{"c@dom", EMAIL}},
+		"c@dom": {{"cmd", PIPE}},
+		"*@dom": {{"c@dom", EMAIL}},
+	}
+
+	cases := Cases{
+		{"a@dom", []Recipient{{"a@remote", EMAIL}}, nil},
+		{"b@dom", []Recipient{{"cmd", PIPE}}, nil},
+		{"c@dom", []Recipient{{"cmd", PIPE}}, nil},
+		{"x@dom", []Recipient{{"cmd", PIPE}}, nil},
+
+		// Remote should be returned as-is regardless.
+		{"a@remote", []Recipient{{"a@remote", EMAIL}}, nil},
+		{"x@remote", []Recipient{{"x@remote", EMAIL}}, nil},
+	}
+	cases.check(t, resolver)
+
+	mustExist(t, resolver,
+		// Exist as users.
+		"a@dom", "b@dom", "c@dom",
+
+		// Do not exist as users, but catch-all saves them.
+		"x@dom", "x1@dom")
+}
+
+func TestUserLookupErrors(t *testing.T) {
+	resolver := NewResolver(usersWithXErrorYDontExist)
+	resolver.AddDomain("dom")
+	resolver.aliases = map[string][]Recipient{
+		"a@dom": {{"a@remote", EMAIL}},
+		"b@dom": {{"x@dom", EMAIL}},
+		"*@dom": {{"x@dom", EMAIL}},
+	}
+
+	cases := Cases{
+		{"a@dom", []Recipient{{"a@remote", EMAIL}}, nil},
+		{"b@dom", nil, userLookupError},
+		{"c@dom", []Recipient{{"c@dom", EMAIL}}, nil},
+		{"x@dom", nil, userLookupError},
+
+		// This one goes through the catch-all.
+		{"y@dom", nil, userLookupError},
+	}
+	cases.check(t, resolver)
+}
+
 func TestAddrRewrite(t *testing.T) {
-	resolver := NewResolver()
+	resolver := NewResolver(allUsersExist)
 	resolver.AddDomain("def")
 	resolver.AddDomain("p-q.com")
 	resolver.aliases = map[string][]Recipient{
@@ -79,36 +158,36 @@ func TestAddrRewrite(t *testing.T) {
 	resolver.SuffixSep = "-+"
 
 	cases := Cases{
-		{"abc@def", []Recipient{{"x@y", EMAIL}}},
-		{"a.b.c@def", []Recipient{{"x@y", EMAIL}}},
-		{"a~b~c@def", []Recipient{{"x@y", EMAIL}}},
-		{"a.b~c@def", []Recipient{{"x@y", EMAIL}}},
-		{"abc-ñaca@def", []Recipient{{"x@y", EMAIL}}},
-		{"abc-ñaca@def", []Recipient{{"x@y", EMAIL}}},
-		{"abc-xyz@def", []Recipient{{"x@y", EMAIL}}},
-		{"abc+xyz@def", []Recipient{{"x@y", EMAIL}}},
-		{"abc-x.y+z@def", []Recipient{{"x@y", EMAIL}}},
+		{"abc@def", []Recipient{{"x@y", EMAIL}}, nil},
+		{"a.b.c@def", []Recipient{{"x@y", EMAIL}}, nil},
+		{"a~b~c@def", []Recipient{{"x@y", EMAIL}}, nil},
+		{"a.b~c@def", []Recipient{{"x@y", EMAIL}}, nil},
+		{"abc-ñaca@def", []Recipient{{"x@y", EMAIL}}, nil},
+		{"abc-ñaca@def", []Recipient{{"x@y", EMAIL}}, nil},
+		{"abc-xyz@def", []Recipient{{"x@y", EMAIL}}, nil},
+		{"abc+xyz@def", []Recipient{{"x@y", EMAIL}}, nil},
+		{"abc-x.y+z@def", []Recipient{{"x@y", EMAIL}}, nil},
 
-		{"ñ.o~ño-ñaca@def", []Recipient{{"x@y", EMAIL}}},
+		{"ñ.o~ño-ñaca@def", []Recipient{{"x@y", EMAIL}}, nil},
 
 		// Don't mess with the domain, even if it's known.
-		{"a.bc-ñaca@p-q.com", []Recipient{{"abc@p-q.com", EMAIL}}},
+		{"a.bc-ñaca@p-q.com", []Recipient{{"abc@p-q.com", EMAIL}}, nil},
 
 		// Clean the right hand side too (if it's a local domain).
-		{"recu+blah@def", []Recipient{{"ab@p-q.com", EMAIL}}},
+		{"recu+blah@def", []Recipient{{"ab@p-q.com", EMAIL}}, nil},
 
 		// We should not mess with emails for domains we don't know.
-		{"xy@z.com", []Recipient{{"xy@z.com", EMAIL}}},
-		{"x.y@z.com", []Recipient{{"x.y@z.com", EMAIL}}},
-		{"x-@y-z.com", []Recipient{{"x-@y-z.com", EMAIL}}},
-		{"x+blah@y", []Recipient{{"x+blah@y", EMAIL}}},
-		{"remo@def", []Recipient{{"x-@y-z.com", EMAIL}}},
+		{"xy@z.com", []Recipient{{"xy@z.com", EMAIL}}, nil},
+		{"x.y@z.com", []Recipient{{"x.y@z.com", EMAIL}}, nil},
+		{"x-@y-z.com", []Recipient{{"x-@y-z.com", EMAIL}}, nil},
+		{"x+blah@y", []Recipient{{"x+blah@y", EMAIL}}, nil},
+		{"remo@def", []Recipient{{"x-@y-z.com", EMAIL}}, nil},
 	}
 	cases.check(t, resolver)
 }
 
 func TestExistsRewrite(t *testing.T) {
-	resolver := NewResolver()
+	resolver := NewResolver(allUsersExist)
 	resolver.AddDomain("def")
 	resolver.AddDomain("p-q.com")
 	resolver.aliases = map[string][]Recipient{
@@ -150,7 +229,7 @@ func TestExistsRewrite(t *testing.T) {
 }
 
 func TestTooMuchRecursion(t *testing.T) {
-	resolver := NewResolver()
+	resolver := NewResolver(allUsersExist)
 	resolver.AddDomain("b")
 	resolver.AddDomain("d")
 	resolver.aliases = map[string][]Recipient{
@@ -165,6 +244,34 @@ func TestTooMuchRecursion(t *testing.T) {
 
 	if rs != nil {
 		t.Errorf("expected nil recipients, got %+v", rs)
+	}
+}
+
+func TestTooMuchRecursionOnCatchAll(t *testing.T) {
+	resolver := NewResolver(usersWithXDontExist)
+	resolver.AddDomain("dom")
+	resolver.aliases = map[string][]Recipient{
+		"a@dom": {{"x@dom", EMAIL}},
+		"*@dom": {{"a@dom", EMAIL}},
+	}
+
+	cases := Cases{
+		// b@dom is local and exists.
+		{"b@dom", []Recipient{{"b@dom", EMAIL}}, nil},
+
+		// a@remote is remote.
+		{"a@remote", []Recipient{{"a@remote", EMAIL}}, nil},
+	}
+	cases.check(t, resolver)
+
+	for _, addr := range []string{"a@dom", "x@dom", "xx@dom"} {
+		rs, err := resolver.Resolve(addr)
+		if err != ErrRecursionLimitExceeded {
+			t.Errorf("%s: expected ErrRecursionLimitExceeded, got %v", addr, err)
+		}
+		if rs != nil {
+			t.Errorf("%s: expected nil recipients, got %+v", addr, rs)
+		}
 	}
 }
 
@@ -217,7 +324,7 @@ func TestAddFile(t *testing.T) {
 		fname := mustWriteFile(t, c.contents)
 		defer os.Remove(fname)
 
-		resolver := NewResolver()
+		resolver := NewResolver(allUsersExist)
 		err := resolver.AddAliasesFile("dom", fname)
 		if err != nil {
 			t.Fatalf("error adding file: %v", err)
@@ -260,20 +367,20 @@ func TestRichFile(t *testing.T) {
 	fname := mustWriteFile(t, richFileContents)
 	defer os.Remove(fname)
 
-	resolver := NewResolver()
+	resolver := NewResolver(allUsersExist)
 	err := resolver.AddAliasesFile("dom", fname)
 	if err != nil {
 		t.Fatalf("failed to add file: %v", err)
 	}
 
 	cases := Cases{
-		{"a@dom", []Recipient{{"b@dom", EMAIL}}},
-		{"c@dom", []Recipient{{"d@e", EMAIL}, {"f@dom", EMAIL}}},
-		{"x@dom", []Recipient{{"command", PIPE}}},
-		{"o1@dom", []Recipient{{"b@dom", EMAIL}}},
-		{"aA@dom", []Recipient{{"bb@dom-b", EMAIL}}},
-		{"aa@dom", []Recipient{{"bb@dom-b", EMAIL}}},
-		{"y@dom", []Recipient{{"z@dom", EMAIL}}},
+		{"a@dom", []Recipient{{"b@dom", EMAIL}}, nil},
+		{"c@dom", []Recipient{{"d@e", EMAIL}, {"f@dom", EMAIL}}, nil},
+		{"x@dom", []Recipient{{"command", PIPE}}, nil},
+		{"o1@dom", []Recipient{{"b@dom", EMAIL}}, nil},
+		{"aA@dom", []Recipient{{"bb@dom-b", EMAIL}}, nil},
+		{"aa@dom", []Recipient{{"bb@dom-b", EMAIL}}, nil},
+		{"y@dom", []Recipient{{"z@dom", EMAIL}}, nil},
 	}
 	cases.check(t, resolver)
 }
@@ -293,7 +400,7 @@ func TestManyFiles(t *testing.T) {
 		defer os.Remove(fname)
 	}
 
-	resolver := NewResolver()
+	resolver := NewResolver(allUsersExist)
 	for domain, fname := range files {
 		err := resolver.AddAliasesFile(domain, fname)
 		if err != nil {
@@ -303,14 +410,14 @@ func TestManyFiles(t *testing.T) {
 
 	check := func() {
 		cases := Cases{
-			{"a@d1", []Recipient{{"b@d1", EMAIL}}},
-			{"c@d1", []Recipient{{"d@e", EMAIL}}},
-			{"x@d1", []Recipient{{"x@d1", EMAIL}}},
-			{"a@domain2", []Recipient{{"b@domain2", EMAIL}}},
-			{"c@domain2", []Recipient{{"d@e", EMAIL}}},
-			{"x@dom3", []Recipient{{"y@dom3", EMAIL}, {"z@dom3", EMAIL}}},
-			{"a@dom4", []Recipient{{"cmd", PIPE}}},
-			{"a@xd1", []Recipient{{"cmd", PIPE}}},
+			{"a@d1", []Recipient{{"b@d1", EMAIL}}, nil},
+			{"c@d1", []Recipient{{"d@e", EMAIL}}, nil},
+			{"x@d1", []Recipient{{"x@d1", EMAIL}}, nil},
+			{"a@domain2", []Recipient{{"b@domain2", EMAIL}}, nil},
+			{"c@domain2", []Recipient{{"d@e", EMAIL}}, nil},
+			{"x@dom3", []Recipient{{"y@dom3", EMAIL}, {"z@dom3", EMAIL}}, nil},
+			{"a@dom4", []Recipient{{"cmd", PIPE}}, nil},
+			{"a@xd1", []Recipient{{"cmd", PIPE}}, nil},
 		}
 		cases.check(t, resolver)
 	}
@@ -323,4 +430,32 @@ func TestManyFiles(t *testing.T) {
 	}
 
 	check()
+}
+
+func TestHookError(t *testing.T) {
+	resolver := NewResolver(allUsersExist)
+	resolver.AddDomain("localA")
+	resolver.aliases = map[string][]Recipient{
+		"a@localA": {{"c@d", EMAIL}},
+	}
+
+	// First check that the test is set up reasonably.
+	mustExist(t, resolver, "a@localA")
+	Cases{
+		{"a@localA", []Recipient{{"c@d", EMAIL}}, nil},
+	}.check(t, resolver)
+
+	// Now use a resolver that exits with an error.
+	resolver.ResolveHook = "testdata/erroring-hook.sh"
+
+	// Check that the hook is run and the error is propagated.
+	mustNotExist(t, resolver, "a@localA")
+	rcpts, err := resolver.Resolve("a@localA")
+	if len(rcpts) != 0 {
+		t.Errorf("expected no recipients, got %v", rcpts)
+	}
+	execErr := &exec.ExitError{}
+	if !errors.As(err, &execErr) {
+		t.Errorf("expected *exec.ExitError, got %T - %v", err, err)
+	}
 }

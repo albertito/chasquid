@@ -12,12 +12,15 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
+func allUsersExist(user, domain string) (bool, error) { return true, nil }
+
 func TestBasic(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
 	localC := testlib.NewTestCourier()
 	remoteC := testlib.NewTestCourier()
-	q, _ := New(dir, set.NewString("loco"), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString("loco"),
+		aliases.NewResolver(allUsersExist),
 		localC, remoteC)
 
 	localC.Expect(2)
@@ -67,7 +70,8 @@ func TestDSNOnTimeout(t *testing.T) {
 	remoteC := testlib.NewTestCourier()
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	q, _ := New(dir, set.NewString("loco"), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString("loco"),
+		aliases.NewResolver(allUsersExist),
 		localC, remoteC)
 
 	// Insert an expired item in the queue.
@@ -111,7 +115,8 @@ func TestAliases(t *testing.T) {
 	remoteC := testlib.NewTestCourier()
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	q, _ := New(dir, set.NewString("loco"), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString("loco"),
+		aliases.NewResolver(allUsersExist),
 		localC, remoteC)
 
 	q.aliases.AddDomain("loco")
@@ -155,7 +160,8 @@ func TestAliases(t *testing.T) {
 func TestFullQueue(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	q, _ := New(dir, set.NewString(), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString(),
+		aliases.NewResolver(allUsersExist),
 		testlib.DumbCourier, testlib.DumbCourier)
 
 	// Force-insert maxQueueSize items in the queue.
@@ -197,7 +203,8 @@ func TestFullQueue(t *testing.T) {
 func TestPipes(t *testing.T) {
 	dir := testlib.MustTempDir(t)
 	defer testlib.RemoveIfOk(t, dir)
-	q, _ := New(dir, set.NewString("loco"), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString("loco"),
+		aliases.NewResolver(allUsersExist),
 		testlib.DumbCourier, testlib.DumbCourier)
 	item := &Item{
 		Message: Message{
@@ -219,7 +226,8 @@ func TestBadPath(t *testing.T) {
 	// A new queue will attempt to os.MkdirAll the path.
 	// We expect this path to fail.
 	_, err := New("/proc/doesnotexist", set.NewString("loco"),
-		aliases.NewResolver(), testlib.DumbCourier, testlib.DumbCourier)
+		aliases.NewResolver(allUsersExist),
+		testlib.DumbCourier, testlib.DumbCourier)
 	if err == nil {
 		t.Errorf("could create queue, expected permission denied")
 	}
@@ -270,7 +278,8 @@ func TestSerialization(t *testing.T) {
 	// Create the queue; should load the
 	remoteC := testlib.NewTestCourier()
 	remoteC.Expect(1)
-	q, _ := New(dir, set.NewString("loco"), aliases.NewResolver(),
+	q, _ := New(dir, set.NewString("loco"),
+		aliases.NewResolver(allUsersExist),
 		testlib.DumbCourier, remoteC)
 	q.Load()
 

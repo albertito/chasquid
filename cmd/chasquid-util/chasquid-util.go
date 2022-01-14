@@ -224,7 +224,7 @@ func aliasesResolve() {
 	}
 	_ = os.Chdir(configDir)
 
-	r := aliases.NewResolver()
+	r := aliases.NewResolver(allUsersExist)
 	r.SuffixSep = *conf.SuffixSeparators
 	r.DropChars = *conf.DropCharacters
 
@@ -289,6 +289,8 @@ func domaininfoRemove() {
 	}
 }
 
+func allUsersExist(user, domain string) (bool, error) { return true, nil }
+
 // chasquid-util aliases-add <source> <target>
 func aliasesAdd() {
 	source := args["$2"]
@@ -315,7 +317,7 @@ func aliasesAdd() {
 	_ = os.Chdir(configDir)
 
 	// Setup alias resolver.
-	r := aliases.NewResolver()
+	r := aliases.NewResolver(allUsersExist)
 	r.SuffixSep = *conf.SuffixSeparators
 	r.DropChars = *conf.DropCharacters
 

@@ -76,6 +76,8 @@ type Server struct {
 
 // NewServer returns a new empty Server.
 func NewServer() *Server {
+	authr := auth.NewAuthenticator()
+	aliasesR := aliases.NewResolver(authr.Exists)
 	return &Server{
 		addrs:          map[SocketMode][]string{},
 		listeners:      map[SocketMode][]net.Listener{},
@@ -83,8 +85,8 @@ func NewServer() *Server {
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
 		localDomains:   &set.String{},
-		authr:          auth.NewAuthenticator(),
-		aliasesR:       aliases.NewResolver(),
+		authr:          authr,
+		aliasesR:       aliasesR,
 	}
 }
 
