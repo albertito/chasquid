@@ -225,8 +225,8 @@ func aliasesResolve() {
 	_ = os.Chdir(configDir)
 
 	r := aliases.NewResolver()
-	r.SuffixSep = conf.SuffixSeparators
-	r.DropChars = conf.DropCharacters
+	r.SuffixSep = *conf.SuffixSeparators
+	r.DropChars = *conf.DropCharacters
 
 	domainDirs, err := ioutil.ReadDir("domains/")
 	if err != nil {
@@ -316,8 +316,8 @@ func aliasesAdd() {
 
 	// Setup alias resolver.
 	r := aliases.NewResolver()
-	r.SuffixSep = conf.SuffixSeparators
-	r.DropChars = conf.DropCharacters
+	r.SuffixSep = *conf.SuffixSeparators
+	r.DropChars = *conf.DropCharacters
 
 	r.AddDomain(domain)
 	aliasesFilePath := filepath.Join("domains", domain, "aliases")

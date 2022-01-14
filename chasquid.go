@@ -102,7 +102,7 @@ func main() {
 	s.HookPath = "hooks/"
 	s.HAProxyEnabled = conf.HaproxyIncoming
 
-	s.SetAliasesConfig(conf.SuffixSeparators, conf.DropCharacters)
+	s.SetAliasesConfig(*conf.SuffixSeparators, *conf.DropCharacters)
 
 	if conf.DovecotAuth {
 		loadDovecot(s, conf.DovecotUserdbPath, conf.DovecotClientPath)

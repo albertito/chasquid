@@ -67,13 +67,13 @@ message Config {
 	// Including "+" is strongly encouraged, as it is assumed for email
 	// forwarding.
 	// Default: "+".
-	string suffix_separators = 10;
+	optional string suffix_separators = 10;
 
 	// Characters to drop from the user part on local emails.
 	// For example, if you set this to "._", email to local user
 	// "u.se_r" will be delivered to "user".
 	// Default: ".".
-	string drop_characters = 11;
+	optional string drop_characters = 11;
 
 	// Path where to write the mail log to.
 	// If "<syslog>", log using the syslog (at MAIL|INFO priority).

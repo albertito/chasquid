@@ -24,6 +24,10 @@ func mustCreateConfig(t *testing.T, contents string) (string, string) {
 	return tmpDir, tmpDir + "/chasquid.conf"
 }
 
+func TestEmptyStruct(t *testing.T) {
+	testLogConfig(&Config{})
+}
+
 func TestEmptyConfig(t *testing.T) {
 	tmpDir, path := mustCreateConfig(t, "")
 	defer testlib.RemoveIfOk(t, tmpDir)
@@ -54,6 +58,7 @@ func TestFullConfig(t *testing.T) {
 		submission_address: ":10002"
 		monitoring_address: ":1111"
 		max_data_size_mb: 26
+		suffix_separators: ""
 	`
 
 	tmpDir, path := mustCreateConfig(t, confStr)
@@ -63,6 +68,7 @@ func TestFullConfig(t *testing.T) {
 		hostname: "proust"
 		submission_address: ":999"
 		dovecot_auth: true
+		drop_characters: ""
 	`
 
 	expected := &Config{
@@ -79,8 +85,8 @@ func TestFullConfig(t *testing.T) {
 
 		DataDir: "/var/lib/chasquid",
 
-		SuffixSeparators: "+",
-		DropCharacters:   ".",
+		SuffixSeparators: proto.String(""),
+		DropCharacters:   proto.String(""),
 
 		MailLogPath: "<syslog>",
 

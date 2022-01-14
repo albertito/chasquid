@@ -2,7 +2,7 @@
 package config
 
 // Generate the config protobuf.
-//go:generate protoc --go_out=. --go_opt=paths=source_relative config.proto
+//go:generate protoc --go_out=. --go_opt=paths=source_relative --experimental_allow_proto3_optional config.proto
 
 import (
 	"fmt"
@@ -27,8 +27,8 @@ var defaultConfig = &Config{
 
 	DataDir: "/var/lib/chasquid",
 
-	SuffixSeparators: "+",
-	DropCharacters:   ".",
+	SuffixSeparators: proto.String("+"),
+	DropCharacters:   proto.String("."),
 
 	MailLogPath: "<syslog>",
 }
@@ -104,10 +104,10 @@ func override(c, o *Config) {
 		c.DataDir = o.DataDir
 	}
 
-	if o.SuffixSeparators != "" {
+	if o.SuffixSeparators != nil {
 		c.SuffixSeparators = o.SuffixSeparators
 	}
-	if o.DropCharacters != "" {
+	if o.DropCharacters != nil {
 		c.DropCharacters = o.DropCharacters
 	}
 	if o.MailLogPath != "" {
@@ -140,8 +140,16 @@ func LogConfig(c *Config) {
 	log.Infof("  Monitoring address: %s", c.MonitoringAddress)
 	log.Infof("  MDA: %s %v", c.MailDeliveryAgentBin, c.MailDeliveryAgentArgs)
 	log.Infof("  Data directory: %s", c.DataDir)
-	log.Infof("  Suffix separators: %s", c.SuffixSeparators)
-	log.Infof("  Drop characters: %s", c.DropCharacters)
+	if c.SuffixSeparators == nil {
+		log.Infof("  Suffix separators: nil")
+	} else {
+		log.Infof("  Suffix separators: %s", *c.SuffixSeparators)
+	}
+	if c.DropCharacters == nil {
+		log.Infof("  Drop characters: nil")
+	} else {
+		log.Infof("  Drop characters: %s", *c.DropCharacters)
+	}
 	log.Infof("  Mail log: %s", c.MailLogPath)
 	log.Infof("  Dovecot auth: %v (%q, %q)",
 		c.DovecotAuth, c.DovecotUserdbPath, c.DovecotClientPath)
