@@ -145,7 +145,7 @@ func (v *Resolver) Resolve(addr string) ([]Recipient, error) {
 // Exists check that the address exists in the database.
 // It returns the cleaned address, and a boolean indicating the result.
 // The clean address can be used to look it up in other databases, even if it
-// doesn't exist.
+// doesn't exist. It must only be called for local addresses.
 func (v *Resolver) Exists(addr string) (string, bool) {
 	addr = v.cleanIfLocal(addr)
 
@@ -169,6 +169,13 @@ func (v *Resolver) lookup(addr string) ([]Recipient, error) {
 func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
 	if rcount >= recursionLimit {
 		return nil, ErrRecursionLimitExceeded
+	}
+
+	// If the address is not local, we return it as-is, so delivery is
+	// attempted against it.
+	// Example: an alias that resolves to a non-local address.
+	if _, ok := v.domains[envelope.DomainOf(addr)]; !ok {
+		return []Recipient{{addr, EMAIL}}, nil
 	}
 
 	// Drop suffixes and chars to get the "clean" address before resolving.

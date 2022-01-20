@@ -13,6 +13,7 @@ type Cases []struct {
 }
 
 func (cases Cases) check(t *testing.T, r *Resolver) {
+	t.Helper()
 	for _, c := range cases {
 		got, err := r.Resolve(c.addr)
 		if err != nil {
@@ -26,6 +27,7 @@ func (cases Cases) check(t *testing.T, r *Resolver) {
 }
 
 func mustExist(t *testing.T, r *Resolver, addrs ...string) {
+	t.Helper()
 	for _, addr := range addrs {
 		if _, ok := r.Exists(addr); !ok {
 			t.Errorf("address %q does not exist, it should", addr)
@@ -34,6 +36,7 @@ func mustExist(t *testing.T, r *Resolver, addrs ...string) {
 }
 
 func mustNotExist(t *testing.T, r *Resolver, addrs ...string) {
+	t.Helper()
 	for _, addr := range addrs {
 		if _, ok := r.Exists(addr); ok {
 			t.Errorf("address %q exists, it should not", addr)
@@ -43,20 +46,22 @@ func mustNotExist(t *testing.T, r *Resolver, addrs ...string) {
 
 func TestBasic(t *testing.T) {
 	resolver := NewResolver()
+	resolver.AddDomain("localA")
+	resolver.AddDomain("localB")
 	resolver.aliases = map[string][]Recipient{
-		"a@b": {{"c@d", EMAIL}, {"e@f", EMAIL}},
-		"e@f": {{"cmd", PIPE}},
-		"cmd": {{"x@y", EMAIL}}, // it's a trap!
+		"a@localA": {{"c@d", EMAIL}, {"e@localB", EMAIL}},
+		"e@localB": {{"cmd", PIPE}},
+		"cmd":      {{"x@y", EMAIL}}, // it's a trap!
 	}
 
 	cases := Cases{
-		{"a@b", []Recipient{{"c@d", EMAIL}, {"cmd", PIPE}}},
-		{"e@f", []Recipient{{"cmd", PIPE}}},
+		{"a@localA", []Recipient{{"c@d", EMAIL}, {"cmd", PIPE}}},
+		{"e@localB", []Recipient{{"cmd", PIPE}}},
 		{"x@y", []Recipient{{"x@y", EMAIL}}},
 	}
 	cases.check(t, resolver)
 
-	mustExist(t, resolver, "a@b", "e@f", "cmd")
+	mustExist(t, resolver, "a@localA", "e@localB", "cmd")
 	mustNotExist(t, resolver, "x@y")
 }
 
@@ -68,6 +73,7 @@ func TestAddrRewrite(t *testing.T) {
 		"abc@def":  {{"x@y", EMAIL}},
 		"ñoño@def": {{"x@y", EMAIL}},
 		"recu@def": {{"ab+cd@p-q.com", EMAIL}},
+		"remo@def": {{"x-@y-z.com", EMAIL}},
 	}
 	resolver.DropChars = ".~"
 	resolver.SuffixSep = "-+"
@@ -96,6 +102,7 @@ func TestAddrRewrite(t *testing.T) {
 		{"x.y@z.com", []Recipient{{"x.y@z.com", EMAIL}}},
 		{"x-@y-z.com", []Recipient{{"x-@y-z.com", EMAIL}}},
 		{"x+blah@y", []Recipient{{"x+blah@y", EMAIL}}},
+		{"remo@def", []Recipient{{"x-@y-z.com", EMAIL}}},
 	}
 	cases.check(t, resolver)
 }
@@ -143,7 +150,9 @@ func TestExistsRewrite(t *testing.T) {
 }
 
 func TestTooMuchRecursion(t *testing.T) {
-	resolver := Resolver{}
+	resolver := NewResolver()
+	resolver.AddDomain("b")
+	resolver.AddDomain("d")
 	resolver.aliases = map[string][]Recipient{
 		"a@b": {{"c@d", EMAIL}},
 		"c@d": {{"a@b", EMAIL}},
