@@ -25,7 +25,6 @@ function send_and_check() {
 
 # Remove the hooks that could be left over from previous failed tests.
 rm -f config/hooks/alias-resolve
-rm -f config/hooks/alias-exists
 
 # Test email aliases.
 send_and_check pepe jose
@@ -46,7 +45,6 @@ mail_diff content .data/pipe_alias_worked
 
 # Set up the hooks.
 mkdir -p config/hooks/
-cp alias-exists-hook config/hooks/alias-exists
 cp alias-resolve-hook config/hooks/alias-resolve
 
 # Test email aliases.
@@ -70,6 +68,5 @@ fi
 
 # Remove the hooks, leave a clean state.
 rm -f config/hooks/alias-resolve
-rm -f config/hooks/alias-exists
 
 success

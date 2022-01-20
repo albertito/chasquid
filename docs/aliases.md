@@ -85,11 +85,11 @@ aliases.
 
 ## Hooks
 
-There are two hooks that allow more sophisticated aliases resolution:
-`alias-exists` and `alias-resolve`.
+There is a hook that allows more sophisticated aliases resolution:
+`alias-resolve`.
 
-If they exist, they are invoked as part of the resolution process and the
-results are merged with the file-based resolution results.
+If it exists, it is invoked as part of the resolution process, and the results
+are merged with the file-based resolution results.
 
 See the [hooks](hooks.md) documentation for more details.
 

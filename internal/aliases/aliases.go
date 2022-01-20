@@ -112,8 +112,7 @@ type Resolver struct {
 	// Characters to drop from the user part.
 	DropChars string
 
-	// Path to resolve and exist hooks.
-	ExistsHook  string
+	// Path to the resolve hook.
 	ResolveHook string
 
 	// Map of domain -> alias files for that domain.
@@ -148,16 +147,23 @@ func (v *Resolver) Resolve(addr string) ([]Recipient, error) {
 // The clean address can be used to look it up in other databases, even if it
 // doesn't exist.
 func (v *Resolver) Exists(addr string) (string, bool) {
-	v.mu.Lock()
 	addr = v.cleanIfLocal(addr)
-	_, ok := v.aliases[addr]
+
+	rcpts, _ := v.lookup(addr)
+	return addr, len(rcpts) > 0
+}
+
+func (v *Resolver) lookup(addr string) ([]Recipient, error) {
+	v.mu.Lock()
+	rcpts := v.aliases[addr]
 	v.mu.Unlock()
 
-	if ok {
-		return addr, true
+	// Augment with the hook results.
+	hr, err := v.runResolveHook(addr)
+	if err != nil {
+		return nil, err
 	}
-
-	return addr, v.runExistsHook(addr)
+	return append(rcpts, hr...), nil
 }
 
 func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
@@ -171,16 +177,10 @@ func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
 	addr = v.cleanIfLocal(addr)
 
 	// Lookup in the aliases database.
-	v.mu.Lock()
-	rcpts := v.aliases[addr]
-	v.mu.Unlock()
-
-	// Augment with the hook results.
-	hr, err := v.runResolveHook(addr)
+	rcpts, err := v.lookup(addr)
 	if err != nil {
 		return nil, err
 	}
-	rcpts = append(rcpts, hr...)
 
 	if len(rcpts) == 0 {
 		return []Recipient{{addr, EMAIL}}, nil
@@ -434,36 +434,4 @@ func (v *Resolver) runResolveHook(addr string) ([]Recipient, error) {
 	tr.Debugf("recipients: %v", rs)
 	hookResults.Add("resolve:success", 1)
 	return rs, nil
-}
-
-func (v *Resolver) runExistsHook(addr string) bool {
-	if v.ExistsHook == "" {
-		hookResults.Add("exists:notset", 1)
-		return false
-	}
-	// TODO: check if the file is executable.
-	if _, err := os.Stat(v.ExistsHook); os.IsNotExist(err) {
-		hookResults.Add("exists:skip", 1)
-		return false
-	}
-
-	// TODO: this should be done via a context propagated all the way through.
-	tr := trace.New("Hook.Alias-Exists", addr)
-	defer tr.Finish()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, v.ExistsHook, addr)
-
-	out, err := cmd.CombinedOutput()
-	tr.Debugf("output: %q", string(out))
-	if err != nil {
-		tr.Debugf("not exists: %v", err)
-		hookResults.Add("exists:false", 1)
-		return false
-	}
-
-	tr.Debugf("exists")
-	hookResults.Add("exists:true", 1)
-	return true
 }

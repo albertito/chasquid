@@ -134,7 +134,6 @@ func (s *Server) SetAliasesConfig(suffixSep, dropChars string) {
 	s.aliasesR.SuffixSep = suffixSep
 	s.aliasesR.DropChars = dropChars
 	s.aliasesR.ResolveHook = path.Join(s.HookPath, "alias-resolve")
-	s.aliasesR.ExistsHook = path.Join(s.HookPath, "alias-exists")
 }
 
 // InitDomainInfo initializes the domain info database.

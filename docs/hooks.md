@@ -73,17 +73,3 @@ without emitting any output.
 
 There is a 5 second timeout for hook execution. If the hook exits with an
 error, including timeout, delivery will fail.
-
-
-## Alias exists hook
-
-When chasquid needs to check whether an alias exists or not, it will run the
-command at `$config_dir/hooks/alias-exists` (if the file exists).
-
-The address to check will be passed as the single argument.
-
-If the commands exits successfuly (exit code 0), then the alias exists; any
-other exit code signals that the alias does not exist.
-
-There is a 5 second timeout for hook execution. If the hook times out, the
-alias will be assumed not to exist.
