@@ -139,7 +139,9 @@ func NewResolver() *Resolver {
 // Resolve the given address, returning the list of corresponding recipients
 // (if any).
 func (v *Resolver) Resolve(addr string) ([]Recipient, error) {
-	return v.resolve(0, addr)
+	tr := trace.New("Alias.Resolve", addr)
+	defer tr.Finish()
+	return v.resolve(0, addr, tr)
 }
 
 // Exists check that the address exists in the database.
@@ -147,13 +149,16 @@ func (v *Resolver) Resolve(addr string) ([]Recipient, error) {
 // The clean address can be used to look it up in other databases, even if it
 // doesn't exist. It must only be called for local addresses.
 func (v *Resolver) Exists(addr string) (string, bool) {
+	tr := trace.New("Alias.Exists", addr)
+	defer tr.Finish()
+
 	addr = v.cleanIfLocal(addr)
 
-	rcpts, _ := v.lookup(addr)
+	rcpts, _ := v.lookup(addr, tr)
 	return addr, len(rcpts) > 0
 }
 
-func (v *Resolver) lookup(addr string) ([]Recipient, error) {
+func (v *Resolver) lookup(addr string, tr *trace.Trace) ([]Recipient, error) {
 	v.mu.Lock()
 	rcpts := v.aliases[addr]
 	v.mu.Unlock()
@@ -161,12 +166,16 @@ func (v *Resolver) lookup(addr string) ([]Recipient, error) {
 	// Augment with the hook results.
 	hr, err := v.runResolveHook(addr)
 	if err != nil {
+		tr.Debugf("lookup(%q) hook error: %v", addr, err)
 		return nil, err
 	}
+
+	tr.Debugf("lookup(%q) -> %v + %v", addr, rcpts, hr)
 	return append(rcpts, hr...), nil
 }
 
-func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
+func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipient, error) {
+	tr.Debugf("%d| resolve(%d, %q)", rcount, rcount, addr)
 	if rcount >= recursionLimit {
 		return nil, ErrRecursionLimitExceeded
 	}
@@ -175,6 +184,7 @@ func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
 	// attempted against it.
 	// Example: an alias that resolves to a non-local address.
 	if _, ok := v.domains[envelope.DomainOf(addr)]; !ok {
+		tr.Debugf("%d| non-local domain, returning %q", rcount, addr)
 		return []Recipient{{addr, EMAIL}}, nil
 	}
 
@@ -184,12 +194,14 @@ func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
 	addr = v.cleanIfLocal(addr)
 
 	// Lookup in the aliases database.
-	rcpts, err := v.lookup(addr)
+	rcpts, err := v.lookup(addr, tr)
 	if err != nil {
+		tr.Debugf("%d| error in lookup: %v", rcount, err)
 		return nil, err
 	}
 
 	if len(rcpts) == 0 {
+		tr.Debugf("%d| no aliases found, returning %q", rcount, addr)
 		return []Recipient{{addr, EMAIL}}, nil
 	}
 
@@ -201,14 +213,16 @@ func (v *Resolver) resolve(rcount int, addr string) ([]Recipient, error) {
 			continue
 		}
 
-		ar, err := v.resolve(rcount+1, r.Addr)
+		ar, err := v.resolve(rcount+1, r.Addr, tr)
 		if err != nil {
+			tr.Debugf("%d| resolve(%q) returned error: %v", rcount, r.Addr, err)
 			return nil, err
 		}
 
 		ret = append(ret, ar...)
 	}
 
+	tr.Debugf("%d| returning %v", rcount, ret)
 	return ret, nil
 }
 
