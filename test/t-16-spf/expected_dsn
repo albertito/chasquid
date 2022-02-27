@@ -26,7 +26,7 @@ Delivery of your message to the following recipient(s) failed permanently:
 
 Technical details:
 - "userB@srv-b" (EMAIL) failed permanently with error:
-    MAIL+RCPT 550 5.7.23 SPF check failed: matched 'all'
+    MAIL+RCPT 550 5.7.23 SPF check failed: matched all
 
 
 --???????????
@@ -40,7 +40,7 @@ Original-Recipient: utf-8; userB@srv-b
 Final-Recipient: utf-8; userB@srv-b
 Action: failed
 Status: 5.0.0
-Diagnostic-Code: smtp; MAIL+RCPT 550 5.7.23 SPF check failed: matched 'all'
+Diagnostic-Code: smtp; MAIL+RCPT 550 5.7.23 SPF check failed: matched all
 
 
 

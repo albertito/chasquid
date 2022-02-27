@@ -1,10 +1,10 @@
 module blitiri.com.ar/go/chasquid
 
-go 1.13
+go 1.15
 
 require (
 	blitiri.com.ar/go/log v1.1.0
-	blitiri.com.ar/go/spf v1.2.0
+	blitiri.com.ar/go/spf v1.3.0
 	blitiri.com.ar/go/systemd v1.1.0
 	github.com/google/go-cmp v0.5.5
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
