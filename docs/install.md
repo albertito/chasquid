@@ -71,12 +71,27 @@ structure:
   ...
 ```
 
-Note the certs/ directory layout matches the one from certbot,
-[letsencrypt](https://letsencrypt.org)'s
-default client, so you can just symlink `certs/` to `/etc/letsencrypt/live`.
+### Certificates
 
-Make sure the user you use to run chasquid under ("mail" in the example
-config) can access the certificates and private keys.
+The certs/ directory layout matches the one from
+[certbot](https://certbot.eff.org/),
+[letsencrypt](https://letsencrypt.org)'s
+default client, to make it easier to integrate.
+
+A convenient way to set this up is:
+
+1) Obtain TLS certificates using `certbot` as needed.
+2) Symlink chasquid's `certs/` to `/etc/letsencrypt/live`:\
+   `sudo ln -s /etc/letsencrypt/live/ /etc/chasquid/certs`
+3) Give chasquid permissions to read the certificates:\
+   `sudo setfacl -R -m u:chasquid:rX /etc/letsencrypt/{live,archive}`
+4) Set up [automatic renewal] to restart chasquid when certificates are
+   renewed.
+
+Please see the [how-to guide](howto.md#tls-certificate) for more detailed
+examples.
+
+[automatic renewal]: https://eff-certbot.readthedocs.io/en/stable/using.html#setting-up-automated-renewal
 
 
 ### Adding users
