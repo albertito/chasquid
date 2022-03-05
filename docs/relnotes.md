@@ -5,6 +5,14 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.9 (2022-03-05)
+
+- Improve certificate validation logic in the SMTP courier.
+- Remove `alias-exists` hook, and improve aliases resolution logic.
+- Support `""` values for `drop_characters` and `suffix_separators` in the
+  configuration file.
+
+
 ## 1.8 (2021-07-30)
 
 - Stricter error checking to help prevent cross-protocol attacks
