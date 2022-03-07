@@ -156,8 +156,12 @@ func (q *Queue) Len() int {
 }
 
 // Put an envelope in the queue.
-func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
+func (q *Queue) Put(tr *trace.Trace, from string, to []string, data []byte) (string, error) {
+	tr = tr.NewChild("Queue.Put", from)
+	defer tr.Finish()
+
 	if q.Len() >= maxQueueSize {
+		tr.Errorf("queue full")
 		return "", errQueueFull
 	}
 	putCount.Add(1)
@@ -174,7 +178,7 @@ func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
 	for _, t := range to {
 		item.To = append(item.To, t)
 
-		rcpts, err := q.aliases.Resolve(t)
+		rcpts, err := q.aliases.Resolve(tr, t)
 		if err != nil {
 			return "", fmt.Errorf("error resolving aliases for %q: %v", t, err)
 		}
@@ -195,15 +199,16 @@ func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
 			default:
 				log.Errorf("unknown alias type %v when resolving %q",
 					aliasRcpt.Type, t)
-				return "", fmt.Errorf("internal error - unknown alias type")
+				return "", tr.Errorf("internal error - unknown alias type")
 			}
 			item.Rcpt = append(item.Rcpt, r)
+			tr.Debugf("recipient: %v", r.Address)
 		}
 	}
 
 	err := item.WriteTo(q.path)
 	if err != nil {
-		return "", fmt.Errorf("failed to write item: %v", err)
+		return "", tr.Errorf("failed to write item: %v", err)
 	}
 
 	q.mu.Lock()
@@ -213,6 +218,7 @@ func (q *Queue) Put(from string, to []string, data []byte) (string, error) {
 	// Begin to send it right away.
 	go item.SendLoop(q)
 
+	tr.Debugf("queued")
 	return item.ID, nil
 }
 
@@ -450,7 +456,7 @@ func sendDSN(tr *trace.Trace, q *Queue, item *Item) {
 		return
 	}
 
-	id, err := q.Put("<>", []string{item.From}, msg)
+	id, err := q.Put(tr, "<>", []string{item.From}, msg)
 	if err != nil {
 		tr.Errorf("failed to queue DSN: %v", err)
 		return

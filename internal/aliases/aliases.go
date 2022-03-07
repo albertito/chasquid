@@ -104,7 +104,7 @@ var (
 )
 
 // Type of the "does this user exist" function", for convenience.
-type existsFn func(user, domain string) (bool, error)
+type existsFn func(tr *trace.Trace, user, domain string) (bool, error)
 
 // Resolver represents the aliases resolver.
 type Resolver struct {
@@ -145,8 +145,8 @@ func NewResolver(userExists existsFn) *Resolver {
 
 // Resolve the given address, returning the list of corresponding recipients
 // (if any).
-func (v *Resolver) Resolve(addr string) ([]Recipient, error) {
-	tr := trace.New("Alias.Resolve", addr)
+func (v *Resolver) Resolve(tr *trace.Trace, addr string) ([]Recipient, error) {
+	tr = tr.NewChild("Alias.Resolve", addr)
 	defer tr.Finish()
 	return v.resolve(0, addr, tr)
 }
@@ -155,8 +155,8 @@ func (v *Resolver) Resolve(addr string) ([]Recipient, error) {
 // It returns the cleaned address, and a boolean indicating the result.
 // The clean address can be used to look it up in other databases, even if it
 // doesn't exist. It must only be called for local addresses.
-func (v *Resolver) Exists(addr string) (string, bool) {
-	tr := trace.New("Alias.Exists", addr)
+func (v *Resolver) Exists(tr *trace.Trace, addr string) (string, bool) {
+	tr = tr.NewChild("Alias.Exists", addr)
 	defer tr.Finish()
 
 	addr = v.cleanIfLocal(addr)
@@ -181,7 +181,7 @@ func (v *Resolver) lookup(addr string, tr *trace.Trace) ([]Recipient, error) {
 	v.mu.Unlock()
 
 	// Augment with the hook results.
-	hr, err := v.runResolveHook(addr)
+	hr, err := v.runResolveHook(tr, addr)
 	if err != nil {
 		tr.Debugf("lookup(%q) hook error: %v", addr, err)
 		return nil, err
@@ -222,7 +222,7 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 	if len(rcpts) == 0 {
 		tr.Debugf("%d| no alias found", rcount)
 		// If the user exists, then use it as-is, no need to recurse further.
-		ok, err := v.userExistsInDB(user, domain)
+		ok, err := v.userExistsInDB(tr, user, domain)
 		if err != nil {
 			tr.Debugf("%d| error checking if user exists: %v", rcount, err)
 			return nil, err
@@ -474,7 +474,7 @@ func removeChars(s, chars string) string {
 	return s
 }
 
-func (v *Resolver) runResolveHook(addr string) ([]Recipient, error) {
+func (v *Resolver) runResolveHook(tr *trace.Trace, addr string) ([]Recipient, error) {
 	if v.ResolveHook == "" {
 		hookResults.Add("resolve:notset", 1)
 		return nil, nil
@@ -486,7 +486,7 @@ func (v *Resolver) runResolveHook(addr string) ([]Recipient, error) {
 	}
 
 	// TODO: this should be done via a context propagated all the way through.
-	tr := trace.New("Hook.Alias-Resolve", addr)
+	tr = tr.NewChild("Hook.Alias-Resolve", addr)
 	defer tr.Finish()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

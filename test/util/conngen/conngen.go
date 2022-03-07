@@ -11,10 +11,9 @@ import (
 	"net/smtp"
 	"time"
 
-	"golang.org/x/net/trace"
-
 	_ "net/http/pprof"
 
+	"blitiri.com.ar/go/chasquid/internal/nettrace"
 	"blitiri.com.ar/go/log"
 )
 
@@ -80,13 +79,13 @@ func main() {
 
 // C represents a single connection.
 type C struct {
-	tr trace.Trace
+	tr nettrace.Trace
 	n  net.Conn
 	s  *smtp.Client
 }
 
 func newC() (*C, error) {
-	tr := trace.New("conn", *addr)
+	tr := nettrace.New("conn", *addr)
 
 	conn, err := net.Dial("tcp", *addr)
 	if err != nil {

@@ -75,8 +75,8 @@ func (db *DB) Reload() error {
 	return nil
 }
 
-func (db *DB) write(d *Domain) {
-	tr := trace.New("DomainInfo.write", d.Name)
+func (db *DB) write(tr *trace.Trace, d *Domain) {
+	tr = tr.NewChild("DomainInfo.write", d.Name)
 	defer tr.Finish()
 
 	err := db.store.Put(d.Name, d)
@@ -89,8 +89,8 @@ func (db *DB) write(d *Domain) {
 
 // IncomingSecLevel checks an incoming security level for the domain.
 // Returns true if allowed, false otherwise.
-func (db *DB) IncomingSecLevel(domain string, level SecLevel) bool {
-	tr := trace.New("DomainInfo.Incoming", domain)
+func (db *DB) IncomingSecLevel(tr *trace.Trace, domain string, level SecLevel) bool {
+	tr = tr.NewChild("DomainInfo.Incoming", domain)
 	defer tr.Finish()
 	tr.Debugf("incoming at level %s", level)
 
@@ -101,7 +101,7 @@ func (db *DB) IncomingSecLevel(domain string, level SecLevel) bool {
 	if !exists {
 		d = &Domain{Name: domain}
 		db.info[domain] = d
-		defer db.write(d)
+		defer db.write(tr, d)
 	}
 
 	if level < d.IncomingSecLevel {
@@ -117,7 +117,7 @@ func (db *DB) IncomingSecLevel(domain string, level SecLevel) bool {
 			d.Name, level, d.IncomingSecLevel)
 		d.IncomingSecLevel = level
 		if exists {
-			defer db.write(d)
+			defer db.write(tr, d)
 		}
 		return true
 	}
@@ -125,8 +125,8 @@ func (db *DB) IncomingSecLevel(domain string, level SecLevel) bool {
 
 // OutgoingSecLevel checks an incoming security level for the domain.
 // Returns true if allowed, false otherwise.
-func (db *DB) OutgoingSecLevel(domain string, level SecLevel) bool {
-	tr := trace.New("DomainInfo.Outgoing", domain)
+func (db *DB) OutgoingSecLevel(tr *trace.Trace, domain string, level SecLevel) bool {
+	tr = tr.NewChild("DomainInfo.Outgoing", domain)
 	defer tr.Finish()
 	tr.Debugf("outgoing at level %s", level)
 
@@ -137,7 +137,7 @@ func (db *DB) OutgoingSecLevel(domain string, level SecLevel) bool {
 	if !exists {
 		d = &Domain{Name: domain}
 		db.info[domain] = d
-		defer db.write(d)
+		defer db.write(tr, d)
 	}
 
 	if level < d.OutgoingSecLevel {
@@ -153,7 +153,7 @@ func (db *DB) OutgoingSecLevel(domain string, level SecLevel) bool {
 			d.Name, level, d.OutgoingSecLevel)
 		d.OutgoingSecLevel = level
 		if exists {
-			defer db.write(d)
+			defer db.write(tr, d)
 		}
 		return true
 	}

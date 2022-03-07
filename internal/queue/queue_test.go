@@ -10,9 +10,12 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/set"
 	"blitiri.com.ar/go/chasquid/internal/testlib"
+	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
-func allUsersExist(user, domain string) (bool, error) { return true, nil }
+func allUsersExist(tr *trace.Trace, user, domain string) (bool, error) {
+	return true, nil
+}
 
 func TestBasic(t *testing.T) {
 	dir := testlib.MustTempDir(t)
@@ -22,10 +25,12 @@ func TestBasic(t *testing.T) {
 	q, _ := New(dir, set.NewString("loco"),
 		aliases.NewResolver(allUsersExist),
 		localC, remoteC)
+	tr := trace.New("test", "TestBasic")
+	defer tr.Finish()
 
 	localC.Expect(2)
 	remoteC.Expect(1)
-	id, err := q.Put("from", []string{"am@loco", "x@remote", "nodomain"}, []byte("data"))
+	id, err := q.Put(tr, "from", []string{"am@loco", "x@remote", "nodomain"}, []byte("data"))
 	if err != nil {
 		t.Fatalf("Put: %v", err)
 	}
@@ -118,6 +123,8 @@ func TestAliases(t *testing.T) {
 	q, _ := New(dir, set.NewString("loco"),
 		aliases.NewResolver(allUsersExist),
 		localC, remoteC)
+	tr := trace.New("test", "TestAliases")
+	defer tr.Finish()
 
 	q.aliases.AddDomain("loco")
 	q.aliases.AddAliasForTesting("ab@loco", "pq@loco", aliases.EMAIL)
@@ -128,7 +135,7 @@ func TestAliases(t *testing.T) {
 
 	localC.Expect(2)
 	remoteC.Expect(1)
-	_, err := q.Put("from", []string{"ab@loco", "cd@loco"}, []byte("data"))
+	_, err := q.Put(tr, "from", []string{"ab@loco", "cd@loco"}, []byte("data"))
 	if err != nil {
 		t.Fatalf("Put: %v", err)
 	}
@@ -163,6 +170,8 @@ func TestFullQueue(t *testing.T) {
 	q, _ := New(dir, set.NewString(),
 		aliases.NewResolver(allUsersExist),
 		testlib.DumbCourier, testlib.DumbCourier)
+	tr := trace.New("test", "TestFullQueue")
+	defer tr.Finish()
 
 	// Force-insert maxQueueSize items in the queue.
 	oneID := ""
@@ -182,7 +191,7 @@ func TestFullQueue(t *testing.T) {
 	}
 
 	// This one should fail due to the queue being too big.
-	id, err := q.Put("from", []string{"to"}, []byte("data-qf"))
+	id, err := q.Put(tr, "from", []string{"to"}, []byte("data-qf"))
 	if err != errQueueFull {
 		t.Errorf("Not failed as expected: %v - %v", id, err)
 	}
@@ -193,7 +202,7 @@ func TestFullQueue(t *testing.T) {
 	q.q[oneID].WriteTo(q.path)
 	q.Remove(oneID)
 
-	id, err = q.Put("from", []string{"to"}, []byte("data"))
+	id, err = q.Put(tr, "from", []string{"to"}, []byte("data"))
 	if err != nil {
 		t.Errorf("Put: %v", err)
 	}
@@ -206,6 +215,7 @@ func TestPipes(t *testing.T) {
 	q, _ := New(dir, set.NewString("loco"),
 		aliases.NewResolver(allUsersExist),
 		testlib.DumbCourier, testlib.DumbCourier)
+
 	item := &Item{
 		Message: Message{
 			ID:   <-newID,

@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
 type Cases []struct {
@@ -17,8 +19,11 @@ type Cases []struct {
 
 func (cases Cases) check(t *testing.T, r *Resolver) {
 	t.Helper()
+	tr := trace.New("test", "check")
+	defer tr.Finish()
+
 	for _, c := range cases {
-		got, err := r.Resolve(c.addr)
+		got, err := r.Resolve(tr, c.addr)
 		if err != c.err {
 			t.Errorf("case %q: expected error %v, got %v",
 				c.addr, c.err, err)
@@ -32,8 +37,10 @@ func (cases Cases) check(t *testing.T, r *Resolver) {
 
 func mustExist(t *testing.T, r *Resolver, addrs ...string) {
 	t.Helper()
+	tr := trace.New("test", "mustExist")
+	defer tr.Finish()
 	for _, addr := range addrs {
-		if _, ok := r.Exists(addr); !ok {
+		if _, ok := r.Exists(tr, addr); !ok {
 			t.Errorf("address %q does not exist, it should", addr)
 		}
 	}
@@ -41,18 +48,20 @@ func mustExist(t *testing.T, r *Resolver, addrs ...string) {
 
 func mustNotExist(t *testing.T, r *Resolver, addrs ...string) {
 	t.Helper()
+	tr := trace.New("test", "mustNotExist")
+	defer tr.Finish()
 	for _, addr := range addrs {
-		if _, ok := r.Exists(addr); ok {
+		if _, ok := r.Exists(tr, addr); ok {
 			t.Errorf("address %q exists, it should not", addr)
 		}
 	}
 }
 
-func allUsersExist(user, domain string) (bool, error) {
+func allUsersExist(tr *trace.Trace, user, domain string) (bool, error) {
 	return true, nil
 }
 
-func usersWithXDontExist(user, domain string) (bool, error) {
+func usersWithXDontExist(tr *trace.Trace, user, domain string) (bool, error) {
 	if strings.HasPrefix(user, "x") {
 		return false, nil
 	}
@@ -61,7 +70,7 @@ func usersWithXDontExist(user, domain string) (bool, error) {
 
 var errUserLookup = errors.New("test error errUserLookup")
 
-func usersWithXErrorYDontExist(user, domain string) (bool, error) {
+func usersWithXErrorYDontExist(tr *trace.Trace, user, domain string) (bool, error) {
 	if strings.HasPrefix(user, "x") {
 		return false, errUserLookup
 	}
@@ -200,6 +209,9 @@ func TestExistsRewrite(t *testing.T) {
 	mustExist(t, resolver, "abc@def", "a.bc+blah@def", "ño.ño@def")
 	mustNotExist(t, resolver, "abc@d.ef", "nothere@def")
 
+	tr := trace.New("test", "TestExistsRewrite")
+	defer tr.Finish()
+
 	cases := []struct {
 		addr         string
 		expectAddr   string
@@ -215,7 +227,7 @@ func TestExistsRewrite(t *testing.T) {
 		{"x.yz@d.ef", "x.yz@d.ef", false},
 	}
 	for _, c := range cases {
-		addr, exists := resolver.Exists(c.addr)
+		addr, exists := resolver.Exists(tr, c.addr)
 		if addr != c.expectAddr {
 			t.Errorf("%q: expected addr %q, got %q",
 				c.addr, c.expectAddr, addr)
@@ -236,7 +248,10 @@ func TestTooMuchRecursion(t *testing.T) {
 		"c@d": {{"a@b", EMAIL}},
 	}
 
-	rs, err := resolver.Resolve("a@b")
+	tr := trace.New("test", "TestTooMuchRecursion")
+	defer tr.Finish()
+
+	rs, err := resolver.Resolve(tr, "a@b")
 	if err != ErrRecursionLimitExceeded {
 		t.Errorf("expected ErrRecursionLimitExceeded, got %v", err)
 	}
@@ -264,7 +279,10 @@ func TestTooMuchRecursionOnCatchAll(t *testing.T) {
 	cases.check(t, resolver)
 
 	for _, addr := range []string{"a@dom", "x@dom", "xx@dom"} {
-		rs, err := resolver.Resolve(addr)
+		tr := trace.New("TestTooMuchRecursionOnCatchAll", addr)
+		defer tr.Finish()
+
+		rs, err := resolver.Resolve(tr, addr)
 		if err != ErrRecursionLimitExceeded {
 			t.Errorf("%s: expected ErrRecursionLimitExceeded, got %v", addr, err)
 		}
@@ -319,6 +337,9 @@ func TestAddFile(t *testing.T) {
 		{"a:| \n", []Recipient{{"a@dom", EMAIL}}},
 	}
 
+	tr := trace.New("test", "TestAddFile")
+	defer tr.Finish()
+
 	for _, c := range cases {
 		fname := mustWriteFile(t, c.contents)
 		defer os.Remove(fname)
@@ -329,7 +350,7 @@ func TestAddFile(t *testing.T) {
 			t.Fatalf("error adding file: %v", err)
 		}
 
-		got, err := resolver.Resolve("a@dom")
+		got, err := resolver.Resolve(tr, "a@dom")
 		if err != nil {
 			t.Errorf("case %q, got error: %v", c.contents, err)
 			continue
@@ -432,6 +453,9 @@ func TestManyFiles(t *testing.T) {
 }
 
 func TestHookError(t *testing.T) {
+	tr := trace.New("TestHookError", "test")
+	defer tr.Finish()
+
 	resolver := NewResolver(allUsersExist)
 	resolver.AddDomain("localA")
 	resolver.aliases = map[string][]Recipient{
@@ -449,7 +473,7 @@ func TestHookError(t *testing.T) {
 
 	// Check that the hook is run and the error is propagated.
 	mustNotExist(t, resolver, "a@localA")
-	rcpts, err := resolver.Resolve("a@localA")
+	rcpts, err := resolver.Resolve(tr, "a@localA")
 	if len(rcpts) != 0 {
 		t.Errorf("expected no recipients, got %v", rcpts)
 	}

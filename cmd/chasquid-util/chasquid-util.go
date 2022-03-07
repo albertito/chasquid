@@ -20,6 +20,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
+	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 	"golang.org/x/term"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -250,7 +251,10 @@ func aliasesResolve() {
 		}
 	}
 
-	rcpts, err := r.Resolve(args["$2"])
+	tr := trace.New("chasquid-util", "aliasesResolve")
+	defer tr.Finish()
+
+	rcpts, err := r.Resolve(tr, args["$2"])
 	if err != nil {
 		Fatalf("Error resolving: %v", err)
 	}
@@ -289,7 +293,9 @@ func domaininfoRemove() {
 	}
 }
 
-func allUsersExist(user, domain string) (bool, error) { return true, nil }
+func allUsersExist(tr *trace.Trace, user, domain string) (bool, error) {
+	return true, nil
+}
 
 // chasquid-util aliases-add <source> <target>
 func aliasesAdd() {
@@ -327,8 +333,11 @@ func aliasesAdd() {
 		Fatalf("%s: error loading %q: %v", domain, aliasesFilePath, err)
 	}
 
+	tr := trace.New("chasquid-util", "aliasesAdd")
+	defer tr.Finish()
+
 	// Check for existing entry.
-	if _, ok := r.Exists(source); ok {
+	if _, ok := r.Exists(tr, source); ok {
 		Fatalf("There's already an entry for %v", source)
 	}
 

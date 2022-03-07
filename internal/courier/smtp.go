@@ -163,7 +163,7 @@ func (a *attempt) deliver(mx string) (error, bool) {
 		a.tr.Debugf("Insecure - NOT using TLS")
 	}
 
-	if !a.courier.Dinfo.OutgoingSecLevel(a.toDomain, secLevel) {
+	if !a.courier.Dinfo.OutgoingSecLevel(a.tr, a.toDomain, secLevel) {
 		// We consider the failure transient, so transient misconfigurations
 		// do not affect deliveries.
 		slcResults.Add("fail", 1)

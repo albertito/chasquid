@@ -488,8 +488,13 @@ func (c *Conn) checkSPF(addr string) (spf.Result, error) {
 	}
 
 	if tcp, ok := c.remoteAddr.(*net.TCPAddr); ok {
+		spfTr := c.tr.NewChild("SPF", tcp.IP.String())
+		defer spfTr.Finish()
 		res, err := spf.CheckHostWithSender(
-			tcp.IP, envelope.DomainOf(addr), addr)
+			tcp.IP, envelope.DomainOf(addr), addr,
+			spf.WithTraceFunc(func(f string, a ...interface{}) {
+				spfTr.Debugf(f, a...)
+			}))
 
 		c.tr.Debugf("SPF %v (%v)", res, err)
 		spfResultCount.Add(string(res), 1)
@@ -519,7 +524,7 @@ func (c *Conn) secLevelCheck(addr string) bool {
 		level = domaininfo.SecLevel_TLS_CLIENT
 	}
 
-	ok := c.dinfo.IncomingSecLevel(domain, level)
+	ok := c.dinfo.IncomingSecLevel(c.tr, domain, level)
 	if ok {
 		slcResults.Add("pass", 1)
 		c.tr.Debugf("security level check for %s passed (%s)", domain, level)
@@ -671,7 +676,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	// There are no partial failures here: we put it in the queue, and then if
 	// individual deliveries fail, we report via email.
 	// If we fail to queue, return a transient error.
-	msgID, err := c.queue.Put(c.mailFrom, c.rcptTo, c.data)
+	msgID, err := c.queue.Put(c.tr, c.mailFrom, c.rcptTo, c.data)
 	if err != nil {
 		return 451, fmt.Sprintf("4.3.0 Failed to queue message: %v", err)
 	}
@@ -1065,7 +1070,7 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 	}
 
 	// https://tools.ietf.org/html/rfc4954#section-6
-	authOk, err := c.authr.Authenticate(user, domain, passwd)
+	authOk, err := c.authr.Authenticate(c.tr, user, domain, passwd)
 	if err != nil {
 		c.tr.Errorf("error authenticating %q@%q: %v", user, domain, err)
 		maillog.Auth(c.remoteAddr, user+"@"+domain, false)
@@ -1093,7 +1098,7 @@ func (c *Conn) resetEnvelope() {
 
 func (c *Conn) userExists(addr string) (bool, error) {
 	var ok bool
-	addr, ok = c.aliasesR.Exists(addr)
+	addr, ok = c.aliasesR.Exists(c.tr, addr)
 	if ok {
 		return true, nil
 	}
@@ -1103,7 +1108,7 @@ func (c *Conn) userExists(addr string) (bool, error) {
 	// look up "user" in our databases if the domain is local, which is what
 	// we want.
 	user, domain := envelope.Split(addr)
-	return c.authr.Exists(user, domain)
+	return c.authr.Exists(c.tr, user, domain)
 }
 
 func (c *Conn) readCommand() (cmd, params string, err error) {

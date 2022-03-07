@@ -12,6 +12,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/expvarom"
+	"blitiri.com.ar/go/chasquid/internal/nettrace"
 	"blitiri.com.ar/go/log"
 	"google.golang.org/protobuf/encoding/prototext"
 
@@ -56,6 +57,7 @@ func launchMonitoringServer(conf *config.Config) {
 	http.HandleFunc("/metrics", expvarom.MetricsHandler)
 	http.HandleFunc("/debug/flags", debugFlagsHandler)
 	http.HandleFunc("/debug/config", debugConfigHandler(conf))
+	http.HandleFunc("/debug/traces", nettrace.RenderTraces)
 
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("Monitoring server failed: %v", err)
@@ -111,8 +113,7 @@ os hostname <i>{{.Hostname}}</i><br>
   <li><a href="/debug/queue">queue</a>
   <li>monitoring
     <ul>
-      <li><a href="/debug/requests?exp=1">requests (short-lived)</a>
-      <li><a href="/debug/events?exp=1">events (long-lived)</a>
+      <li><a href="/debug/traces">traces</a>
 	  <li><a href="https://blitiri.com.ar/p/chasquid/monitoring/#variables">
 	        exported variables</a>:
           <a href="/debug/vars">expvar</a>

@@ -12,8 +12,8 @@ and debugging tools should appear.
 These include:
 
 - Command-line flags.
-- [Traces](https://godoc.org/golang.org/x/net/trace) of both short and long
-  lived requests (sampled).
+- [Traces](https://pkg.go.dev/blitiri.com.ar/go/chasquid/internal/trace) of
+  both short and long lived requests.
 - State of the queue.
 - State of goroutines.
 - [Exported variables](#variables) for whitebox monitoring.

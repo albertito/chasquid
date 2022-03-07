@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/dovecot"
+	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 )
 
@@ -60,6 +61,8 @@ func TestDecodeResponse(t *testing.T) {
 func TestAuthenticate(t *testing.T) {
 	db := userdb.New("/dev/null")
 	db.AddUser("user", "password")
+	tr := trace.New("test", "TestAuthenticate")
+	defer tr.Finish()
 
 	a := NewAuthenticator()
 	a.Register("domain", WrapNoErrorBackend(db))
@@ -73,7 +76,7 @@ func TestAuthenticate(t *testing.T) {
 
 	// Wrong password, but valid user@domain.
 	ts := time.Now()
-	if ok, _ := a.Authenticate("user", "domain", "invalid"); ok {
+	if ok, _ := a.Authenticate(tr, "user", "domain", "invalid"); ok {
 		t.Errorf("invalid password, but authentication succeeded")
 	}
 	if time.Since(ts) < a.AuthDuration {
@@ -98,8 +101,10 @@ func TestAuthenticate(t *testing.T) {
 func check(t *testing.T, a *Authenticator, user, domain, passwd string, expect bool) {
 	c := fmt.Sprintf("{%s@%s %s}", user, domain, passwd)
 	ts := time.Now()
+	tr := trace.New("test", "check")
+	defer tr.Finish()
 
-	ok, err := a.Authenticate(user, domain, passwd)
+	ok, err := a.Authenticate(tr, user, domain, passwd)
 	if time.Since(ts) < a.AuthDuration {
 		t.Errorf("auth on %v was too fast", c)
 	}
@@ -110,7 +115,7 @@ func check(t *testing.T, a *Authenticator, user, domain, passwd string, expect b
 		t.Errorf("auth on %v: got error %v", c, err)
 	}
 
-	ok, err = a.Exists(user, domain)
+	ok, err = a.Exists(tr, user, domain)
 	if ok != expect {
 		t.Errorf("exists on %v: got %v, expected %v", c, ok, expect)
 	}
@@ -217,7 +222,10 @@ func TestErrors(t *testing.T) {
 	a.Register("domain", be)
 	a.AuthDuration = 0
 
-	ok, err := a.Authenticate("user", "domain", "passwd")
+	tr := trace.New("test", "TestErrors")
+	defer tr.Finish()
+
+	ok, err := a.Authenticate(tr, "user", "domain", "passwd")
 	if err != nil || !ok {
 		t.Fatalf("failed auth")
 	}
@@ -225,7 +233,7 @@ func TestErrors(t *testing.T) {
 	expectedErr := fmt.Errorf("test error")
 	be.nextError = expectedErr
 
-	ok, err = a.Authenticate("user", "domain", "passwd")
+	ok, err = a.Authenticate(tr, "user", "domain", "passwd")
 	if ok {
 		t.Errorf("authentication succeeded, expected error")
 	}
@@ -233,7 +241,7 @@ func TestErrors(t *testing.T) {
 		t.Errorf("expected error, got %v", err)
 	}
 
-	ok, err = a.Exists("user", "domain")
+	ok, err = a.Exists(tr, "user", "domain")
 	if ok {
 		t.Errorf("exists succeeded, expected error")
 	}

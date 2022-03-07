@@ -65,8 +65,8 @@ func (a *Authenticator) Register(domain string, be Backend) {
 }
 
 // Authenticate the user@domain with the given password.
-func (a *Authenticator) Authenticate(user, domain, password string) (bool, error) {
-	tr := trace.New("Auth.Authenticate", user+"@"+domain)
+func (a *Authenticator) Authenticate(tr *trace.Trace, user, domain, password string) (bool, error) {
+	tr = tr.NewChild("Auth.Authenticate", user+"@"+domain)
 	defer tr.Finish()
 
 	// Make sure the call takes a.AuthDuration + 0-20% regardless of the
@@ -104,8 +104,8 @@ func (a *Authenticator) Authenticate(user, domain, password string) (bool, error
 }
 
 // Exists checks that user@domain exists.
-func (a *Authenticator) Exists(user, domain string) (bool, error) {
-	tr := trace.New("Auth.Exists", user+"@"+domain)
+func (a *Authenticator) Exists(tr *trace.Trace, user, domain string) (bool, error) {
+	tr = tr.NewChild("Auth.Exists", user+"@"+domain)
 	defer tr.Finish()
 
 	if be, ok := a.backends[domain]; ok {

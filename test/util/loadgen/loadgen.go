@@ -15,8 +15,7 @@ import (
 
 	_ "net/http/pprof"
 
-	"golang.org/x/net/trace"
-
+	"blitiri.com.ar/go/chasquid/internal/nettrace"
 	"blitiri.com.ar/go/chasquid/internal/smtp"
 	"blitiri.com.ar/go/log"
 )
@@ -148,7 +147,7 @@ func serial(id int) {
 }
 
 func one() error {
-	tr := trace.New("one", *addr)
+	tr := nettrace.New("one", *addr)
 	defer tr.Finish()
 
 	conn, err := net.Dial("tcp", *addr)
