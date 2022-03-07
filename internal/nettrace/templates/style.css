@@ -1,0 +1,187 @@
+:root {
+    --text-color: black;
+    --bg-color: #fffff7;
+    --zebra-bg-color: #eeeee7;
+    --muted-color: #444;
+    --xmuted-color: #a1a1a1;
+    --link-color: #39c;
+    --link-hover: #069;
+    --underline-color: grey;
+    --error-color: red;
+
+    /* Colors for the nested zebras. */
+    --nested-d01-c00: #ffebee;
+    --nested-d01-c01: #ede7f6;
+    --nested-d01-c02: #e3f2fd;
+    --nested-d01-c03: #e8f5e9;
+    --nested-d01-c04: #fff8e1;
+    --nested-d01-c05: #efebe9;
+    --nested-d02-c00: #f0dcdf;
+    --nested-d02-c01: #ded8e7;
+    --nested-d02-c02: #d4e3ee;
+    --nested-d02-c03: #d9e6da;
+    --nested-d02-c04: #f0e9d2;
+    --nested-d02-c05: #e0dcda;
+    --nested-d03-c00: #e1cdd0;
+    --nested-d03-c01: #cfc9d8;
+    --nested-d03-c02: #c5d4df;
+    --nested-d03-c03: #cad7cb;
+    --nested-d03-c04: #e1dac3;
+    --nested-d03-c05: #d1cdcb;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --text-color: rgba(255, 255, 255, 0.90);
+        --bg-color: #121212;
+        --zebra-bg-color: #222222;
+        --muted-color: #aaaaaa;
+        --xmuted-color: #a1a1a1;
+        --link-color: #44b4ec;
+        --link-hover: #7fc9ee;
+        --underline-color: grey;
+        --error-color: #dd4747;
+
+        /* Colors for the nested zebras. */
+        --nested-d01-c00: #220212;
+        --nested-d01-c01: #1c1c22;
+        --nested-d01-c02: #001e20;
+        --nested-d01-c03: #0f0301;
+        --nested-d01-c04: #201d06;
+        --nested-d01-c05: #00192b;
+        --nested-d02-c00: #311121;
+        --nested-d02-c01: #2b2b31;
+        --nested-d02-c02: #0f2d2f;
+        --nested-d02-c03: #1e1210;
+        --nested-d02-c04: #2f2c15;
+        --nested-d02-c05: #0f283a;
+        --nested-d03-c00: #402030;
+        --nested-d03-c01: #3a3a40;
+        --nested-d03-c02: #1e3c3e;
+        --nested-d03-c03: #2d211f;
+        --nested-d03-c04: #3e3b24;
+        --nested-d03-c05: #1e3749;
+    }
+}
+
+body {
+    font-family: sans-serif;
+    color: var(--text-color);
+    background: var(--bg-color);
+}
+
+p.error {
+    color: var(--error-color);
+    font-size: large;
+}
+
+a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--link-hover);
+}
+
+.family a {
+    color: var(--text-color);
+}
+
+u {
+    text-decoration-color: var(--underline-color);
+}
+
+table.index {
+    border-collapse: collapse;
+}
+
+table.index tr:nth-child(odd) {
+
+        background-color: var(--zebra-bg-color);
+}
+
+table.index td {
+    padding: 0.25em 0.5em;
+}
+
+table.index td.bucket {
+    min-width: 2em;
+    text-align: center;
+}
+
+table.index td.active {
+    /* Make the "active" column wider so there's less jumping on refresh. */
+    min-width: 5em;
+    text-align: right;
+}
+
+table.index a {
+    text-decoration: none;
+}
+
+a.muted {
+    color: var(--muted-color);
+}
+
+table.trace {
+    font-family: monospace;
+    border-collapse: collapse;
+}
+
+table.trace thead {
+    border-bottom: 1px solid var(--text-color);
+}
+
+table.trace th {
+    text-align: left;
+    padding: 0.1em 1em;
+}
+
+table.trace tr.title {
+    font-weight: bold;
+}
+
+table.trace td {
+    padding: 0.1em 1em;
+}
+
+table.trace td.when {
+    text-align: right;
+}
+
+table.trace td.duration {
+    text-align: right;
+    white-space: pre;
+}
+
+table.trace td.msg {
+    white-space: pre-wrap;
+}
+
+span.depth {
+    color: var(--xmuted-color);
+}
+
+div.emoji {
+    /* Emojis sometimes are rendered excessively tall. */
+    /* This ensures they're sized appropriately. */
+    max-height: 1.3em;
+    overflow: hidden;
+}
+
+table.latencies {
+    text-align: right;
+}
+
+table.latencies td {
+    padding: 0 0.3em;
+}
+
+table.latencies th {
+    text-align: center;
+}
+
+meter {
+    width: 15em;
+}

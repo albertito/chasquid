@@ -15,7 +15,7 @@ import (
 
 // Global event logs.
 var (
-	authLog = trace.NewEventLog("Authentication", "Incoming SMTP")
+	authLog = trace.New("Authentication", "Incoming SMTP")
 )
 
 // Logger contains a backend used to log data to, such as a file or syslog.

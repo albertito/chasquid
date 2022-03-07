@@ -1,0 +1,35 @@
+<tr class="title">
+<td class="when">{{.Start.Format "2006-01-02 15:04:05.000000"}}</td>
+<td class="duration">{{.Duration | roundSeconds}}</td>
+<td><a href="?trace={{.ID}}">{{.Title}}</a>
+  {{if .Parent}}(parent: <a href="?trace={{.Parent.ID}}&ref={{.ID}}">
+    {{.Parent.Family}} - {{.Parent.Title}}</a>)
+  {{end}}
+</td>
+<tr>
+
+{{$prev := .Start}}
+{{range .Events}}
+<tr>
+<td class="when">{{.When.Format "15:04:05.000000"}}</td>
+<td class="duration">{{(.When.Sub $prev) | stripZeros}}</td>
+<td class="msg">
+  {{- if .Type.IsLog -}}
+    {{.Msg}}
+  {{- else if .Type.IsChild -}}
+    new child <a href="?trace={{.Ref.ID}}&ref={{$.ID}}">{{.Ref.Family}} {{.Ref.Title}}</a>
+  {{- else if .Type.IsLink -}}
+    <a href="?trace={{.Ref.ID}}&ref={{$.ID}}">{{.Msg}}</a>
+  {{- else if .Type.IsDrop -}}
+    <i>[ events dropped ]</i>
+  {{- else -}}
+    <i>[ unknown event type ]</i>
+  {{- end -}}
+</td>
+</tr>
+{{$prev = .When}}
+{{end}}
+
+<tr>
+<td>&nbsp;</td>
+</tr>

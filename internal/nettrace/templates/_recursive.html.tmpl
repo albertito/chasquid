@@ -1,0 +1,51 @@
+{{if .Trace.Parent}}
+<a href="?trace={{.Trace.Parent.ID}}&ref={{.Trace.ID}}">
+  Parent: {{.Trace.Parent.Family}} - {{.Trace.Parent.Title}}</a>
+<p>
+{{end}}
+
+<table class="trace">
+
+<thead>
+<tr>
+  <th>Trace</th>
+  <th>Timestamp</th>
+  <th>Elapsed (s)</th>
+  <th></th>
+  <th>Message</th>
+</tr>
+</thead>
+
+<tbody>
+{{$prev := .Trace.Start}}
+{{range .AllEvents}}
+<tr style="background: {{colorize .Depth .Trace.ID}};">
+<td title='{{.Trace.Family}} - {{.Trace.Title}}
+@ {{.Trace.Start.Format "2006-01-02 15:04:05.999999" }}'>
+  {{shorttitle .Trace}}</td>
+
+<td class="when">{{.Event.When.Format "15:04:05.000000"}}</td>
+<td class="duration">{{(.Event.When.Sub $prev) | stripZeros}}</td>
+<td class="emoji" title='{{.Trace.Family}} - {{.Trace.Title}}
+@ {{.Trace.Start.Format "2006-01-02 15:04:05.999999" }}'>
+  <div class="emoji">{{traceemoji .Trace.ID}}</div></td>
+<td class="msg">
+  {{- depthspan .Depth -}}
+  {{- if .Event.Type.IsLog -}}
+    {{.Event.Msg}}
+  {{- else if .Event.Type.IsChild -}}
+    new child: <a href="?trace={{.Event.Ref.ID}}&ref={{.Trace.ID}}">{{.Event.Ref.Family}} - {{.Event.Ref.Title}}</a>
+  {{- else if .Event.Type.IsLink -}}
+    <a href="?trace={{.Event.Ref.ID}}&ref={{.Trace.ID}}">{{.Event.Msg}}</a>
+  {{- else if .Event.Type.IsDrop -}}
+    <b><i>[ events dropped ]</i></b>
+  {{- else -}}
+    <i>[ unknown event type ]</i>
+  {{- end -}}
+</td>
+</tr>
+{{$prev = .Event.When}}
+{{end}}
+
+</tbody>
+</table>

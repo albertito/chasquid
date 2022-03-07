@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<style>
+{{template "style.css"}}
+</style>
+
+<title>
+{{if .Trace}}{{.Trace.Family}} - {{.Trace.Title}}
+{{else if .BucketStr}}{{.Family}} - {{.BucketStr}}
+{{else if .Latencies}}{{.Family}} - latency
+{{else}}Traces
+{{end}}
+</title>
+
+</head>
+
+<body>
+<h1>Traces</h1>
+
+<table class="index">
+{{range $name, $ftr := .FamTraces}}
+<tr>
+  <td class="family">
+    <a href="?fam={{$name}}&b=0&all=true">
+    {{if eq $name $.Family}}<u>{{end}}
+    {{$name}}
+    {{if eq $name $.Family}}</u>{{end}}
+    </a>
+  </td>
+
+  <td class="bucket active">
+    {{$n := $ftr.LenActive}}
+    {{if and (eq $name $.Family) (eq "active" $.BucketStr)}}<u>{{end}}
+
+    <a href="?fam={{$name}}&b=-1&all={{$.AllGT}}"
+       {{if eq $n 0}}class="muted"{{end}}>
+        {{$n}} active</a>
+
+    {{if and (eq $name $.Family) (eq "active" $.BucketStr)}}</u>{{end}}
+  </td>
+
+  {{range $i, $b := $.Buckets}}
+  <td class="bucket">
+    {{$n := $ftr.LenBucket $i}}
+    {{if and (eq $name $.Family) (eq $b.String $.BucketStr)}}<u>{{end}}
+
+    <a href="?fam={{$name}}&b={{$i}}&all={{$.AllGT}}"
+       {{if eq $n 0}}class="muted"{{end}}>
+        &ge;{{$b}}</a>
+
+    {{if and (eq $name $.Family) (eq $b.String $.BucketStr)}}</u>{{end}}
+  </td>
+  {{end}}
+
+  <td class="bucket">
+    {{$n := $ftr.LenErrors}}
+    {{if and (eq $name $.Family) (eq "errors" $.BucketStr)}}<u>{{end}}
+
+    <a href="?fam={{$name}}&b=-2&all={{$.AllGT}}"
+       {{if eq $n 0}}class="muted"{{end}}>
+        errors</a>
+
+    {{if and (eq $name $.Family) (eq "errors" $.BucketStr)}}</u>{{end}}
+  </td>
+
+  <td class="bucket">
+    <a href="?fam={{$name}}&lat=true&all={{$.AllGT}}">[latency]</a>
+  </td>
+</tr>
+{{end}}
+</table>
+<br>
+Show: <a href="?fam={{.Family}}&b={{.Bucket}}&all=false">
+  {{if not .AllGT}}<u>{{end}}
+  Only in bucket</a>
+  {{if not .AllGT}}</u>{{end}}
+/
+<a href="?fam={{.Family}}&b={{.Bucket}}&all=true">
+  {{if .AllGT}}<u>{{end}}
+  All &ge; bucket</a>
+  {{if .AllGT}}</u>{{end}}
+<p>
+
+<!--------------------------------------------->
+{{if .Error}}
+<p class="error">Error: {{.Error}}</p>
+{{end}}
+
+<!--------------------------------------------->
+{{if .BucketStr}}
+<h2>{{.Family}} - {{.BucketStr}}</h2>
+
+<table class="trace">
+<thead>
+<tr>
+  <th>Timestamp</th>
+  <th>Elapsed (s)</th>
+  <th>Message</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&nbsp;</td>
+</tr>
+{{range .Traces}}
+{{template "_single.html.tmpl" .}}<p>
+{{end}}
+</tbody>
+</table>
+
+<p>
+{{end}}
+
+<!--------------------------------------------->
+{{if .Latencies}}
+<h2>{{.Family}} - latency</h2>
+{{template "_latency.html.tmpl" .}}<p>
+{{end}}
+
+<!--------------------------------------------->
+{{if .Trace}}
+<h2>{{.Trace.Family}} - <i>{{.Trace.Title}}</i></h2>
+{{template "_recursive.html.tmpl" .}}<p>
+{{end}}
+
+</body>
+
+</html>
