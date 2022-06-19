@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	blitiri.com.ar/go/log v1.1.0
-	blitiri.com.ar/go/spf v1.3.0
+	blitiri.com.ar/go/spf v1.4.0
 	blitiri.com.ar/go/systemd v1.1.0
 	github.com/google/go-cmp v0.5.7
 	golang.org/x/crypto v0.0.0-20220307211146-efcb8507fb70
