@@ -26,8 +26,8 @@ how to install it.  If you use the [pacaur](https://github.com/E5ten/pacaur)
 pacaur -S chasquid
 ```
 
-[Binary packages](https://foxcpp.dev/archlinux/README.txt) are also available,
-courtesy of foxcpp.
+[Binary packages](https://maddy.email/archlinux/README.txt) are also available,
+courtesy of [foxcpp](https://github.com/foxcpp/).
 
 
 ### From source
