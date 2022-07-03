@@ -1,4 +1,5 @@
 base_dir = $ROOT/run/
+state_dir = $ROOT/lib/
 log_path = $ROOT/dovecot.log
 ssl = no
 

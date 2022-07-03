@@ -23,7 +23,7 @@ fi
 # limitation, so we use a directory in /tmp, which is not ideal, as a
 # workaround.
 export ROOT="/tmp/chasquid-dovecot-test"
-mkdir -p $ROOT $ROOT/run
+mkdir -p $ROOT $ROOT/run $ROOT/lib
 rm -f $ROOT/dovecot.log
 
 export GROUP=$(id -g -n)
