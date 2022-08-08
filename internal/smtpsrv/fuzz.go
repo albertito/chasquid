@@ -1,5 +1,6 @@
 // Fuzz testing for package smtpsrv.  Based on server_test.
 
+//go:build gofuzz
 // +build gofuzz
 
 package smtpsrv

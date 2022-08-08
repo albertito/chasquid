@@ -3,6 +3,7 @@
 //
 // See coverage_test.go for the details, this is the same horrible hack.
 //
+//go:build coveragebin
 // +build coveragebin
 
 package main

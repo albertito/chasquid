@@ -2,6 +2,7 @@
 // This is only used in tests, when the "dnsoverride" tag is active.
 // It requires Go >= 1.8.
 //
+//go:build dnsoverride
 // +build dnsoverride
 
 package main

@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // minidns is a trivial DNS server used for testing.

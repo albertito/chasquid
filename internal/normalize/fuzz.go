@@ -1,5 +1,6 @@
 // Fuzz testing for package normalize.
 
+//go:build gofuzz
 // +build gofuzz
 
 package normalize

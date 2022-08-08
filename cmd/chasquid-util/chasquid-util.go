@@ -1,6 +1,7 @@
 // chasquid-util is a command-line utility for chasquid-related operations.
 //
 // Don't include it in the coverage build.
+//go:build !coverage
 // +build !coverage
 
 package main

@@ -1,5 +1,6 @@
 // Fuzz testing for package aliases.
 
+//go:build gofuzz
 // +build gofuzz
 
 package auth

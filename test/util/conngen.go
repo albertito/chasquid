@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // SMTP connection generator, for testing purposes.

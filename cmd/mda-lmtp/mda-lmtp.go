@@ -2,6 +2,7 @@
 //
 // See the usage below for details.
 //
+//go:build !coverage
 // +build !coverage
 
 package main

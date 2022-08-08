@@ -9,6 +9,7 @@
 //
 // The test has a build label so it's not accidentally executed during normal
 // "go test" invocations.
+//go:build coveragebin
 // +build coveragebin
 
 package main

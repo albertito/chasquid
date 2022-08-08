@@ -1,6 +1,7 @@
 // Command line tool for playing with the SPF library.
 //
 // Not for use in production, just development and experimentation.
+//go:build !coverage
 // +build !coverage
 
 package main

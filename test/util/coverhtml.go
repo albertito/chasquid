@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Generate an HTML visualization of a Go coverage profile.

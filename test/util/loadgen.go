@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // SMTP load generator, for testing purposes.
