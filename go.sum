@@ -1,7 +1,7 @@
 blitiri.com.ar/go/log v1.1.0 h1:prKXp2hnYXRamcrYaCajq1SdQYvHU852lY7QStHyuaw=
 blitiri.com.ar/go/log v1.1.0/go.mod h1:CobnZ0FcxCAWHnkPCVtNPmj8AGiW9aNLKd/E7tI43Sw=
-blitiri.com.ar/go/spf v1.4.0 h1:nRqoBRSJ0Y6y90QKF13xbi3gOV5DtzlYFM5l3iEWNMU=
-blitiri.com.ar/go/spf v1.4.0/go.mod h1:/wDIKCvGkTlOLcCjV9yvSZcRy5cM15fpUpAhff8Zjbk=
+blitiri.com.ar/go/spf v1.5.0 h1:r6iRht8aeJ666M/DryMu2FjTFEut132GK7SwQ1/f+vk=
+blitiri.com.ar/go/spf v1.5.0/go.mod h1:E71N92TfL4+Yyd5lpKuE9CAF2pd4JrUq1xQfkTxoNdk=
 blitiri.com.ar/go/systemd v1.1.0 h1:AMr7Ce/5CkvLZvGxsn/ZOagzFf3zU13rcgWdlbWMQ+Y=
 blitiri.com.ar/go/systemd v1.1.0/go.mod h1:0D9Ttrh+TX+WuKQ/dJpdhFND7NYy505v6jhsWrihmPY=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
@@ -53,5 +53,5 @@ google.golang.org/protobuf v1.27.1 h1:SnqbnDw1V7RiZcXPx5MEeqPv2s79L9i7BJUlG/+Rur
 google.golang.org/protobuf v1.27.1/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
-gopkg.in/yaml.v2 v2.3.0 h1:clyUAQHOM3G0M3f5vQj7LuJrETvjVot3Z5el9nffUtU=
-gopkg.in/yaml.v2 v2.3.0/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
