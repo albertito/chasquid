@@ -11,7 +11,7 @@ endif
 
 default: chasquid
 
-all: chasquid chasquid-util smtp-check spf-check mda-lmtp dovecot-auth-cli
+all: chasquid chasquid-util smtp-check mda-lmtp dovecot-auth-cli
 
 
 chasquid:
@@ -26,9 +26,6 @@ chasquid-util:
 
 smtp-check:
 	go build ${GOFLAGS} ./cmd/smtp-check/
-
-spf-check:
-	go build ${GOFLAGS} ./cmd/spf-check/
 
 mda-lmtp:
 	go build ${GOFLAGS} ./cmd/mda-lmtp/
@@ -60,4 +57,4 @@ install-config-skeleton:
 
 
 .PHONY: chasquid test \
-	chasquid-util smtp-check spf-check mda-lmtp dovecot-auth-cli
+	chasquid-util smtp-check mda-lmtp dovecot-auth-cli
