@@ -46,6 +46,10 @@ if [ "$AUTO_CERTS" != "" ]; then
 	# Note this requires you to restart every week or so, to make sure
 	# your certificate does not expire.
 	certbot renew
+
+	# Give chasquid access to the certificates.
+	# Dovecot does not need this as it reads them as root.
+	setfacl -R -m u:chasquid:rX /etc/letsencrypt/{live,archive}
 fi
 
 CERT_DOMAINS=""
@@ -65,10 +69,6 @@ if [ "$CERT_DOMAINS" == "" ]; then
 	echo "Set AUTO_CERTS='example.com' to automatically get one."
 	exit 1
 fi
-
-# Give chasquid access to the certificates.
-# Dovecot does not need this as it reads them as root.
-setfacl -R -m u:chasquid:rX /etc/letsencrypt/{live,archive}
 
 # Give chasquid access to the data directory.
 mkdir -p /data/chasquid/data
