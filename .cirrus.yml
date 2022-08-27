@@ -37,8 +37,7 @@ lint_task:
           - linters:
               - staticcheck
             # SA1015: time.Tick leaks but it's ok on endless functions.
-            # SA1019: BuildNameToCertificate deprecation, remove on Go >= 1.14.
-            text: "SA1015:|SA1019:"
+            text: "SA1015:"
         exclude-use-default: true
   lint_config_file:
     path: /tmp/lint.yml

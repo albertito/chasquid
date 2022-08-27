@@ -137,7 +137,7 @@ func (c dumbCourier) Deliver(from string, to string, data []byte) (error, bool) 
 // DumbCourier always succeeds delivery, and ignores everything.
 var DumbCourier = dumbCourier{}
 
-// generateCert generates a new, INSECURE self-signed certificate and writes
+// GenerateCert generates a new, INSECURE self-signed certificate and writes
 // it to a pair of (cert.pem, key.pem) files to the given path.
 // Note the certificate is only useful for testing purposes.
 func GenerateCert(path string) (*tls.Config, error) {

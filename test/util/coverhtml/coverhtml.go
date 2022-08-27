@@ -90,6 +90,7 @@ func main() {
 	fmt.Printf("Total: %.1f\n", totals.TotalPercent())
 }
 
+// Totals is used to keep track of total counters.
 type Totals struct {
 	// Total statements.
 	total int
@@ -104,6 +105,7 @@ type Totals struct {
 	coveredF map[string]int
 }
 
+// Add the given profile to the total counters.
 func (t *Totals) Add(p *cover.Profile) {
 	for _, b := range p.Blocks {
 		t.total += b.NumStmt
@@ -115,10 +117,12 @@ func (t *Totals) Add(p *cover.Profile) {
 	}
 }
 
+// Percent covered for the given file.
 func (t *Totals) Percent(f string) float32 {
 	return float32(t.coveredF[f]) / float32(t.totalF[f]) * 100
 }
 
+// TotalPercent covered, across all files.
 func (t *Totals) TotalPercent() float32 {
 	return float32(t.covered) / float32(t.total) * 100
 }

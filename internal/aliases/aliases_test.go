@@ -60,11 +60,11 @@ func usersWithXDontExist(user, domain string) (bool, error) {
 	return true, nil
 }
 
-var userLookupError = errors.New("test error userLookupError")
+var errUserLookup = errors.New("test error errUserLookup")
 
 func usersWithXErrorYDontExist(user, domain string) (bool, error) {
 	if strings.HasPrefix(user, "x") {
-		return false, userLookupError
+		return false, errUserLookup
 	}
 	if strings.HasPrefix(user, "y") {
 		return false, nil
@@ -134,12 +134,12 @@ func TestUserLookupErrors(t *testing.T) {
 
 	cases := Cases{
 		{"a@dom", []Recipient{{"a@remote", EMAIL}}, nil},
-		{"b@dom", nil, userLookupError},
+		{"b@dom", nil, errUserLookup},
 		{"c@dom", []Recipient{{"c@dom", EMAIL}}, nil},
-		{"x@dom", nil, userLookupError},
+		{"x@dom", nil, errUserLookup},
 
 		// This one goes through the catch-all.
-		{"y@dom", nil, userLookupError},
+		{"y@dom", nil, errUserLookup},
 	}
 	cases.check(t, resolver)
 }

@@ -31,7 +31,6 @@ var (
 
 var (
 	host string
-	exit bool
 )
 
 func main() {
@@ -73,8 +72,13 @@ func main() {
 			time.Sleep(24 * time.Hour)
 		}
 	}
+
+	for _, c := range conns {
+		c.close()
+	}
 }
 
+// C represents a single connection.
 type C struct {
 	tr trace.Trace
 	n  net.Conn

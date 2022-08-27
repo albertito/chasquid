@@ -126,7 +126,7 @@ func serial(id int) {
 	var count int64
 	start := time.Now()
 	for {
-		count += 1
+		count++
 		err := one()
 		if err != nil {
 			log.Fatalf("%v", err)

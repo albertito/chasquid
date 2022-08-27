@@ -20,7 +20,8 @@ var (
 	testMXI = expvar.NewMap("testMXI")
 	testMXF = expvar.NewMap("testMXF")
 
-	testMEmpty = expvar.NewMap("testMEmpty") //nolint // Unused.
+	//lint:ignore U1000 Intentionally unused, should not be exported.
+	testMEmpty = expvar.NewMap("testMEmpty") //nolint
 
 	testMOther = expvar.NewMap("testMOther")
 

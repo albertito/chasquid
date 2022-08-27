@@ -113,6 +113,8 @@ func TestSanitize(t *testing.T) {
 		// http://www.user.uni-hannover.de/nhtcapri/bidirectional-text.html
 		// We allow them, they're the same on both sides.
 		{"١٩٩٩–١٢–٣١", "١٩٩٩–١٢–٣١"},
+
+		//lint:ignore ST1018 The use of a literal U+200C is intentional.
 		{"موزه‌ها", "موزه\u200cها"},
 	}
 	for _, c := range cases {

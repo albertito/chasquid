@@ -174,6 +174,8 @@ func (s *Server) periodicallyReload() {
 	if reloadEvery == nil {
 		return
 	}
+
+	//lint:ignore SA1015 This lasts the program's lifetime.
 	for range time.Tick(*reloadEvery) {
 		err := s.aliasesR.Reload()
 		if err != nil {

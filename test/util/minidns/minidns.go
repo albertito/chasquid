@@ -119,7 +119,11 @@ func (m *miniDNS) listenAndServeUDP(addr string) {
 			log.Fatalf("error packing reply: %v", err)
 		}
 
-		conn.WriteTo(rbuf, addr)
+		_, err = conn.WriteTo(rbuf, addr)
+		if err != nil {
+			log.Infof("%v/%-5d  error writing: %v",
+				addr, msg.ID, err)
+		}
 	}
 }
 
@@ -245,7 +249,7 @@ func (m *miniDNS) loadZones(f *os.File) {
 			continue
 		}
 
-		vs := regexp.MustCompile("\\s+").Split(line, 3)
+		vs := regexp.MustCompile(`\s+`).Split(line, 3)
 		if len(vs) != 3 {
 			log.Fatalf("line %d: invalid format", lineno)
 		}
