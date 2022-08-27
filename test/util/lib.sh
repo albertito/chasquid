@@ -186,7 +186,7 @@ function generate_certs_for() {
 	mkdir -p ${CONFDIR}/certs/${1}/
 	(
 		cd ${CONFDIR}/certs/${1}
-		generate_cert -ca -duration=1h -host=${1}
+		generate_cert -ca -validfor=1h -host=${1}
 	)
 }
 
