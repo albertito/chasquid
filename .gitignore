@@ -17,8 +17,15 @@ cmd/chasquid-util/chasquid-util
 cmd/smtp-check/smtp-check
 cmd/mda-lmtp/mda-lmtp
 cmd/dovecot-auth-cli/dovecot-auth-cli
-test/util/minidns
-test/util/fexp
+
+# Test util binaries.
+test/util/conngen/conngen
+test/util/coverhtml/coverhtml
+test/util/fexp/fexp
+test/util/generate_cert/generate_cert
+test/util/gocovcat/gocovcat
+test/util/loadgen/loadgen
+test/util/minidns/minidns
 
 # Test binary, generated during coverage tests.
 chasquid.test

@@ -27,7 +27,7 @@ export COVER_DIR="$PWD/.coverage"
 # the single-binary tests to fail: cross-package expvars confuse the expvarom
 # tests, which don't expect any expvars to exists besides the one registered
 # in the tests themselves.
-for pkg in $(go list ./... | grep -v chasquid/cmd/); do
+for pkg in $(go list ./... | grep -v -E 'chasquid/cmd/|chasquid/test'); do
 	OUT_FILE="$COVER_DIR/pkg-`echo $pkg | sed s+/+_+g`.out"
 	go test -tags coverage \
 		-covermode=count \
@@ -45,14 +45,14 @@ setsid -w ./cmd/dovecot-auth-cli/test.sh
 
 # Merge all coverage output into a single file.
 # Ignore protocol buffer-generated files, as they are not relevant.
-go run "${UTILDIR}/gocovcat.go" .coverage/*.out \
+go run "${UTILDIR}/gocovcat/gocovcat.go" .coverage/*.out \
 	| grep -v ".pb.go:" \
 	> .coverage/all.out
 
 # Generate reports based on the merged output.
 go tool cover -func="$COVER_DIR/all.out" | sort -k 3 -n > "$COVER_DIR/func.txt"
 go tool cover -html="$COVER_DIR/all.out" -o "$COVER_DIR/classic.html"
-go run "${UTILDIR}/coverhtml.go" \
+go run "${UTILDIR}/coverhtml/coverhtml.go" \
 	-input="$COVER_DIR/all.out"  -strip=3 \
 	-output="$COVER_DIR/coverage.html" \
 	-title="chasquid coverage report" \

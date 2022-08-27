@@ -1,5 +1,5 @@
-//go:build ignore
-// +build ignore
+//go:build !coverage
+// +build !coverage
 
 // Fetch an URL, and check if the response matches what we expect.
 //

@@ -1,5 +1,5 @@
-//go:build ignore
-// +build ignore
+//go:build !coverage
+// +build !coverage
 
 // SMTP connection generator, for testing purposes.
 package main

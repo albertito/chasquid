@@ -101,26 +101,29 @@ function chamuyero() {
 }
 
 function generate_cert() {
-	go run ${UTILDIR}/generate_cert.go "$@"
+	( cd ${UTILDIR}/generate_cert/; go build )
+	${UTILDIR}/generate_cert/generate_cert "$@"
 }
 
 function loadgen() {
-	go run ${UTILDIR}/loadgen.go "$@"
+	( cd ${UTILDIR}/loadgen/; go build )
+	${UTILDIR}/loadgen/loadgen "$@"
 }
 
 function conngen() {
-	go run ${UTILDIR}/conngen.go "$@"
+	( cd ${UTILDIR}/conngen/; go build )
+	${UTILDIR}/conngen/conngen "$@"
 }
 
 function minidns_bg() {
-	( cd ${UTILDIR}; go build minidns.go )
-	${UTILDIR}/minidns "$@" &
+	( cd ${UTILDIR}/minidns; go build )
+	${UTILDIR}/minidns/minidns "$@" &
 	MINIDNS=$!
 }
 
 function fexp() {
-	( cd ${UTILDIR}; go build fexp.go )
-	${UTILDIR}/fexp "$@"
+	( cd ${UTILDIR}/fexp/; go build )
+	${UTILDIR}/fexp/fexp "$@"
 }
 
 function timeout() {

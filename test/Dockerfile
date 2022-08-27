@@ -60,7 +60,7 @@ ENV GOPATH=
 RUN go get -v ${GO_GET_ARGS} ./... && go mod download
 
 # Build the minidns server, which will be run from within the entrypoint.
-RUN go build -o /tmp/minidns ./test/util/minidns.go
+RUN go build -o /tmp/minidns ./test/util/minidns/minidns.go
 USER root
 
 # Custom entry point, which uses our own DNS server.

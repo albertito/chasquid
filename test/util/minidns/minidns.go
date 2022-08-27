@@ -1,5 +1,5 @@
-//go:build ignore
-// +build ignore
+//go:build !coverage
+// +build !coverage
 
 // minidns is a trivial DNS server used for testing.
 //
