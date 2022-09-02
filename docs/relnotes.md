@@ -5,6 +5,13 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.10 (2022-09-01)
+
+- Support [catch-all aliases](aliases.md#catch-all).
+- Fix bug in Docker image with user-provided certificates.
+- Miscellaneous test improvements.
+
+
 ## 1.9 (2022-03-05)
 
 - Improve certificate validation logic in the SMTP courier.
