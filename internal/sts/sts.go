@@ -3,7 +3,6 @@
 // Note that "report" mode is not supported.
 //
 // Reference: https://tools.ietf.org/html/rfc8461
-//
 package sts
 
 import (

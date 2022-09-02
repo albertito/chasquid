@@ -20,8 +20,8 @@ var (
 
 // MDA delivers local mail by executing a local binary, like procmail or
 // maildrop.  It works with any binary that:
-//  - Receives the email to deliver via stdin.
-//  - Exits with code EX_TEMPFAIL (75) for transient issues.
+//   - Receives the email to deliver via stdin.
+//   - Exits with code EX_TEMPFAIL (75) for transient issues.
 type MDA struct {
 	Binary  string        // Path to the binary.
 	Args    []string      // Arguments to pass.

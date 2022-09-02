@@ -3,16 +3,15 @@
 // The resolver can parse many files for different domains, and perform
 // lookups to resolve the aliases.
 //
-//
-// File format
+// # File format
 //
 // It generally follows the traditional aliases format used by sendmail and
 // exim.
 //
 // The file can contain lines of the form:
 //
-//   user: address, address
-//   user: | command
+//	user: address, address
+//	user: | command
 //
 // Lines starting with "#" are ignored, as well as empty lines.
 // User names cannot contain spaces, ":" or commas, for parsing reasons. This
@@ -27,18 +26,16 @@
 // If the user is the string "*", then it is considered a "catch-all alias":
 // emails that don't match any known users or other aliases will be sent here.
 //
-//
-// Recipients
+// # Recipients
 //
 // Recipients can be of different types:
-//  - Email: the usual user@domain we all know and love, this is the default.
-//  - Pipe: if the right side starts with "| ", the rest of the line specifies
-//      a command to pipe the email through.
-//      Command and arguments are space separated. No quoting, escaping, or
-//      replacements of any kind.
+//   - Email: the usual user@domain we all know and love, this is the default.
+//   - Pipe: if the right side starts with "| ", the rest of the line specifies
+//     a command to pipe the email through.
+//     Command and arguments are space separated. No quoting, escaping, or
+//     replacements of any kind.
 //
-//
-// Lookups
+// # Lookups
 //
 // The resolver will perform lookups recursively, until it finds all the final
 // recipients.
@@ -46,8 +43,7 @@
 // There are recursion limits to avoid alias loops. If the limit is reached,
 // the entire resolution will fail.
 //
-//
-// Suffix removal
+// # Suffix removal
 //
 // The resolver can also remove suffixes from emails, and drop characters
 // completely. This can be used to turn "user+blah@domain" into "user@domain",

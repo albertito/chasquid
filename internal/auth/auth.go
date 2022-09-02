@@ -162,7 +162,8 @@ func (a *Authenticator) Reload() error {
 // DecodeResponse decodes a plain auth response.
 //
 // It must be a a base64-encoded string of the form:
-//   <authorization id> NUL <authentication id> NUL <password>
+//
+//	<authorization id> NUL <authentication id> NUL <password>
 //
 // https://tools.ietf.org/html/rfc4954#section-4.1.
 //

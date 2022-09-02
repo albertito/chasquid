@@ -1,9 +1,8 @@
 // Package smtp implements the Simple Mail Transfer Protocol as defined in RFC
 // 5321.  It extends net/smtp as follows:
 //
-//  - Supports SMTPUTF8, via MailAndRcpt.
-//  - Adds IsPermanent.
-//
+//   - Supports SMTPUTF8, via MailAndRcpt.
+//   - Adds IsPermanent.
 package smtp
 
 import (
@@ -87,11 +86,11 @@ func (c *Client) MailAndRcpt(from string, to string) error {
 
 // prepareForSMTPUTF8 prepares the address for SMTPUTF8.
 // It returns:
-//  - The address to use. It is based on addr, and possibly modified to make
-//    it not need the extension, if the server does not support it.
-//  - Whether the address needs the extension or not.
-//  - An error if the address needs the extension, but the client does not
-//    support it.
+//   - The address to use. It is based on addr, and possibly modified to make
+//     it not need the extension, if the server does not support it.
+//   - Whether the address needs the extension or not.
+//   - An error if the address needs the extension, but the client does not
+//     support it.
 func (c *Client) prepareForSMTPUTF8(addr string) (string, bool, error) {
 	// ASCII address pass through.
 	if isASCII(addr) {

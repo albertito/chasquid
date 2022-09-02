@@ -1,7 +1,6 @@
 // Package userdb implements a simple user database.
 //
-//
-// Format
+// # Format
 //
 // The user database is a file containing a list of users and their passwords,
 // encrypted with some scheme.
@@ -13,21 +12,18 @@
 // Users must be UTF-8 and NOT contain whitespace; the library will enforce
 // this.
 //
-//
-// Schemes
+// # Schemes
 //
 // The default scheme is SCRYPT, with hard-coded parameters. The API does not
 // allow the user to change this, at least for now.
 // A PLAIN scheme is also supported for debugging purposes.
 //
-//
-// Writing
+// # Writing
 //
 // The functions that write a database file will not preserve ordering,
 // invalid lines, empty lines, or any formatting.
 //
 // It is also not safe for concurrent use from different processes.
-//
 package userdb
 
 //go:generate protoc --go_out=. --go_opt=paths=source_relative userdb.proto

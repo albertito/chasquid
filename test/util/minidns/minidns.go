@@ -5,18 +5,17 @@
 //
 // It takes an "answers" file which contains lines with the following format:
 //
-//   <domain> <type> <value>
+//	<domain> <type> <value>
 //
 // For example:
 //
-//   blah A  1.2.3.4
-//   blah MX mx1
+//	blah A  1.2.3.4
+//	blah MX mx1
 //
 // Supported types: A, AAAA, MX, TXT.
 //
 // It's only meant to be used for testing, so it's not robust, performant, or
 // standards compliant.
-//
 package main
 
 import (
