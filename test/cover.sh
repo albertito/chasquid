@@ -56,7 +56,7 @@ go run "${UTILDIR}/coverhtml/coverhtml.go" \
 	-input="$COVER_DIR/all.out"  -strip=3 \
 	-output="$COVER_DIR/coverage.html" \
 	-title="chasquid coverage report" \
-	-notes="Generated at commit <tt>$(git describe --always --dirty)</tt> ($(git log -1 --format=%ci))"
+	-notes="Generated at commit <tt>$(git describe --always --dirty --tags)</tt> ($(git log -1 --format=%ci))"
 
 echo
 echo

@@ -1,6 +1,6 @@
 
 ifndef VERSION
-    VERSION = `git describe --always --long --dirty`
+    VERSION = `git describe --always --long --dirty --tags`
 endif
 
 # https://wiki.debian.org/ReproducibleBuilds/TimestampsProposal
