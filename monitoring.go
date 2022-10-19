@@ -82,6 +82,13 @@ var monitoringHTMLIndex = template.Must(
   body {
     font-family: sans-serif;
   }
+  @media (prefers-color-scheme: dark) {
+    body {
+      background: #121212;
+      color: #c9d1d9;
+    }
+    a { color: #44b4ec; }
+  }
 </style>
 </head>
 
