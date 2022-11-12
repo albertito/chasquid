@@ -16,9 +16,9 @@ stages:
     - su testing -c "go test ./..."
     - su testing -c "go test -race ./..."
 
-golang_1.15:
+golang_1.17:
   <<: *golang
-  image: golang:1.15    # Version in Debian stable.
+  image: golang:1.17    # Oldest supported Go version.
 
 golang_latest:
   <<: *golang
