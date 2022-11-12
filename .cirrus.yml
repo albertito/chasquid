@@ -1,4 +1,3 @@
-
 # Configuration for https://cirrus-ci.org/
 
 env:
@@ -17,38 +16,3 @@ freebsd_task:
     pw useradd testing -m
   test_script: |
     su testing -c "go test ./..."
-
-# GolangCI linter.
-lint_task:
-  name: GolangCI Lint
-  container:
-    image: golangci/golangci-lint:latest
-  environment:
-    LINT_CONFIG: |
-      issues:
-        exclude:
-          - "Error return value of .(.*Errorf?). is not checked"
-          - "Error return value of .(.*SetDeadline). is not checked"
-          - "Error return value of .(.*ListenAndServe). is not checked"
-        exclude-rules:
-          - path: _test\.go
-            linters:
-              - errcheck
-          - linters:
-              - staticcheck
-            # SA1015: time.Tick leaks but it's ok on endless functions.
-            text: "SA1015:"
-        exclude-use-default: true
-  lint_config_file:
-    path: /tmp/lint.yml
-    variable_name: LINT_CONFIG
-  run_script: |
-    golangci-lint run -v --out-format json \
-      -c /tmp/lint.yml \
-      > lint-report.json
-  always:
-    golangci_artifacts:
-      path: lint-report.json
-      type: text/json
-      format: golangci
-
