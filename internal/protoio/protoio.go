@@ -2,7 +2,6 @@
 package protoio
 
 import (
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -16,7 +15,7 @@ import (
 // ReadMessage reads a protocol buffer message from fname, and unmarshalls it
 // into pb.
 func ReadMessage(fname string, pb proto.Message) error {
-	in, err := ioutil.ReadFile(fname)
+	in, err := os.ReadFile(fname)
 	if err != nil {
 		return err
 	}
@@ -26,7 +25,7 @@ func ReadMessage(fname string, pb proto.Message) error {
 // ReadTextMessage reads a text format protocol buffer message from fname, and
 // unmarshalls it into pb.
 func ReadTextMessage(fname string, pb proto.Message) error {
-	in, err := ioutil.ReadFile(fname)
+	in, err := os.ReadFile(fname)
 	if err != nil {
 		return err
 	}
@@ -98,7 +97,7 @@ func (s *Store) Get(id string, m proto.Message) (bool, error) {
 func (s *Store) ListIDs() ([]string, error) {
 	ids := []string{}
 
-	entries, err := ioutil.ReadDir(s.dir)
+	entries, err := os.ReadDir(s.dir)
 	if err != nil {
 		return nil, err
 	}

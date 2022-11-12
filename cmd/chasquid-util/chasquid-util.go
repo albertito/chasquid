@@ -9,7 +9,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -229,7 +228,7 @@ func aliasesResolve() {
 	r.SuffixSep = *conf.SuffixSeparators
 	r.DropChars = *conf.DropCharacters
 
-	domainDirs, err := ioutil.ReadDir("domains/")
+	domainDirs, err := os.ReadDir("domains/")
 	if err != nil {
 		Fatalf("Error reading domains/ directory: %v", err)
 	}
@@ -237,8 +236,8 @@ func aliasesResolve() {
 		Fatalf("No domains found in config")
 	}
 
-	for _, info := range domainDirs {
-		name := info.Name()
+	for _, entry := range domainDirs {
+		name := entry.Name()
 		aliasfile := "domains/" + name + "/aliases"
 		r.AddDomain(name)
 		err := r.AddAliasesFile(name, aliasfile)

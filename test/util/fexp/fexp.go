@@ -11,7 +11,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"regexp"
@@ -70,13 +70,13 @@ func main() {
 		fatalf("error getting %q: %v\n", url, err)
 	}
 	defer resp.Body.Close()
-	rbody, err := ioutil.ReadAll(resp.Body)
+	rbody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		errorf("error reading body: %v\n", err)
 	}
 
 	if *save != "" {
-		err = ioutil.WriteFile(*save, rbody, 0664)
+		err = os.WriteFile(*save, rbody, 0664)
 		if err != nil {
 			errorf("error writing body to file %q: %v\n", *save, err)
 		}
@@ -170,7 +170,7 @@ func mkTransport(caCert string) http.RoundTripper {
 		return nil
 	}
 
-	certs, err := ioutil.ReadFile(caCert)
+	certs, err := os.ReadFile(caCert)
 	if err != nil {
 		fatalf("error reading CA file %q: %v\n", caCert, err)
 	}

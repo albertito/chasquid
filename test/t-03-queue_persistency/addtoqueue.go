@@ -12,7 +12,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"time"
 
@@ -29,7 +29,7 @@ var (
 func main() {
 	flag.Parse()
 
-	data, err := ioutil.ReadAll(os.Stdin)
+	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		fmt.Printf("error reading data: %v\n", err)
 		os.Exit(1)

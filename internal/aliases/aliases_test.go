@@ -2,7 +2,6 @@ package aliases
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"reflect"
@@ -276,7 +275,7 @@ func TestTooMuchRecursionOnCatchAll(t *testing.T) {
 }
 
 func mustWriteFile(t *testing.T, content string) string {
-	f, err := ioutil.TempFile("", "aliases_test")
+	f, err := os.CreateTemp("", "aliases_test")
 	if err != nil {
 		t.Fatalf("failed to get temp file: %v", err)
 	}

@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"math"
 	"os"
 	"strings"
@@ -50,7 +49,7 @@ func main() {
 		totals.Add(p)
 
 		fname := strings.Join(strings.Split(p.FileName, "/")[*strip:], "/")
-		src, err := ioutil.ReadFile(fname)
+		src, err := os.ReadFile(fname)
 		if err != nil {
 			errorf("Failed to read %q: %v", fname, err)
 		}

@@ -1,7 +1,6 @@
 package testlib
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -9,7 +8,7 @@ import (
 
 func TestBasic(t *testing.T) {
 	dir := MustTempDir(t)
-	if err := ioutil.WriteFile(dir+"/file", nil, 0660); err != nil {
+	if err := os.WriteFile(dir+"/file", nil, 0660); err != nil {
 		t.Fatalf("could not create file in %s: %v", dir, err)
 	}
 

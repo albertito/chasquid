@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -19,7 +18,7 @@ func testWriteFile(fname string, data []byte, perm os.FileMode, ops ...FileOp) e
 	}
 
 	// Read and compare the contents.
-	c, err := ioutil.ReadFile(fname)
+	c, err := os.ReadFile(fname)
 	if err != nil {
 		return fmt.Errorf("error reading: %v", err)
 	}

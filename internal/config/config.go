@@ -6,7 +6,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"blitiri.com.ar/go/log"
@@ -39,7 +38,7 @@ func Load(path, overrides string) (*Config, error) {
 	c := proto.Clone(defaultConfig).(*Config)
 
 	// Load from the path.
-	buf, err := ioutil.ReadFile(path)
+	buf, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config at %q: %v", path, err)
 	}

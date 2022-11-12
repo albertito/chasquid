@@ -3,7 +3,6 @@
 package safeio
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"syscall"
@@ -14,7 +13,7 @@ type FileOp func(fname string) error
 
 // WriteFile writes data to a file named by filename, atomically.
 //
-// It's a wrapper to ioutil.WriteFile, but provides atomicity (and increased
+// It's a wrapper to os.WriteFile, but provides atomicity (and increased
 // safety) by writing to a temporary file and renaming it at the end.
 //
 // Before the final rename, the given ops (if any) are called. They can be
@@ -28,7 +27,7 @@ func WriteFile(filename string, data []byte, perm os.FileMode, ops ...FileOp) er
 	// would have no expectation of Rename being atomic.
 	// We make the file names start with "." so there's no confusion with the
 	// originals.
-	tmpf, err := ioutil.TempFile(path.Dir(filename), "."+path.Base(filename))
+	tmpf, err := os.CreateTemp(path.Dir(filename), "."+path.Base(filename))
 	if err != nil {
 		return err
 	}

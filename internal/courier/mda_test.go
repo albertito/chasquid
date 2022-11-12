@@ -2,7 +2,6 @@ package courier
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -25,7 +24,7 @@ func TestMDA(t *testing.T) {
 		t.Fatalf("Deliver: %v", err)
 	}
 
-	data, err := ioutil.ReadFile(dir + "/to")
+	data, err := os.ReadFile(dir + "/to")
 	if err != nil || !bytes.Equal(data, []byte("data")) {
 		t.Errorf("Invalid data: %q - %v", string(data), err)
 	}

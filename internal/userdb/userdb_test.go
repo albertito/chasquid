@@ -2,7 +2,6 @@ package userdb
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"strings"
@@ -26,7 +25,7 @@ func removeIfSuccessful(t *testing.T, fname string) {
 // Create a database with the given content on a temporary filename. Return
 // the filename, or an error if there were errors creating it.
 func mustCreateDB(t *testing.T, content string) string {
-	f, err := ioutil.TempFile("", "userdb_test")
+	f, err := os.CreateTemp("", "userdb_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +243,7 @@ func TestReload(t *testing.T) {
 
 	// Add a valid line to the file.
 	content += "users:< key: 'u2' value:< plain:< password: 'pass' >>>"
-	ioutil.WriteFile(fname, []byte(content), 0660)
+	os.WriteFile(fname, []byte(content), 0660)
 
 	err := db.Reload()
 	if err != nil {
@@ -256,7 +255,7 @@ func TestReload(t *testing.T) {
 
 	// And now a broken one.
 	content += "users:< invalid >"
-	ioutil.WriteFile(fname, []byte(content), 0660)
+	os.WriteFile(fname, []byte(content), 0660)
 
 	err = db.Reload()
 	if err == nil {

@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/mail"
@@ -637,7 +636,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	// Create a dot reader, limited to the maximum size.
 	dotr := textproto.NewReader(bufio.NewReader(
 		io.LimitReader(c.reader, c.maxDataSize))).DotReader()
-	c.data, err = ioutil.ReadAll(dotr)
+	c.data, err = io.ReadAll(dotr)
 	if err != nil {
 		if err == io.ErrUnexpectedEOF {
 			// Message is too big already. But we need to keep reading until we see

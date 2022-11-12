@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
@@ -20,7 +19,7 @@ import (
 
 // MustTempDir creates a temporary directory, or dies trying.
 func MustTempDir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "testlib_")
+	dir, err := os.MkdirTemp("", "testlib_")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +54,7 @@ func Rewrite(t *testing.T, path, contents string) error {
 		panic("invalid/dangerous path")
 	}
 
-	err := ioutil.WriteFile(path, []byte(contents), 0600)
+	err := os.WriteFile(path, []byte(contents), 0600)
 	if err != nil {
 		t.Errorf("failed to rewrite file: %v", err)
 	}

@@ -2,7 +2,7 @@ package expvarom
 
 import (
 	"expvar"
-	"io/ioutil"
+	"io"
 	"net/http/httptest"
 	"testing"
 
@@ -111,7 +111,7 @@ func TestHandler(t *testing.T) {
 	MetricsHandler(w, req)
 
 	resp := w.Result()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	if diff := cmp.Diff(expected, string(body)); diff != "" {
 		t.Errorf("MetricsHandler() mismatch (-want +got):\n%s", diff)

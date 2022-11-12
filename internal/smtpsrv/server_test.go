@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/smtp"
 	"os"
@@ -568,7 +567,7 @@ func realMain(m *testing.M) int {
 		}
 	} else {
 		// Generate certificates in a temporary directory.
-		tmpDir, err := ioutil.TempDir("", "chasquid_test:")
+		tmpDir, err := os.MkdirTemp("", "chasquid_test:")
 		if err != nil {
 			fmt.Printf("Failed to create temp dir: %v\n", tmpDir)
 			return 1

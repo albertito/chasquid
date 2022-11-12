@@ -4,7 +4,6 @@ package maillog
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log/syslog"
 	"net"
 	"sync"
@@ -148,7 +147,7 @@ type nopCloser struct {
 func (nopCloser) Close() error { return nil }
 
 // Default logger, used in the following top-level functions.
-var Default *Logger = New(nopCloser{ioutil.Discard})
+var Default *Logger = New(nopCloser{io.Discard})
 
 // Listening logs that the daemon is listening on the given address.
 func Listening(a string) {

@@ -2,7 +2,6 @@ package config
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -16,7 +15,7 @@ import (
 func mustCreateConfig(t *testing.T, contents string) (string, string) {
 	tmpDir := testlib.MustTempDir(t)
 	confStr := []byte(contents)
-	err := ioutil.WriteFile(tmpDir+"/chasquid.conf", confStr, 0600)
+	err := os.WriteFile(tmpDir+"/chasquid.conf", confStr, 0600)
 	if err != nil {
 		t.Fatalf("Failed to write tmp config: %v", err)
 	}
@@ -138,7 +137,7 @@ func TestBrokenOverride(t *testing.T) {
 // Run LogConfig, overriding the default logger first. This exercises the
 // code, we don't yet validate the output, but it is an useful sanity check.
 func testLogConfig(c *Config) {
-	l := log.New(nopWCloser{ioutil.Discard})
+	l := log.New(nopWCloser{io.Discard})
 	log.Default = l
 	LogConfig(c)
 }

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net"
 	"net/textproto"
 	"os"
@@ -62,7 +61,7 @@ func (s *FakeServer) rootCA() *x509.CertPool {
 	s.t.Helper()
 	pool := x509.NewCertPool()
 	path := s.tmpDir + "/cert.pem"
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		s.t.Fatalf("error reading cert %q: %v", path, err)
 	}

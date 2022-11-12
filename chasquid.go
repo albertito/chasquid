@@ -9,7 +9,6 @@ import (
 	"expvar"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -112,13 +111,13 @@ func main() {
 	// The structure matches letsencrypt's, to make it easier for that case.
 	log.Infof("Loading certificates")
 	for _, info := range mustReadDir("certs/") {
-		name := info.Name()
-		dir := filepath.Join("certs/", name)
-		if fi, err := os.Stat(dir); err == nil && !fi.IsDir() {
+		if !info.IsDir() {
 			// Skip non-directories.
 			continue
 		}
 
+		name := info.Name()
+		dir := filepath.Join("certs/", name)
 		log.Infof("  %s", name)
 
 		certPath := filepath.Join(dir, "fullchain.pem")
@@ -291,8 +290,8 @@ func loadDovecot(s *smtpsrv.Server, userdb, client string) {
 }
 
 // Read a directory, which must have at least some entries.
-func mustReadDir(path string) []os.FileInfo {
-	dirs, err := ioutil.ReadDir(path)
+func mustReadDir(path string) []os.DirEntry {
+	dirs, err := os.ReadDir(path)
 	if err != nil {
 		log.Fatalf("Error reading %q directory: %v", path, err)
 	}

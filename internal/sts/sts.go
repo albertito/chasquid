@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net"
 	"net/http"
@@ -266,7 +265,7 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 
 	// Read but up to 10k; policies should be way smaller than that, and
 	// having a limit prevents abuse/accidents with very large replies.
-	return ioutil.ReadAll(&io.LimitedReader{R: resp.Body, N: 10 * 1024})
+	return io.ReadAll(&io.LimitedReader{R: resp.Body, N: 10 * 1024})
 }
 
 var errRejectRedirect = errors.New("redirects not allowed in MTA-STS")
@@ -385,7 +384,7 @@ func (c *PolicyCache) load(domain string) (*Policy, error) {
 		return nil, errExpired
 	}
 
-	data, err := ioutil.ReadFile(fname)
+	data, err := os.ReadFile(fname)
 	if err != nil {
 		cacheIOErrors.Add(1)
 		return nil, err
@@ -486,7 +485,7 @@ func (c *PolicyCache) refresh(ctx context.Context) {
 	tr := trace.New("STSCache.Refresh", c.dir)
 	defer tr.Finish()
 
-	entries, err := ioutil.ReadDir(c.dir)
+	entries, err := os.ReadDir(c.dir)
 	if err != nil {
 		tr.Errorf("failed to list directory %q: %v", c.dir, err)
 		return

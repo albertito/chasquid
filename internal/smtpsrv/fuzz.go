@@ -17,7 +17,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"net/textproto"
@@ -235,7 +234,7 @@ func init() {
 	log.Default.Level = log.Error
 
 	// Generate certificates in a temporary directory.
-	tmpDir, err := ioutil.TempDir("", "chasquid_smtpsrv_fuzz:")
+	tmpDir, err := os.MkdirTemp("", "chasquid_smtpsrv_fuzz:")
 	if err != nil {
 		panic(fmt.Errorf("Failed to create temp dir: %v\n", tmpDir))
 	}
