@@ -4,8 +4,8 @@ To: <userA@srv-a>
 Subject: Mail delivery failed: returning message to sender
 Message-ID: <chasquid-dsn-*
 Date: *
-In-Reply-To: 
-References: 
+In-Reply-To: *
+References: *
 X-Failed-Recipients: userB@srv-b, 
 Auto-Submitted: auto-replied
 MIME-Version: 1.0
