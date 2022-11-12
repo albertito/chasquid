@@ -22,7 +22,7 @@ minidns_bg --addr=":9053" -zones=zones >> .minidns.log 2>&1
 #   userA -> aliasB -> aliasA -> aliasB -> ...
 
 CONFDIR=A generate_certs_for srv-A
-CONFDIR=A add_user userA@srv-A userA
+CONFDIR=A add_user usera@srv-A userA
 
 CONFDIR=B generate_certs_for srv-B
 

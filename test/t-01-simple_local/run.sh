@@ -19,8 +19,8 @@ if chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config; then
 fi
 
 generate_certs_for testserver
-add_user user@testserver secretpassword
-add_user someone@testserver secretpassword
+chasquid-util-user-add user@testserver secretpassword
+chasquid-util-user-add someone@testserver secretpassword
 
 chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025

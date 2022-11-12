@@ -13,7 +13,7 @@ generate_certs_for testserver
 #
 
 # Start with the user with the wrong password, and no aliases.
-add_user someone@testserver password111
+chasquid-util-user-add someone@testserver password111
 rm -f config/domains/testserver/aliases
 
 mkdir -p .logs
@@ -28,7 +28,7 @@ fi
 
 # Change password, add an alias; then wait a bit more than the reload period
 # and try again.
-add_user someone@testserver password222
+chasquid-util-user-add someone@testserver password222
 echo "analias: someone" > config/domains/testserver/aliases
 sleep 0.2
 

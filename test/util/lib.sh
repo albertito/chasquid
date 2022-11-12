@@ -60,7 +60,10 @@ function chasquid_cover() {
 			"$@"
 }
 
-function add_user() {
+# Add a user with chasquid-util. Because this is somewhat cryptographically
+# intensive, it can slow down the tests significantly, so most of the time we
+# use the simpler add_user (below) for testing purposes.
+function chasquid-util-user-add() {
 	CONFDIR="${CONFDIR:-config}"
 	DOMAIN=$(echo $1 | cut -d @ -f 2)
 	mkdir -p "${CONFDIR}/domains/$DOMAIN/"
@@ -69,6 +72,18 @@ function add_user() {
 		user-add "$1" \
 		--password="$2" \
 		>> .add_user_logs
+}
+
+function add_user() {
+	CONFDIR="${CONFDIR:-config}"
+	USERNAME=$(echo $1 | cut -d @ -f 1)
+	DOMAIN=$(echo $1 | cut -d @ -f 2)
+	USERDB="${CONFDIR}/domains/$DOMAIN/users"
+	mkdir -p "${CONFDIR}/domains/$DOMAIN/"
+	if ! [ -f "${USERDB}" ] || ! grep -E -q "key:.*${USERNAME}" "${USERDB}"; then
+		echo "users:{ key: '${USERNAME}' value:{ plain:{ password: '$2' }}}" \
+			>> "${USERDB}"
+	fi
 }
 
 function dovecot-auth-cli() {
@@ -160,14 +175,14 @@ function wait_until_ready() {
 	PORT=$1
 
 	while ! bash -c "true < /dev/tcp/localhost/$PORT" 2>/dev/null ; do
-		sleep 0.1
+		sleep 0.01
 	done
 }
 
 # Wait for the given file to exist.
 function wait_for_file() {
 	while ! [ -e ${1} ]; do
-		sleep 0.1
+		sleep 0.01
 	done
 }
 
@@ -176,18 +191,29 @@ function wait_until() {
 		if eval "$@"; then
 			return 0
 		fi
-		sleep 0.05
+		sleep 0.01
 	done
 }
 
 # Generate certs for the given hostname.
 function generate_certs_for() {
 	CONFDIR="${CONFDIR:-config}"
-	mkdir -p ${CONFDIR}/certs/${1}/
-	(
-		cd ${CONFDIR}/certs/${1}
-		generate_cert -ca -validfor=1h -host=${1}
-	)
+
+	# Generating certs is takes time and slows the tests down, so we keep
+	# a little cache that is common to all tests.
+	CACHEDIR="${TBASE}/../.generate_certs_cache"
+	mkdir -p "${CACHEDIR}"
+	touch -d "10 minutes ago" "${CACHEDIR}/.reference"
+	if [ "${CACHEDIR}/${1}/" -ot "${CACHEDIR}/.reference" ]; then
+		# Cache miss (either was not there, or was too old).
+		mkdir -p "${CACHEDIR}/${1}/"
+		(
+			cd "${CACHEDIR}/${1}/"
+			generate_cert -ca -validfor=1h -host=${1}
+		)
+	fi
+	mkdir -p "${CONFDIR}/certs/${1}/"
+	cp -p "${CACHEDIR}/${1}"/* "${CONFDIR}/certs/${1}/"
 }
 
 # Check the Python version, and skip if it's too old.

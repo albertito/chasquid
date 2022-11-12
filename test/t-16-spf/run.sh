@@ -18,10 +18,10 @@ export GOTAGS="dnsoverride"
 # B - listens on :2025, hosts srv-B
 
 CONFDIR=A generate_certs_for srv-A
-CONFDIR=A add_user userA@srv-A userA
+CONFDIR=A add_user usera@srv-A userA
 
 CONFDIR=B generate_certs_for srv-B
-CONFDIR=B add_user userB@srv-B userB
+CONFDIR=B add_user userb@srv-B userB
 
 rm -rf .data-A .data-B .mail .certs
 mkdir -p .logs-A .logs-B .mail .certs
