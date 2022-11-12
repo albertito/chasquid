@@ -1,8 +1,5 @@
 [Unit]
 Description=chasquid mail daemon (service)
-Requires=chasquid-smtp.socket \
-	chasquid-submission.socket \
-	chasquid-submission_tls.socket
 
 [Service]
 ExecStart=/usr/local/bin/chasquid \
@@ -16,6 +13,9 @@ Restart=always
 
 User=mail
 Group=mail
+
+# Let chasquid listen on ports < 1024.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 
 # Simple security measures just in case.
 ProtectSystem=full
