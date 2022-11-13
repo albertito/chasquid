@@ -1,0 +1,74 @@
+name: "docker"
+
+on:
+  push:
+    branches: [ "master", "next" ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ "master", "next" ]
+  schedule:
+    - cron: '29 21 * * 6'
+
+env:
+  HAS_DOCKER: ${{ secrets.DOCKER_REGISTRY_USER != '' }}
+  HAS_GITLAB: ${{ secrets.GITLAB_REGISTRY_USER != '' }}
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+      - name: Docker info (for debugging)
+        run: docker info
+      - name: Build test image
+        run: docker build -t chasquid-test -f test/Dockerfile .
+      - name: Run tests
+        run: docker run --name test1 chasquid-test  make test
+
+  public-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: integration
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: docker build -t chasquid -f docker/Dockerfile .
+
+      # Push it to Dockerhub.
+      - name: Dockerhub login
+        if: env.HAS_DOCKER
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_REGISTRY_USER }}
+          password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
+      - name: Dockerhub push
+        if: env.HAS_DOCKER
+        run: |
+          docker tag chasquid index.docker.io/${{ secrets.DOCKER_REGISTRY_USER }}/chasquid:$GITHUB_REF_NAME
+          docker push index.docker.io/${{ secrets.DOCKER_REGISTRY_USER }}/chasquid:$GITHUB_REF_NAME
+      - name: Dockerhub tag latest
+        if: env.HAS_DOCKER && env.GITHUB_REF_NAME == 'master'
+        run: |
+          docker tag chasquid index.docker.io/${{ secrets.DOCKER_REGISTRY_USER }}/chasquid:latest
+          docker push index.docker.io/${{ secrets.DOCKER_REGISTRY_USER }}/chasquid:latest
+
+      # Push it to Gitlab.
+      - name: Gitlab login
+        if: env.HAS_GITLAB
+        uses: docker/login-action@v2
+        with:
+          registry: registry.gitlab.com
+          username: ${{ secrets.GITLAB_REGISTRY_USER }}
+          password: ${{ secrets.GITLAB_REGISTRY_TOKEN }}
+      - name: Gitlab push
+        if: env.HAS_GITLAB
+        run: |
+          docker tag chasquid registry.gitlab.com/albertito/chasquid:$GITHUB_REF_NAME
+          docker push registry.gitlab.com/albertito/chasquid:$GITHUB_REF_NAME
+      - name: Gitlab tag latest
+        if: env.HAS_GITLAB && env.GITHUB_REF_NAME == 'master'
+        run: |
+          docker tag chasquid registry.gitlab.com/albertito/chasquid:latest
+          docker push registry.gitlab.com/albertito/chasquid:latest

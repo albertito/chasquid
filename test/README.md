@@ -93,16 +93,13 @@ constrained or non supported environments.
 There are two sets of automated tests which are run on every commit to
 upstream, and weekly:
 
-* [GitLab CI](https://gitlab.com/albertito/chasquid/commits/master),
-  configured in the `.gitlab-ci.yml` file, runs the Go tests and the
-  integration tests (using [docker](#docker)).  
-  The integration tests are run twice: once against the dependencies listed in
-  `go.mod`, and once against the latest version of the dependencies.
-  It also builds the [public Docker images](docker.md).
+* [Github Actions](https://github.com/albertito/chasquid/actions),
+  configured in the `.github` directory, runs the Go tests, the integration
+  tests, checks for vulnerabilities, and finally
+  also builds the [public Docker images](docker.md).
 
-* [Cirrus CI](https://gitlab.com/albertito/chasquid/pipelines),
-  configured in the `.cirrus.yml` file, runs Go tests on FreeBSD, and a
-  comprehensive linter.
+* [Cirrus CI](https://cirrus-ci.com/github/albertito/chasquid),
+  configured in the `.cirrus.yml` file, runs Go tests on FreeBSD.
 
 
 ## Coverage
