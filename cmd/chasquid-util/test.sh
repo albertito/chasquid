@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-. $(dirname ${0})/../../test/util/lib.sh
+. "$(dirname "$0")/../../test/util/lib.sh"
 
 init
 

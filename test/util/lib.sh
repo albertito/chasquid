@@ -1,3 +1,4 @@
+#!/bin/bash
 # Library to write the shell scripts in the tests.
 
 function init() {
@@ -5,10 +6,11 @@ function init() {
 		set -v
 	fi
 
-	export UTILDIR="$( realpath `dirname "${BASH_SOURCE[0]}"` )"
+	UTILDIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")" )
+	export UTILDIR
 
-	export TBASE="$(realpath `dirname ${0}`)"
-	cd ${TBASE}
+	TBASE=$(realpath "$(dirname "$0")" )
+	cd "${TBASE}" || exit 1
 
 	if [ "${RACE}" == "1" ]; then
 		GOFLAGS="$GOFLAGS -race"
@@ -30,7 +32,8 @@ function chasquid() {
 		return
 	fi
 
-	( cd ${TBASE}/../../; go build $GOFLAGS -tags="$GOTAGS" . )
+	# shellcheck disable=SC2086
+	( cd "${TBASE}/../../" || exit 1; go build $GOFLAGS -tags="$GOTAGS" . )
 
 	# HOSTALIASES: so we "fake" hostnames.
 	# PATH: so chasquid can call test-mda without path issues.
@@ -38,13 +41,14 @@ function chasquid() {
 	HOSTALIASES=${TBASE}/hosts \
 	PATH=${UTILDIR}:${PATH} \
 	MDA_DIR=${TBASE}/.mail \
-		${TBASE}/../../chasquid "$@"
+		"${TBASE}/../../chasquid" "$@"
 }
 
 function chasquid_cover() {
 	# Build the coverage-enabled binary.
 	# See coverage_test.go for more details.
-	( cd ${TBASE}/../../;
+	# shellcheck disable=SC2086
+	( cd "${TBASE}/../../" || exit 1;
 	  go test -covermode=count -coverpkg=./... -c \
 		  -tags="coveragebin $GOTAGS" $GOFLAGS )
 
@@ -54,9 +58,9 @@ function chasquid_cover() {
 	HOSTALIASES=${TBASE}/hosts \
 	PATH=${UTILDIR}:${PATH} \
 	MDA_DIR=${TBASE}/.mail \
-		${TBASE}/../../chasquid.test \
+		"${TBASE}/../../chasquid.test" \
 			-test.run "^TestRunMain$" \
-			-test.coverprofile="$COVER_DIR/test-`date +%s.%N`.out" \
+			-test.coverprofile="$COVER_DIR/test-$(date +%s.%N).out" \
 			"$@"
 }
 
@@ -65,9 +69,9 @@ function chasquid_cover() {
 # use the simpler add_user (below) for testing purposes.
 function chasquid-util-user-add() {
 	CONFDIR="${CONFDIR:-config}"
-	DOMAIN=$(echo $1 | cut -d @ -f 2)
+	DOMAIN=$(echo "$1" | cut -d @ -f 2)
 	mkdir -p "${CONFDIR}/domains/$DOMAIN/"
-	go run ${TBASE}/../../cmd/chasquid-util/chasquid-util.go \
+	go run "${TBASE}/../../cmd/chasquid-util/chasquid-util.go" \
 		-C="${CONFDIR}" \
 		user-add "$1" \
 		--password="$2" \
@@ -76,8 +80,8 @@ function chasquid-util-user-add() {
 
 function add_user() {
 	CONFDIR="${CONFDIR:-config}"
-	USERNAME=$(echo $1 | cut -d @ -f 1)
-	DOMAIN=$(echo $1 | cut -d @ -f 2)
+	USERNAME=$(echo "$1" | cut -d @ -f 1)
+	DOMAIN=$(echo "$1" | cut -d @ -f 2)
 	USERDB="${CONFDIR}/domains/$DOMAIN/users"
 	mkdir -p "${CONFDIR}/domains/$DOMAIN/"
 	if ! [ -f "${USERDB}" ] || ! grep -E -q "key:.*${USERNAME}" "${USERDB}"; then
@@ -87,7 +91,7 @@ function add_user() {
 }
 
 function dovecot-auth-cli() {
-	go run ${TBASE}/../../cmd/dovecot-auth-cli/dovecot-auth-cli.go "$@"
+	go run "${TBASE}/../../cmd/dovecot-auth-cli/dovecot-auth-cli.go" "$@"
 }
 
 function run_msmtp() {
@@ -97,54 +101,54 @@ function run_msmtp() {
 	# msmtp binary is often g+s, which causes $HOSTALIASES to not be
 	# honoured, which breaks the tests. Copy the binary to remove the
 	# setgid bit as a workaround.
-	cp -u "`command -v msmtp`" "${UTILDIR}/.msmtp-bin"
+	cp -u "$(command -v msmtp)" "${UTILDIR}/.msmtp-bin"
 
 	HOSTALIASES=${TBASE}/hosts \
-		${UTILDIR}/.msmtp-bin -C msmtprc "$@"
+		"${UTILDIR}/.msmtp-bin" -C msmtprc "$@"
 }
 
 function smtpc.py() {
-	${UTILDIR}/smtpc.py "$@"
+	"${UTILDIR}/smtpc.py" "$@"
 }
 
 function mail_diff() {
-	${UTILDIR}/mail_diff "$@"
+	"${UTILDIR}/mail_diff" "$@"
 }
 
 function chamuyero() {
-	${UTILDIR}/chamuyero "$@"
+	"${UTILDIR}/chamuyero" "$@"
 }
 
 function generate_cert() {
-	( cd ${UTILDIR}/generate_cert/; go build )
-	${UTILDIR}/generate_cert/generate_cert "$@"
+	( cd "${UTILDIR}/generate_cert/" || exit 1; go build )
+	"${UTILDIR}/generate_cert/generate_cert" "$@"
 }
 
 function loadgen() {
-	( cd ${UTILDIR}/loadgen/; go build )
-	${UTILDIR}/loadgen/loadgen "$@"
+	( cd "${UTILDIR}/loadgen/" || exit 1; go build )
+	"${UTILDIR}/loadgen/loadgen" "$@"
 }
 
 function conngen() {
-	( cd ${UTILDIR}/conngen/; go build )
-	${UTILDIR}/conngen/conngen "$@"
+	( cd "${UTILDIR}/conngen/" || exit 1; go build )
+	"${UTILDIR}/conngen/conngen" "$@"
 }
 
 function minidns_bg() {
-	( cd ${UTILDIR}/minidns; go build )
-	${UTILDIR}/minidns/minidns "$@" &
-	MINIDNS=$!
+	( cd "${UTILDIR}/minidns" || exit 1; go build )
+	"${UTILDIR}/minidns/minidns" "$@" &
+	export MINIDNS=$!
 }
 
 function fexp() {
-	( cd ${UTILDIR}/fexp/; go build )
-	${UTILDIR}/fexp/fexp "$@"
+	( cd "${UTILDIR}/fexp/" || exit 1; go build )
+	"${UTILDIR}/fexp/fexp" "$@"
 }
 
 function timeout() {
 	MYPID=$$
 	(
-		sleep $1
+		sleep "$1"
 		echo "timed out after $1, killing test"
 		kill -9 $MYPID
 	) &
@@ -155,18 +159,18 @@ function success() {
 }
 
 function skip() {
-	echo skipped: $*
+	echo "skipped: $*"
 	exit 0
 }
 
 function fail() {
-	echo FAILED: $*
+	echo "FAILED: $*"
 	exit 1
 }
 
 function check_hostaliases() {
 	if ! "${UTILDIR}/check-hostaliases"; then
-		skip '$HOSTALIASES not working (probably systemd-resolved)'
+		skip "\$HOSTALIASES not working (probably systemd-resolved)"
 	fi
 }
 
@@ -181,14 +185,14 @@ function wait_until_ready() {
 
 # Wait for the given file to exist.
 function wait_for_file() {
-	while ! [ -e ${1} ]; do
+	while ! [ -e "$1" ]; do
 		sleep 0.01
 	done
 }
 
 function wait_until() {
 	while true; do
-		if eval "$@"; then
+		if eval "$*"; then
 			return 0
 		fi
 		sleep 0.01
@@ -204,16 +208,16 @@ function generate_certs_for() {
 	CACHEDIR="${TBASE}/../.generate_certs_cache"
 	mkdir -p "${CACHEDIR}"
 	touch -d "10 minutes ago" "${CACHEDIR}/.reference"
-	if [ "${CACHEDIR}/${1}/" -ot "${CACHEDIR}/.reference" ]; then
+	if [ "${CACHEDIR}/$1/" -ot "${CACHEDIR}/.reference" ]; then
 		# Cache miss (either was not there, or was too old).
-		mkdir -p "${CACHEDIR}/${1}/"
+		mkdir -p "${CACHEDIR}/$1/"
 		(
-			cd "${CACHEDIR}/${1}/"
-			generate_cert -ca -validfor=1h -host=${1}
+			cd "${CACHEDIR}/$1/" || exit 1
+			generate_cert -ca -validfor=1h -host="$1"
 		)
 	fi
-	mkdir -p "${CONFDIR}/certs/${1}/"
-	cp -p "${CACHEDIR}/${1}"/* "${CONFDIR}/certs/${1}/"
+	mkdir -p "${CONFDIR}/certs/$1/"
+	cp -p "${CACHEDIR}/$1"/* "${CONFDIR}/certs/$1/"
 }
 
 # Check the Python version, and skip if it's too old.
@@ -229,7 +233,6 @@ function skip_if_python_is_too_old() {
 function chasquid_ram_peak() {
 	# Find the pid of the daemon, which we expect is running on the
 	# background somewhere within our current session.
-	SERVER_PID=`pgrep -s 0 -x chasquid`
-
-	echo $( cat /proc/$SERVER_PID/status | grep VmHWM | cut -d ':' -f 2- )
+	SERVER_PID=$(pgrep -s 0 -x chasquid)
+	grep VmHWM "/proc/$SERVER_PID/status" | cut -d ':' -f 2-
 }

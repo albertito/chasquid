@@ -5,7 +5,7 @@
 # main gaps.
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 check_hostaliases
@@ -47,7 +47,7 @@ function launch_minidns() {
 		kill $MINIDNS
 		wait $MINIDNS || true
 	fi
-	cp $1 .zones
+	cp "$1" .zones
 	minidns_bg --addr=":9053" -zones=.zones >> .minidns.log 2>&1
 	wait_until_ready 9053
 }

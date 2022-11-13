@@ -10,7 +10,7 @@
 # coverage_test.go), but works for now.
 
 set -e
-. $(dirname ${0})/util/lib.sh
+. "$(dirname "$0")/util/lib.sh"
 
 init
 
@@ -28,11 +28,11 @@ export COVER_DIR="$PWD/.coverage"
 # tests, which don't expect any expvars to exists besides the one registered
 # in the tests themselves.
 for pkg in $(go list ./... | grep -v -E 'chasquid/cmd/|chasquid/test'); do
-	OUT_FILE="$COVER_DIR/pkg-`echo $pkg | sed s+/+_+g`.out"
+	OUT_FILE="$COVER_DIR/pkg-${pkg//\//_}.out"
 	go test -tags coverage \
 		-covermode=count \
 		-coverprofile="$OUT_FILE" \
-		-coverpkg=./... $pkg
+		-coverpkg=./... "$pkg"
 done
 
 # Integration tests.
@@ -61,5 +61,5 @@ go run "${UTILDIR}/coverhtml/coverhtml.go" \
 echo
 echo
 echo "Coverage report can be found in:"
-echo file://$COVER_DIR/coverage.html
+echo "file://$COVER_DIR/coverage.html"
 

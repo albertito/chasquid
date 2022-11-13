@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 check_hostaliases
@@ -70,7 +70,7 @@ fi
 
 # Check that the bad hooks don't prevent delivery.
 for i in config/hooks/post-data.bad*; do
-	cp $i config/hooks/post-data
+	cp "$i" config/hooks/post-data
 
 	run_msmtp someone@testserver < content
 	wait_for_file .mail/someone@testserver

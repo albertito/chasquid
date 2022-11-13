@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 
@@ -14,22 +14,22 @@ mkdir -p .logs
 chasquid -v=-1 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025
 
-echo Peak RAM: `chasquid_ram_peak`
+echo "Peak RAM: $(chasquid_ram_peak)"
 
 # Set connection count to (max open files) - (leeway).
 # We set the leeway to account for file descriptors opened by the runtime and
 # listeners; 20 should be enough for now.
 # Cap it to 2000, as otherwise it can be problematic due to port availability.
-COUNT=$(( `ulimit -n` - 20 ))
+COUNT=$(( $(ulimit -n) - 20 ))
 if [ $COUNT -gt 2000 ]; then
 	COUNT=2000
 fi
 
 if ! conngen -logtime -addr=localhost:1025 -count=$COUNT; then
 	tail -n 1 .logs/chasquid.log
-	fail
+	fail "conngen error"
 fi
 
-echo Peak RAM: `chasquid_ram_peak`
+echo "Peak RAM: $(chasquid_ram_peak)"
 
 success

@@ -4,7 +4,7 @@
 # https://github.com/driusan/dkim
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 check_hostaliases

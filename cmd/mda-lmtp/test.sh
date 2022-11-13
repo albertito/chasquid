@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-. $(dirname ${0})/../../test/util/lib.sh
+. "$(dirname "$0")/../../test/util/lib.sh"
 
 init
 
@@ -11,9 +11,9 @@ init
 go build
 
 for i in *.cmy; do
-	if ! chamuyero $i > $i.log 2>&1 ; then
+	if ! chamuyero "$i" > "$i.log" 2>&1 ; then
 		echo "# Test $i failed, log follows"
-		cat $i.log
+		cat "$i.log"
 		exit 1
 	fi
 done

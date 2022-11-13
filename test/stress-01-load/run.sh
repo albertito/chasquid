@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 
@@ -14,18 +14,18 @@ mkdir -p .logs
 chasquid -v=-1 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025
 
-echo Peak RAM: `chasquid_ram_peak`
+echo "Peak RAM: $(chasquid_ram_peak)"
 
 if ! loadgen -logtime -addr=localhost:1025 -run_for=3s -noop; then
-	fail
+	fail "loadgen -noop error"
 fi
 
-echo Peak RAM: `chasquid_ram_peak`
+echo "Peak RAM: $(chasquid_ram_peak)"
 
 if ! loadgen -logtime -addr=localhost:1025 -run_for=3s; then
-	fail
+	fail "loadgen error"
 fi
 
-echo Peak RAM: `chasquid_ram_peak`
+echo "Peak RAM: $(chasquid_ram_peak)"
 
 success

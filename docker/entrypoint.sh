@@ -28,15 +28,16 @@ if [ "$AUTO_CERTS" != "" ]; then
 		MAIL_OPTS="-m $CERTS_MAIL"
 	fi
 
-	for DOMAIN in $(echo $AUTO_CERTS); do
+	for DOMAIN in $AUTO_CERTS; do
 		# If it has never been set up, then do so.
-		if ! [ -e /etc/letsencrypt/live/$DOMAIN/fullchain.pem ]; then
+		if ! [ -e "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+			# shellcheck disable=SC2086
 			certbot certonly \
 				--non-interactive \
 				--standalone \
 				--agree-tos \
 				$MAIL_OPTS \
-				-d $DOMAIN
+				-d "$DOMAIN"
 		else
 			echo "$DOMAIN certificate already set up."
 		fi
@@ -53,9 +54,10 @@ if [ "$AUTO_CERTS" != "" ]; then
 fi
 
 CERT_DOMAINS=""
-for i in $(ls /etc/letsencrypt/live/); do
-	if [ -e "/etc/letsencrypt/live/$i/fullchain.pem" ]; then
-		CERT_DOMAINS="$CERT_DOMAINS $i"
+for i in /etc/letsencrypt/live/*; do
+	D="${i##*/}"  # Extract the last component of the path.
+	if [ -e "/etc/letsencrypt/live/$D/fullchain.pem" ]; then
+		CERT_DOMAINS="$CERT_DOMAINS $D"
 	fi
 done
 
@@ -104,4 +106,5 @@ echo "hostname: '$ONE_DOMAIN'" >> /etc/chasquid/chasquid.conf
 start-stop-daemon --start --quiet --pidfile /run/dovecot.pid \
 	--exec /usr/sbin/dovecot -- -c /etc/dovecot/dovecot.conf
 
+# shellcheck disable=SC2086
 sudo -u chasquid -g chasquid  /usr/bin/chasquid  $CHASQUID_FLAGS

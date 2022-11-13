@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 check_hostaliases
@@ -45,8 +45,8 @@ run_msmtp aliasB@srv-B < content
 # Get some of the debugging pages, for troubleshooting, and to make sure they
 # work reasonably well.
 function fexp_gt10() {
-	fexp $1 -save $2 && \
-		[ $( cat $2 | wc -l ) -gt 10 ]
+	fexp "$1" -save "$2" && \
+		[ "$( wc -l < "$2" )" -gt 10 ]
 }
 
 fexp_gt10 http://localhost:1099/ .data-A/dbg-root \

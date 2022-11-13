@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 check_hostaliases
@@ -72,6 +72,6 @@ fexp http://localhost:1099/exit -status 405
 # eventually exit.
 CHASQUID_PID=$(pgrep -s 0 chasquid)
 fexp http://localhost:1099/exit -method POST -bodyre "OK"
-wait_until ! kill -s 0 $CHASQUID_PID 2> /dev/null
+wait_until ! kill -s 0 "$CHASQUID_PID" 2> /dev/null
 
 success

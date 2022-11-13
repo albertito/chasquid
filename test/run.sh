@@ -1,16 +1,16 @@
 #!/bin/bash
 
 set -e
-. $(dirname ${0})/util/lib.sh
+. "$(dirname "$0")/util/lib.sh"
 
 init
 
 FAILED=0
 
 for i in t-*; do
-	echo $i ...
-	setsid -w $i/run.sh
-	FAILED=$(( $FAILED + $? ))
+	echo "$i" ...
+	setsid -w "$i/run.sh"
+	FAILED=$(( FAILED + $? ))
 	echo
 done
 

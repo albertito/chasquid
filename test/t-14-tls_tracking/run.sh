@@ -3,7 +3,7 @@
 # Test TLS tracking features, which require faking SPF.
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 check_hostaliases

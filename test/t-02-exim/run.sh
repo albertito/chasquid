@@ -23,7 +23,7 @@
 #   chasquid will receive the email from exim, and deliver it locally.
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 check_hostaliases

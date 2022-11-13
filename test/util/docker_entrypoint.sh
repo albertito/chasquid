@@ -8,7 +8,7 @@
 # This is used for more hermetic Docker test environments.
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 
@@ -45,7 +45,7 @@ export GOPROXY=off
 # Launch arguments, which come from docker CMD, as "chasquid" user.
 # Running tests as root makes some integration tests more difficult, as for
 # example Exim has hard-coded protections against running as root.
-sudo -u chasquid -g chasquid \
+sudo -u "chasquid" -g "chasquid" \
 	--set-home \
-	--preserve-env PATH=${PATH} \
+	--preserve-env PATH="$PATH" \
 	-- "$@"

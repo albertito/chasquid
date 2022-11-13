@@ -7,7 +7,7 @@
 
 set -e
 
-read -p "Email (full user@domain format): " EMAIL
+read -r -p "Email (full user@domain format): " EMAIL
 
 if ! echo "${EMAIL}" | grep -q @; then
 	echo "Error: email should have '@'."
@@ -15,7 +15,7 @@ if ! echo "${EMAIL}" | grep -q @; then
 fi
 
 
-read -p "Password: " -s PASSWORD
+read -r -p "Password: " -s PASSWORD
 echo
 
 DOMAIN=$(echo echo "${EMAIL}" | cut -d '@' -f 2)
@@ -33,7 +33,7 @@ mkdir -p /data/dovecot
 touch /data/dovecot/users
 if grep -q "^${EMAIL}:" /data/dovecot/users; then
 	cp /data/dovecot/users /data/dovecot/users.old
-	cat /data/dovecot/users.old | grep -v "^${EMAIL}:" \
+	grep -v "^${EMAIL}:" /data/dovecot/users.old \
 		> /data/dovecot/users
 fi
 

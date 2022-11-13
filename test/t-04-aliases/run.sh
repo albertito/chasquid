@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 check_hostaliases
@@ -14,12 +14,12 @@ chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025
 
 function send_and_check() {
-	run_msmtp $1@testserver < content
+	run_msmtp "$1@testserver" < content
 	shift
-	for i in $@; do
-		wait_for_file .mail/$i@testserver
-		mail_diff content .mail/$i@testserver
-		rm -f .mail/$i@testserver
+	for i in "$@"; do
+		wait_for_file ".mail/$i@testserver"
+		mail_diff content ".mail/$i@testserver"
+		rm -f ".mail/$i@testserver"
 	done
 }
 

@@ -7,7 +7,7 @@
 #  - dovecot listening on unix sockets in .dovecot/
 
 set -e
-. $(dirname ${0})/../util/lib.sh
+. "$(dirname "$0")/../util/lib.sh"
 
 init
 check_hostaliases
@@ -26,8 +26,8 @@ export ROOT="/tmp/chasquid-dovecot-test"
 mkdir -p $ROOT $ROOT/run $ROOT/lib
 rm -f $ROOT/dovecot.log
 
-export GROUP=$(id -g -n)
-envsubst < config/dovecot.conf.in > $ROOT/dovecot.conf
+GROUP=$(id -g -n) envsubst \
+	< config/dovecot.conf.in > $ROOT/dovecot.conf
 cp -f config/passwd $ROOT/passwd
 
 dovecot -F -c $ROOT/dovecot.conf &
