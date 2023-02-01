@@ -14,7 +14,6 @@ check_hostaliases
 
 if ! dovecot --version > /dev/null; then
 	skip "dovecot not installed"
-	exit 0
 fi
 
 # Create a temporary directory for dovecot to use, and generate the dovecot

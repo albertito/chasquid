@@ -12,7 +12,6 @@ check_hostaliases
 for binary in dkimsign dkimverify dkimkeygen; do
 	if ! command -v $binary > /dev/null; then
 		skip "$binary binary not found"
-		exit 0
 	fi
 done
 

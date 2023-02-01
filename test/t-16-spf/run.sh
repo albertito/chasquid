@@ -44,8 +44,8 @@ wait_until_ready 2025
 
 function launch_minidns() {
 	if [ "$MINIDNS" != "" ]; then
-		kill $MINIDNS
-		wait $MINIDNS || true
+		kill "$MINIDNS"
+		wait "$MINIDNS" || true
 	fi
 	cp "$1" .zones
 	minidns_bg --addr=":9053" -zones=.zones >> .minidns.log 2>&1

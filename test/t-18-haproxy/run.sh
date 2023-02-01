@@ -10,7 +10,6 @@ mkdir -p .logs
 
 if ! haproxy -v > /dev/null; then
 	skip "haproxy binary not found"
-	exit 0
 fi
 
 # Set a 2m timeout: if there are issues with haproxy, the wait tends to hang
