@@ -19,41 +19,36 @@ cd "${TBASE}/.."
 # Recreate the coverage output directory, to avoid including stale results
 # from previous runs.
 rm -rf .coverage
-mkdir -p .coverage
+mkdir -p .coverage/sh .coverage/go .coverage/all
 export COVER_DIR="$PWD/.coverage"
 
 # Normal go tests.
-# We have to run them one by one because the expvar registration causes
-# the single-binary tests to fail: cross-package expvars confuse the expvarom
-# tests, which don't expect any expvars to exists besides the one registered
-# in the tests themselves.
-for pkg in $(go list ./... | grep -v -E 'chasquid/cmd/|chasquid/test'); do
-	OUT_FILE="$COVER_DIR/pkg-${pkg//\//_}.out"
-	go test -tags coverage \
-		-covermode=count \
-		-coverprofile="$OUT_FILE" \
-		-coverpkg=./... "$pkg"
-done
+# shellcheck disable=SC2046
+go test \
+	-covermode=count -coverpkg=./... \
+	$(go list ./... | grep -v -E 'chasquid/cmd/|chasquid/test') \
+	-args -test.gocoverdir="${COVER_DIR}/go/"
 
 # Integration tests.
 # Will run in coverage mode due to $COVER_DIR being set.
-setsid -w ./test/run.sh
+GOCOVERDIR="${COVER_DIR}/sh" setsid -w ./test/run.sh
 
 # dovecot tests are also coverage-aware.
 echo "dovecot cli ..."
-setsid -w ./cmd/dovecot-auth-cli/test.sh
+GOCOVERDIR="${COVER_DIR}/sh" setsid -w ./cmd/dovecot-auth-cli/test.sh
 
 # Merge all coverage output into a single file.
+go tool covdata merge -i "${COVER_DIR}/go,${COVER_DIR}/sh" -o "${COVER_DIR}/all"
+go tool covdata textfmt -i "${COVER_DIR}/all" -o "${COVER_DIR}/merged.out"
+
 # Ignore protocol buffer-generated files, as they are not relevant.
-go run "${UTILDIR}/gocovcat/gocovcat.go" .coverage/*.out \
-	| grep -v ".pb.go:" \
-	> .coverage/all.out
+grep -v ".pb.go:" < "${COVER_DIR}/merged.out" > "${COVER_DIR}/final.out"
 
 # Generate reports based on the merged output.
-go tool cover -func="$COVER_DIR/all.out" | sort -k 3 -n > "$COVER_DIR/func.txt"
-go tool cover -html="$COVER_DIR/all.out" -o "$COVER_DIR/classic.html"
+go tool cover -func="$COVER_DIR/final.out" | sort -k 3 -n > "$COVER_DIR/func.txt"
+go tool cover -html="$COVER_DIR/final.out" -o "$COVER_DIR/classic.html"
 go run "${UTILDIR}/coverhtml/coverhtml.go" \
-	-input="$COVER_DIR/all.out"  -strip=3 \
+	-input="$COVER_DIR/final.out"  -strip=3 \
 	-output="$COVER_DIR/coverage.html" \
 	-title="chasquid coverage report" \
 	-notes="Generated at commit <tt>$(git describe --always --dirty --tags)</tt> ($(git log -1 --format=%ci))"

@@ -1,7 +1,0 @@
-#!/bin/bash
-#
-# Wrapper for dovecot-auth-cli to run when we build it in coverage mode.
-
-exec ./dovecot-auth-cli.test -test.run ^TestRunMain$ \
-	-test.coverprofile="$COVER_DIR/test-`date +%s.%N`.out" \
-	"$@"

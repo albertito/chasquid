@@ -27,9 +27,8 @@ function init() {
 }
 
 function chasquid() {
-	if [ "${COVER_DIR}" != "" ]; then
-		chasquid_cover "$@"
-		return
+	if [ "${GOCOVERDIR}" != "" ]; then
+		GOFLAGS="-cover -covermode=count -o chasquid $GOFLAGS"
 	fi
 
 	# shellcheck disable=SC2086
@@ -42,26 +41,6 @@ function chasquid() {
 	PATH=${UTILDIR}:${PATH} \
 	MDA_DIR=${TBASE}/.mail \
 		"${TBASE}/../../chasquid" "$@"
-}
-
-function chasquid_cover() {
-	# Build the coverage-enabled binary.
-	# See coverage_test.go for more details.
-	# shellcheck disable=SC2086
-	( cd "${TBASE}/../../" || exit 1;
-	  go test -covermode=count -coverpkg=./... -c \
-		  -tags="coveragebin $GOTAGS" $GOFLAGS )
-
-	# Run the coverage-enabled binary, named "chasquid.test" for hacky
-	# reasons.  See the chasquid function above for details on the
-	# environment variables.
-	HOSTALIASES=${TBASE}/hosts \
-	PATH=${UTILDIR}:${PATH} \
-	MDA_DIR=${TBASE}/.mail \
-		"${TBASE}/../../chasquid.test" \
-			-test.run "^TestRunMain$" \
-			-test.coverprofile="$COVER_DIR/test-$(date +%s.%N).out" \
-			"$@"
 }
 
 # Add a user with chasquid-util. Because this is somewhat cryptographically

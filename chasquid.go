@@ -235,7 +235,7 @@ func signalHandler() {
 	var err error
 
 	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGHUP)
+	signal.Notify(signals, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 
 	for {
 		switch sig := <-signals; sig {
@@ -251,6 +251,8 @@ func signalHandler() {
 			if err != nil {
 				log.Fatalf("Error reopening maillog: %v", err)
 			}
+		case syscall.SIGTERM, syscall.SIGINT:
+			log.Fatalf("Got signal to exit: %v", sig)
 		default:
 			log.Errorf("Unexpected signal %v", sig)
 		}
