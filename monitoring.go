@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"flag"
 	"fmt"
 	"html/template"
 	"net/http"
 	"os"
 	"runtime"
+	"runtime/debug"
+	"strconv"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/config"
@@ -19,6 +22,70 @@ import (
 	// To enable live profiling in the monitoring server.
 	_ "net/http/pprof"
 )
+
+// Build information, overridden at build time using
+// -ldflags="-X main.version=blah".
+var (
+	version      = ""
+	sourceDateTs = ""
+)
+
+var (
+	versionVar = expvar.NewString("chasquid/version")
+
+	sourceDate      time.Time
+	sourceDateVar   = expvar.NewString("chasquid/sourceDateStr")
+	sourceDateTsVar = expvarom.NewInt("chasquid/sourceDateTimestamp",
+		"timestamp when the binary was built, in seconds since epoch")
+)
+
+func parseVersionInfo() {
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		panic("unable to read build info")
+	}
+
+	dirty := false
+	gitRev := ""
+	gitTime := ""
+	for _, s := range bi.Settings {
+		switch s.Key {
+		case "vcs.modified":
+			if s.Value == "true" {
+				dirty = true
+			}
+		case "vcs.time":
+			gitTime = s.Value
+		case "vcs.revision":
+			gitRev = s.Value
+		}
+	}
+
+	if sourceDateTs != "" {
+		sdts, err := strconv.ParseInt(sourceDateTs, 10, 0)
+		if err != nil {
+			panic(err)
+		}
+
+		sourceDate = time.Unix(sdts, 0)
+	} else {
+		sourceDate, _ = time.Parse(time.RFC3339, gitTime)
+	}
+	sourceDateVar.Set(sourceDate.Format("2006-01-02 15:04:05 -0700"))
+	sourceDateTsVar.Set(sourceDate.Unix())
+
+	if version == "" {
+		version = sourceDate.Format("20060102")
+
+		if gitRev != "" {
+			version += fmt.Sprintf("-%.9s", gitRev)
+		}
+		if dirty {
+			version += "-dirty"
+		}
+	}
+	versionVar.Set(version)
+}
 
 func launchMonitoringServer(conf *config.Config) {
 	log.Infof("Monitoring HTTP server listening on %s", conf.MonitoringAddress)

@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"expvar"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -14,14 +13,12 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
 	"syscall"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/dovecot"
-	"blitiri.com.ar/go/chasquid/internal/expvarom"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/smtpsrv"
@@ -38,22 +35,6 @@ var (
 	configOverrides = flag.String("config_overrides", "",
 		"override configuration values (in text protobuf format)")
 	showVer = flag.Bool("version", false, "show version and exit")
-)
-
-// Build information, overridden at build time using
-// -ldflags="-X main.version=blah".
-var (
-	version      = "undefined"
-	sourceDateTs = "0"
-)
-
-var (
-	versionVar = expvar.NewString("chasquid/version")
-
-	sourceDate      time.Time
-	sourceDateVar   = expvar.NewString("chasquid/sourceDateStr")
-	sourceDateTsVar = expvarom.NewInt("chasquid/sourceDateTimestamp",
-		"timestamp when the binary was built, in seconds since epoch")
 )
 
 func main() {
@@ -302,17 +283,4 @@ func mustReadDir(path string) []os.DirEntry {
 	}
 
 	return dirs
-}
-
-func parseVersionInfo() {
-	versionVar.Set(version)
-
-	sdts, err := strconv.ParseInt(sourceDateTs, 10, 0)
-	if err != nil {
-		panic(err)
-	}
-
-	sourceDate = time.Unix(sdts, 0)
-	sourceDateVar.Set(sourceDate.Format("2006-01-02 15:04:05 -0700"))
-	sourceDateTsVar.Set(sdts)
 }
