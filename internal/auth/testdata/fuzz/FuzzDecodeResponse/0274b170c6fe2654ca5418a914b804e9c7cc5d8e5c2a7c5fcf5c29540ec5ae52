@@ -1,0 +1,2 @@
+go test fuzz v1
+string("@\xed\x88̥̥̥̥̥̥̄̈́̈́̈́̈́̈́̈́̈́̈́ͥ̈́̈́ͥ̓\x00\x00")

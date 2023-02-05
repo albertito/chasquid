@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("# First some valid cases.\na: b\nc: d@e, f,\nx: | command\n\n# The following is invalid, should be ignored.\na@dom: x@dom\n\n# Overrides.\no1: a\no1: b\n\n# Finally one to make the file NOT end in \\n:\ny: z\n")

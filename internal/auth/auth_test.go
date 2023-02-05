@@ -285,3 +285,10 @@ func TestReload(t *testing.T) {
 		t.Errorf("unexpected error reloading wrapped backend: %v", err)
 	}
 }
+
+// Fuzz testing for the response decoder, which handles user-provided data.
+func FuzzDecodeResponse(f *testing.F) {
+	f.Fuzz(func(t *testing.T, response string) {
+		DecodeResponse(response)
+	})
+}

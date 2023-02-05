@@ -3,6 +3,7 @@ package smtpsrv
 import (
 	"bufio"
 	"net"
+	"os"
 	"strings"
 	"testing"
 
@@ -15,7 +16,12 @@ import (
 func TestSecLevel(t *testing.T) {
 	// We can't simulate this externally because of the SPF record
 	// requirement, so do a narrow test on Conn.secLevelCheck.
-	dir := testlib.MustTempDir(t)
+	// Create the directory by hand because we don't want to automatically
+	// chdir into it (it affects the fuzzing infrastructure).
+	dir, err := os.MkdirTemp("", "testlib_")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v\n", dir)
+	}
 	defer testlib.RemoveIfOk(t, dir)
 
 	dinfo, err := domaininfo.New(dir)

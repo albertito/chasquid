@@ -1,0 +1,3 @@
+go test fuzz v1
+int(0)
+[]byte("HELO localhost\nMAIL FROM:<test@testy.com>\nRCPT LALA: <>\nRCPT TO:\nRCPT TO:<pepe>\nRCPT TO:<a@xn--->\nRCPT TO:<henryⅣ@testserver>\nRCPT TO:<aaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaXaaaa5aaaaX@bbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbXbbbb5bbbbX>\n")

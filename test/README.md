@@ -65,12 +65,10 @@ improvements on the main code paths.
 ## Fuzz tests
 
 Some Go packages also have instrumentation to run fuzz testing against them,
-with the [go-fuzz](https://github.com/dvyukov/go-fuzz) tool.
+using the [Go native fuzzing support](https://go.dev/security/fuzz/).
 
 This is critical for packages that handle sensitive user input, such as
 authentication encoding, aliases files, or username normalization.
-
-They are implemented by a `fuzz.go` file within their respective Go packages.
 
 
 ## Command-line tool tests

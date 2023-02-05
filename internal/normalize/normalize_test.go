@@ -128,3 +128,27 @@ func TestDomainToUnicode(t *testing.T) {
 		}
 	}
 }
+
+func FuzzUser(f *testing.F) {
+	f.Fuzz(func(t *testing.T, user string) {
+		User(user)
+	})
+}
+
+func FuzzDomain(f *testing.F) {
+	f.Fuzz(func(t *testing.T, domain string) {
+		Domain(domain)
+	})
+}
+
+func FuzzAddr(f *testing.F) {
+	f.Fuzz(func(t *testing.T, addr string) {
+		Addr(addr)
+	})
+}
+
+func FuzzDomainToUnicode(f *testing.F) {
+	f.Fuzz(func(t *testing.T, addr string) {
+		DomainToUnicode(addr)
+	})
+}

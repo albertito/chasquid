@@ -1,6 +1,7 @@
 package aliases
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"os/exec"
@@ -481,4 +482,11 @@ func TestHookError(t *testing.T) {
 	if !errors.As(err, &execErr) {
 		t.Errorf("expected *exec.ExitError, got %T - %v", err, err)
 	}
+}
+
+// Fuzz testing for the parser.
+func FuzzReader(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		parseReader("domain", bytes.NewReader(data))
+	})
 }

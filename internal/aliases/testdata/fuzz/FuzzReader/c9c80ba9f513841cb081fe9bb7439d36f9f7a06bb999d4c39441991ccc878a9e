@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("\n# Easy aliases.\npepe: jose\njoan: juan\n\n# UTF-8 aliases.\npitanga: ñangapirí\nañil: azul, índigo\n\n# Pipe aliases.\ntubo: | writemailto ../.data/pipe_alias_worked\n\n")

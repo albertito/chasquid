@@ -1,0 +1,3 @@
+go test fuzz v1
+int(0)
+[]byte("DATA\nHELO localhost\nDATA\nMAIL FROM:<a@b>\nRCPT TO: user@testserver\nDATA\nFrom: Mailer daemon <somewhere@horns.com>\nSubject: I've come to haunt you\nBad header\n\nMuahahahaha\n\n\n.\nQUIT\n")
