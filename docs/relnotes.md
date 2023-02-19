@@ -5,6 +5,12 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.11 (2023-02-19)
+
+- New tracing library for improved observability.
+- Update [fuzz tests](tests.md#fuzz-tests) to the new standard infrastructure.
+
+
 ## 1.10 (2022-09-01)
 
 - Support [catch-all aliases](aliases.md#catch-all).
