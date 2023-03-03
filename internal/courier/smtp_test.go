@@ -51,7 +51,7 @@ func TestSMTP(t *testing.T) {
 		"_DATA":             "250 data ok\n",
 		"QUIT":              "250 quit ok\n",
 	}
-	srv := newFakeServer(t, responses)
+	srv := newFakeServer(t, responses, 1)
 	defer srv.Cleanup()
 	host, port := srv.HostPort()
 
@@ -124,7 +124,7 @@ func TestSMTPErrors(t *testing.T) {
 	}
 
 	for _, rs := range responses {
-		srv := newFakeServer(t, rs)
+		srv := newFakeServer(t, rs, 1)
 		defer srv.Cleanup()
 		host, port := srv.HostPort()
 
@@ -257,7 +257,7 @@ var tlsResponses = map[string]string{
 
 func TestTLS(t *testing.T) {
 	smtpTotalTimeout = 5 * time.Second
-	srv := newFakeServer(t, tlsResponses)
+	srv := newFakeServer(t, tlsResponses, 1)
 	defer srv.Cleanup()
 	_, *smtpPort = srv.HostPort()
 
@@ -285,7 +285,7 @@ func TestTLS(t *testing.T) {
 		"_DATA":             "250 data ok\n",
 		"QUIT":              "250 quit ok\n",
 	}
-	srv = newFakeServer(t, responses)
+	srv = newFakeServer(t, responses, 1)
 	defer srv.Cleanup()
 	_, *smtpPort = srv.HostPort()
 
@@ -305,12 +305,27 @@ func TestTLSError(t *testing.T) {
 	smtpTotalTimeout = 5 * time.Second
 
 	responses := map[string]string{
-		"_welcome":   "220 welcome\n",
+		"_welcome": "220 welcome\n",
+
+		// STARTTLS should be advertised so we try to initiate it.
 		"EHLO hello": "250-ehlo ok\n250 STARTTLS\n",
-		"STARTTLS":   "500 starttls err\n",
-		"_STARTTLS":  "no",
+
+		// Error in STARTTLS request. Note that a TLS-layer error also falls
+		// under this code path, so both situations are covered by this test.
+		"STARTTLS":  "500 starttls err\n",
+		"_STARTTLS": "no",
+
+		// Rest of the transaction is normal and straightforward.
+		"MAIL FROM:<me@me>": "250 mail ok\n",
+		"RCPT TO:<to@to>":   "250 rcpt ok\n",
+		"DATA":              "354 send data\n",
+		"_DATA":             "250 data ok\n",
+		"QUIT":              "250 quit ok\n",
 	}
-	srv := newFakeServer(t, responses)
+	// Note we expect 2 connections to the fake server (because of the retry
+	// after the failed STARTTLS). Note this also checks that we correctly
+	// close the errored connection, instead of leaving it lingering.
+	srv := newFakeServer(t, responses, 2)
 	defer srv.Cleanup()
 	_, *smtpPort = srv.HostPort()
 
@@ -320,12 +335,16 @@ func TestTLSError(t *testing.T) {
 
 	s, tmpDir := newSMTP(t)
 	defer testlib.RemoveIfOk(t, tmpDir)
-	err, permanent := s.Deliver("me@me", "to@to", []byte("data"))
-	if !strings.Contains(err.Error(), "TLS error:") {
-		t.Errorf("expected TLS error, got: %v", err)
+	err, _ := s.Deliver("me@me", "to@to", []byte("data"))
+	if err != nil {
+		t.Errorf("deliver failed: %v", err)
 	}
-	if permanent != false {
-		t.Errorf("expected transient failure, got permanent")
+
+	// Double check that we delivered over a plaintext connection.
+	tr := trace.New("test", "test")
+	defer tr.Finish()
+	if !s.Dinfo.OutgoingSecLevel(tr, "to", domaininfo.SecLevel_PLAIN) {
+		t.Errorf("delivery did not took place over plaintext as expected")
 	}
 
 	srv.Wait()
@@ -333,7 +352,7 @@ func TestTLSError(t *testing.T) {
 
 func TestSTSPolicyEnforcement(t *testing.T) {
 	smtpTotalTimeout = 5 * time.Second
-	srv := newFakeServer(t, tlsResponses)
+	srv := newFakeServer(t, tlsResponses, 1)
 	defer srv.Cleanup()
 	_, *smtpPort = srv.HostPort()
 
@@ -372,7 +391,7 @@ func TestSTSPolicyEnforcement(t *testing.T) {
 	// Do another delivery attempt, but this time we trust the server cert.
 	// This time it should be successful, because the connection level should
 	// be TLS_SECURE which is required by the STS policy.
-	srv = newFakeServer(t, tlsResponses)
+	srv = newFakeServer(t, tlsResponses, 1)
 	_, *smtpPort = srv.HostPort()
 	defer srv.Cleanup()
 

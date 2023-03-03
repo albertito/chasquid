@@ -120,6 +120,8 @@ type attempt struct {
 }
 
 func (a *attempt) deliver(mx string) (error, bool) {
+	skipTLS := false
+retry:
 	conn, err := net.DialTimeout("tcp", mx+":"+*smtpPort, smtpDialTimeout)
 	if err != nil {
 		return a.tr.Errorf("Could not dial: %v", err), false
@@ -137,7 +139,7 @@ func (a *attempt) deliver(mx string) (error, bool) {
 	}
 
 	secLevel := domaininfo.SecLevel_PLAIN
-	if ok, _ := c.Extension("STARTTLS"); ok {
+	if ok, _ := c.Extension("STARTTLS"); ok && !skipTLS {
 		config := &tls.Config{
 			ServerName: mx,
 
@@ -155,8 +157,21 @@ func (a *attempt) deliver(mx string) (error, bool) {
 
 		err = c.StartTLS(config)
 		if err != nil {
+			// If we could not complete a jump to TLS (either because the
+			// STARTTLS command itself failed server-side, or because we got a
+			// TLS negotiation error), retry but without trying to use TLS.
+			// This should be quite rare, but it can happen if the server
+			// certificate is not parseable by the Go library, or if it has a
+			// broken TLS stack.
+			// Note that invalid and self-signed certs do NOT fall in this
+			// category, those are handled by the VerifyConnection function
+			// above, and don't need a retry. This is only needed for lower
+			// level errors.
 			tlsCount.Add("tls:failed", 1)
-			return a.tr.Errorf("TLS error: %v", err), false
+			a.tr.Errorf("TLS error, retrying without TLS: %v", err)
+			skipTLS = true
+			conn.Close()
+			goto retry
 		}
 	} else {
 		tlsCount.Add("plain", 1)

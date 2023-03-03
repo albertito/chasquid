@@ -20,14 +20,16 @@ type FakeServer struct {
 	responses map[string]string
 	wg        *sync.WaitGroup
 	addr      string
+	conns     int
 	tlsConfig *tls.Config
 }
 
-func newFakeServer(t *testing.T, responses map[string]string) *FakeServer {
+func newFakeServer(t *testing.T, responses map[string]string, conns int) *FakeServer {
 	s := &FakeServer{
 		t:         t,
 		tmpDir:    testlib.MustTempDir(t),
 		responses: responses,
+		conns:     conns,
 		wg:        &sync.WaitGroup{},
 	}
 	s.start()
@@ -82,11 +84,10 @@ func (s *FakeServer) start() string {
 
 	s.initTLS()
 
-	s.wg.Add(1)
+	s.wg.Add(s.conns)
 
-	go func() {
+	accept := func() {
 		defer s.wg.Done()
-		defer l.Close()
 
 		c, err := l.Accept()
 		if err != nil {
@@ -134,7 +135,11 @@ func (s *FakeServer) start() string {
 				c.Write([]byte(s.responses["_DATA"]))
 			}
 		}
-	}()
+	}
+
+	for i := 0; i < s.conns; i++ {
+		go accept()
+	}
 
 	return s.addr
 }
