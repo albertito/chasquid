@@ -88,7 +88,7 @@ fi
 #  - certs/$DOMAIN/dkim_privkey.pem file exists.
 #
 # Note this has not been thoroughly tested, so might need further adjustments.
-if [ "$AUTH_AS" != "" ] && command -v dkimsign >/dev/null; then
+if [ "$AUTH_AS" != "" ] && [ -x "$(command -v dkimsign)" ]; then
 	DOMAIN=$( echo "$MAIL_FROM" | cut -d '@' -f 2 )
 
 	if [ -f "domains/$DOMAIN/dkim_selector" ] \
