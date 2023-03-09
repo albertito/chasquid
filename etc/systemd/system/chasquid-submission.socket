@@ -1,0 +1,11 @@
+[Unit]
+Description=chasquid mail daemon (submission sockets)
+
+[Socket]
+ListenStream=587
+FileDescriptorName=submission
+Service=chasquid.service
+
+[Install]
+WantedBy=chasquid.target
+
