@@ -1,0 +1,26 @@
+users:  {
+  key:  "someone"
+  value:  {
+    scrypt:  {
+      logN:  14
+      r:  8
+      p:  1
+      keyLen:  32
+      salt:  "J\x01\xed7]\x02\n\xe9;z[\x8d˱\x10\xc1"
+      encrypted:  "\xa50宴\xcbb\xc1!r]K\xd1yI\xa2\x99\x8d\xdaQx\x8e69\xac\xf4$\x01\x11\x03\x8d\x10"
+    }
+  }
+}
+users:  {
+  key:  "user"
+  value:  {
+    scrypt:  {
+      logN:  14
+      r:  8
+      p:  1
+      keyLen:  32
+      salt:  "\n\xc6\x1c\x8f\xb2\x0c\x15p\x8d\xa1\xc3\x05U6\xdb\xc4"
+      encrypted:  "\xc3\xe6B2\x84W\x1a\nq{\x07\xe0\x9c\x854\n\xac\xbc\xb7\x9c\x86Kyk\x8dj\x16\x1a\x8c$*N"
+    }
+  }
+}
