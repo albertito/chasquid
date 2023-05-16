@@ -30,18 +30,20 @@ as Debian package, for consistency):
 Some individual tests have additional dependencies, and the tests are skipped
 if the dependencies are not found:
 
-- `t-02-exim` Exim interaction tests:
+- `t-02-exim` [Exim](https://www.exim.org/) interaction tests:
     - `gettext-base` (for `/usr/bin/envsubst`)
     - The `exim` binary available somewhere, but it doesn't have to be
       installed.  There's a script `get-exim4-debian.sh` to get it from the
       archives.
-- `t-11-dovecot` Dovecot interaction tests:
+- `t-11-dovecot` [Dovecot](https://www.dovecot.org/) interaction tests:
     - `dovecot`
 - `t-15-driusan_dkim` DKIM integration tests:
     - The `dkimsign dkimverify dkimkeygen` binaries, from
       [driusan/dkim](https://github.com/driusan/dkim) (no Debian package yet).
-- `t-18-haproxy` HAProxy integration tests:
+- `t-18-haproxy` [HAProxy](https://www.haproxy.org/) integration tests:
     - `haproxy`
+- `t-19-dkimpy`: [dkimpy](https://pypi.org/project/dkimpy/) integration tests:
+    - `python3-dkim`
 
 For some tests, python >= 3.5 is required; they will be skipped if it's not
 available.
@@ -89,7 +91,7 @@ constrained or non supported environments.
 ## Automated tests
 
 There are two sets of automated tests which are run on every commit to
-upstream, and weekly:
+upstream, and also weekly:
 
 * [Github Actions](https://github.com/albertito/chasquid/actions),
   configured in the `.github` directory, runs the Go tests, the integration
@@ -104,9 +106,5 @@ upstream, and weekly:
 
 The `test/cover.sh` script runs the integration tests in coverage mode, and
 produces a code coverage report in HTML format, for ease of analysis.
-
-Unfortunately, exiting with any of the *Fatal* functions does not save
-coverage output. Those paths are very important to test, but don't expect to
-see them reflected in the coverage report for now.
 
 The target is to keep coverage of the `chasquid` binary above 90%.
