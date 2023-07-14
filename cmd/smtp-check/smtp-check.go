@@ -25,6 +25,8 @@ import (
 var (
 	port = flag.String("port", "smtp",
 		"port to use for connecting to the MX servers")
+        localName = flag.String("local_name", "localhost",
+                "specify the local name for the EHLO command")
 	skipTLSCheck = flag.Bool("skip_tls_check", false,
 		"skip TLS check (useful if connections are blocked)")
 )
@@ -88,6 +90,10 @@ func main() {
 			log.Printf("TLS check skipped")
 		} else {
 			c, err := smtp.Dial(mx.Host + ":" + *port)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = c.Hello(*localName)
 			if err != nil {
 				log.Fatal(err)
 			}

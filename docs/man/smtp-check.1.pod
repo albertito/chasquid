@@ -4,7 +4,7 @@ smtp-check - SMTP setup checker
 
 =head1 SYNOPSIS
 
-B<smtp-check> [-port I<port>] [-skip_tls_check] I<domain>
+B<smtp-check> [-port I<port>] [-local_name I<domain>] [-skip_tls_check] I<domain>
 
 =head1 DESCRIPTION
 
@@ -18,6 +18,10 @@ certificates, SPF, etc.).
 =item B<-port> I<port>:
 
 Port to use for connecting to the MX servers.
+
+=item B<-local_name> I<domain>:
+
+Local name to use for the EHLO command.
 
 =item B<-skip_tls_check>:
 
