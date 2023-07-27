@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
+	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/testlib"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
@@ -593,7 +594,13 @@ func realMain(m *testing.M) int {
 		s.AddAddr(submissionTLSAddr, ModeSubmissionTLS)
 
 		s.InitQueue(tmpDir+"/queue", localC, remoteC)
-		s.InitDomainInfo(tmpDir + "/domaininfo")
+
+		dinfo, err := domaininfo.New(tmpDir + "/domaininfo")
+		if err != nil {
+			fmt.Printf("Error initializing domaininfo: %v", err)
+			return 1
+		}
+		s.SetDomainInfo(dinfo)
 
 		udb := userdb.New("/dev/null")
 		udb.AddUser("testuser", "testpasswd")

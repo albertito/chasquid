@@ -18,6 +18,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
+	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/dovecot"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
@@ -69,8 +70,6 @@ func main() {
 	}
 
 	initMailLog(conf.MailLogPath)
-
-	go signalHandler()
 
 	if conf.MonitoringAddress != "" {
 		go launchMonitoringServer(conf)
@@ -132,7 +131,11 @@ func main() {
 	// as a remote domain (for loops, alias resolutions, etc.).
 	s.AddDomain("localhost")
 
-	dinfo := s.InitDomainInfo(conf.DataDir + "/domaininfo")
+	dinfo, err := domaininfo.New(conf.DataDir + "/domaininfo")
+	if err != nil {
+		log.Fatalf("Error opening domain info database: %v", err)
+	}
+	s.SetDomainInfo(dinfo)
 
 	stsCache, err := sts.NewCache(conf.DataDir + "/sts-cache")
 	if err != nil {
@@ -168,6 +171,8 @@ func main() {
 	if naddr == 0 {
 		log.Fatalf("No address to listen on")
 	}
+
+	go signalHandler(dinfo, s)
 
 	s.ListenAndServe()
 }
@@ -212,7 +217,7 @@ func initMailLog(path string) {
 	}
 }
 
-func signalHandler() {
+func signalHandler(dinfo *domaininfo.DB, srv *smtpsrv.Server) {
 	var err error
 
 	signals := make(chan os.Signal, 1)
@@ -221,6 +226,8 @@ func signalHandler() {
 	for {
 		switch sig := <-signals; sig {
 		case syscall.SIGHUP:
+			log.Infof("Received SIGHUP, reloading")
+
 			// SIGHUP triggers a reopen of the log files. This is used for log
 			// rotation.
 			err = log.Default.Reopen()
@@ -232,6 +239,17 @@ func signalHandler() {
 			if err != nil {
 				log.Fatalf("Error reopening maillog: %v", err)
 			}
+
+			// We don't want to reload the domain info database periodically,
+			// as it can be expensive, and it is not expected that the user
+			// changes this behind chasquid's back.
+			err = dinfo.Reload()
+			if err != nil {
+				log.Fatalf("Error reloading domain info: %v", err)
+			}
+
+			// Also trigger a server reload.
+			srv.Reload()
 		case syscall.SIGTERM, syscall.SIGINT:
 			log.Fatalf("Got signal to exit: %v", sig)
 		default:

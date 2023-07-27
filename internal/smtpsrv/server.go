@@ -138,15 +138,9 @@ func (s *Server) SetAliasesConfig(suffixSep, dropChars string) {
 	s.aliasesR.ResolveHook = path.Join(s.HookPath, "alias-resolve")
 }
 
-// InitDomainInfo initializes the domain info database.
-func (s *Server) InitDomainInfo(dir string) *domaininfo.DB {
-	var err error
-	s.dinfo, err = domaininfo.New(dir)
-	if err != nil {
-		log.Fatalf("Error opening domain info database: %v", err)
-	}
-
-	return s.dinfo
+// SetDomainInfo sets the domain info database to use.
+func (s *Server) SetDomainInfo(dinfo *domaininfo.DB) {
+	s.dinfo = dinfo
 }
 
 // InitQueue initializes the queue.
@@ -168,8 +162,8 @@ func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
 		})
 }
 
-// periodicallyReload some of the server's information, such as aliases and
-// the user databases.
+// periodicallyReload some of the server's information that can be changed
+// without the server knowing, such as aliases and the user databases.
 func (s *Server) periodicallyReload() {
 	if reloadEvery == nil {
 		return
@@ -177,20 +171,20 @@ func (s *Server) periodicallyReload() {
 
 	//lint:ignore SA1015 This lasts the program's lifetime.
 	for range time.Tick(*reloadEvery) {
-		err := s.aliasesR.Reload()
-		if err != nil {
-			log.Errorf("Error reloading aliases: %v", err)
-		}
+		s.Reload()
+	}
+}
 
-		err = s.authr.Reload()
-		if err != nil {
-			log.Errorf("Error reloading authenticators: %v", err)
-		}
+func (s *Server) Reload() {
+	// Note that any error while reloading is fatal: this way, if there is an
+	// unexpected error it can be detected (and corrected) quickly, instead of
+	// much later (e.g. upon restart) when it might be harder to debug.
+	if err := s.aliasesR.Reload(); err != nil {
+		log.Fatalf("Error reloading aliases: %v", err)
+	}
 
-		err = s.dinfo.Reload()
-		if err != nil {
-			log.Errorf("Error reloading domaininfo: %v", err)
-		}
+	if err := s.authr.Reload(); err != nil {
+		log.Fatalf("Error reloading authenticators: %v", err)
 	}
 }
 
