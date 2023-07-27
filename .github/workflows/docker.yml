@@ -26,10 +26,37 @@ jobs:
       - name: Run tests
         run: docker run --name test1 chasquid-test  make test
 
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ">=1.20"
+      - name: Install goveralls
+        run: go install github.com/mattn/goveralls@latest
+      - name: Docker info (for debugging)
+        run: docker info
+      - name: Build test image
+        run: docker build -t chasquid-test -f test/Dockerfile .
+      - name: Run coverage tests
+        run: docker run --name test1 chasquid-test  test/cover.sh
+      - name: Extract coverage results
+        run: >
+          docker cp
+          test1:/go/src/blitiri.com.ar/go/chasquid/.coverage/final.out
+          .
+      - name: Upload coverage results
+        run: >
+          goveralls
+          -coverprofile=final.out
+          -repotoken=${{ secrets.COVERALLS_TOKEN }}
+
   public-image:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: integration
+    needs: [integration, coverage]
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3

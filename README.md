@@ -11,7 +11,7 @@ It's written in [Go](https://golang.org), and distributed under the
 
 [![Go tests](https://github.com/albertito/chasquid/actions/workflows/gotests.yml/badge.svg?branch=master)](https://github.com/albertito/chasquid/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/albertito/chasquid)](https://goreportcard.com/report/github.com/albertito/chasquid)
-[![Coverage](https://img.shields.io/badge/coverage-next-brightgreen.svg)](https://blitiri.com.ar/p/chasquid/coverage.html)  
+[![Coverage](https://coveralls.io/repos/github/albertito/chasquid/badge.svg?branch=next)](https://coveralls.io/github/albertito/chasquid?branch=next)  
 [![Docs](https://img.shields.io/badge/docs-reference-blue.svg)](https://blitiri.com.ar/p/chasquid/)
 [![OFTC IRC](https://img.shields.io/badge/chat-oftc-blue.svg)](https://webchat.oftc.net/?channels=%23chasquid)
 
