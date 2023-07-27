@@ -19,7 +19,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/expvarom"
@@ -345,8 +344,6 @@ func hasSTSRecord(domain string) (bool, error) {
 // now disk is good enough for our purposes.
 type PolicyCache struct {
 	dir string
-
-	sync.Mutex
 }
 
 // NewCache creates an instance of PolicyCache using the given directory as
