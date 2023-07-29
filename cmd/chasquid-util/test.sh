@@ -71,24 +71,6 @@ if r authenticate user@domain --password=passwd > /dev/null; then
 	exit 1
 fi
 
-touch '.data/domaininfo/s:dom%C3%A1in'
-if ! r domaininfo-remove domáin; then
-	echo domaininfo-remove failed
-	exit 1
-fi
-if [ -f '.data/domaininfo/s:dom%C3%A1in' ]; then
-	echo domaininfo-remove did not remove file
-	exit 1
-fi
-
-echo "alias: user@somewhere" > .config/domains/domain/aliases
-A=$(r aliases-resolve alias@domain | grep somewhere)
-if [ "$A" != "(email)  user@somewhere" ]; then
-	echo aliases-resolve failed
-	echo output: "$A"
-	exit 1
-fi
-
 C=$(r print-config | grep hostname)
 if ! ( echo "$C" | grep -E -q "hostname:.*\"$HOSTNAME\"" ); then
 	echo print-config failed
@@ -119,5 +101,14 @@ if r aliases-add alias4@domain > /dev/null; then
 	echo aliases-add without target worked
 	exit 1
 fi
+
+# Run all the chamuyero tests.
+for i in *.cmy; do
+	if ! chamuyero "$i" > "$i.log" 2>&1 ; then
+		echo "# Test $i failed, log follows"
+		cat "$i.log"
+		exit 1
+	fi
+done
 
 success

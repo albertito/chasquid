@@ -46,12 +46,12 @@ Check the integrity of the domain's users database.
 
 =item B<aliases-resolve> I<addr>
 
-Resolve the given address.
+Resolve the given address. Talks to the running chasquid instance.
 
 =item B<domaininfo-remove> I<domain>
 
 Remove the domain information entry. This can be used to manually allow a
-security level downgrade.
+security level downgrade. Talks to the running chasquid instance.
 
 =item B<print-config>
 

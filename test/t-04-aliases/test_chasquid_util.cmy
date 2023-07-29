@@ -1,0 +1,27 @@
+# Resolve an unknown user.
+c = ./chasquid-util.sh aliases-resolve anunknownuser@blah
+c <- (email)  anunknownuser@blah
+c wait 0
+
+# Resolve a known alias.
+c = ./chasquid-util.sh aliases-resolve a.ñi_l-blah@testserver
+c <- (email)  azul@testserver
+c <- (email)  índigo@testserver
+c wait 0
+
+# Resolve a pipe alias.
+c = ./chasquid-util.sh aliases-resolve tubo@testserver
+c <- (pipe)  writemailto ../.data/pipe_alias_worked
+c wait 0
+
+# Resolve aliases that are exposed via the hook.
+c = ./chasquid-util.sh aliases-resolve vicuña@testserver
+c <- (email)  jose@testserver
+c <- (email)  juan@testserver
+c wait 0
+
+# The hook for this alias exits with error.
+c = ./chasquid-util.sh aliases-resolve roto@testserver
+c <- Error resolving: exit status 1
+c wait 1
+

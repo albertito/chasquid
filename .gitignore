@@ -31,6 +31,9 @@ test/util/minidns/minidns
 # Test binary, generated during coverage tests.
 chasquid.test
 
+# chamuyero logs
+*.cmy.log
+
 # Exclude any .pem files, to prevent accidentally including test keys and
 # certificates.
 *.pem

@@ -62,5 +62,19 @@ then
 	fail "B is missing the domaininfo for srv-a"
 fi
 
+# In A, remove domaininfo data about srv-B.
+# Check that it was cleared successfully.
+CONFDIR=A chasquid-util domaininfo-remove srv-b
+if grep -q 'outgoing_sec_level:' ".data-A/domaininfo/s:srv-b";
+then
+	fail "Error clearing A's domaininfo about srv-b"
+fi
+
+# While at it, check that a domaininfo-remove for an unknown domain results in
+# an error.
+if CONFDIR=A chasquid-util domaininfo-remove srv-X > .cdu-di-r-x.log 2>&1; then
+	fail "Expected error on chasquid-util domaininfo-remove srv-X"
+fi
+
 success
 

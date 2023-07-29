@@ -66,6 +66,16 @@ if run_msmtp nono@testserver < content 2> .logs/msmtp.out; then
 	echo "expected delivery to nono@ to fail, but succeeded"
 fi
 
+# Test chasquid-util's ability to do alias resolution talking to chasquid.
+# We use chamuyero for convenience, so we can match the output exactly.
+for i in *.cmy; do
+	if ! chamuyero "$i" > "$i.log" 2>&1 ; then
+		echo "$i failed, log follows"
+		cat "$i.log"
+		exit 1
+	fi
+done
+
 # Remove the hooks, leave a clean state.
 rm -f config/hooks/alias-resolve
 

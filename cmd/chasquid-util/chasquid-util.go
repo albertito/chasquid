@@ -9,9 +9,9 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -19,6 +19,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/localrpc"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
@@ -223,45 +224,26 @@ func aliasesResolve() {
 	if err != nil {
 		Fatalf("Error loading config: %v", err)
 	}
-	_ = os.Chdir(configDir)
 
-	r := aliases.NewResolver(allUsersExist)
-	r.SuffixSep = *conf.SuffixSeparators
-	r.DropChars = *conf.DropCharacters
-
-	domainDirs, err := os.ReadDir("domains/")
-	if err != nil {
-		Fatalf("Error reading domains/ directory: %v", err)
-	}
-	if len(domainDirs) == 0 {
-		Fatalf("No domains found in config")
-	}
-
-	for _, entry := range domainDirs {
-		name := entry.Name()
-		aliasfile := "domains/" + name + "/aliases"
-		r.AddDomain(name)
-		err := r.AddAliasesFile(name, aliasfile)
-		if err == nil {
-			fmt.Printf("%s: loaded %q\n", name, aliasfile)
-		} else if err != nil && os.IsNotExist(err) {
-			fmt.Printf("%s: no aliases file\n", name)
-		} else {
-			fmt.Printf("%s: error loading %q: %v\n", name, aliasfile, err)
-		}
-	}
-
-	tr := trace.New("chasquid-util", "aliasesResolve")
-	defer tr.Finish()
-
-	rcpts, err := r.Resolve(tr, args["$2"])
+	c := localrpc.NewClient(conf.DataDir + "/localrpc-v1")
+	vs, err := c.Call("AliasResolve", "Address", args["$2"])
 	if err != nil {
 		Fatalf("Error resolving: %v", err)
 	}
-	for _, rcpt := range rcpts {
-		fmt.Printf("%v  %s\n", rcpt.Type, rcpt.Addr)
-	}
 
+	// Result is a map of type -> []addresses.
+	// Sort the types for deterministic output.
+	ts := []string{}
+	for t := range vs {
+		ts = append(ts, t)
+	}
+	sort.Strings(ts)
+
+	for _, t := range ts {
+		for _, a := range vs[t] {
+			fmt.Printf("%v  %s\n", t, a)
+		}
+	}
 }
 
 // chasquid-util print-config
@@ -276,20 +258,15 @@ func printConfig() {
 
 // chasquid-util domaininfo-remove <domain>
 func domaininfoRemove() {
-	domain := args["$2"]
-
 	conf, err := config.Load(configDir+"/chasquid.conf", "")
 	if err != nil {
 		Fatalf("Error loading config: %v", err)
 	}
 
-	// File for the corresponding domain.
-	// Note this is making some assumptions about the data layout and
-	// protoio's storage structure, so it will need adjustment if they change.
-	file := conf.DataDir + "/domaininfo/s:" + url.QueryEscape(domain)
-	err = os.Remove(file)
+	c := localrpc.NewClient(conf.DataDir + "/localrpc-v1")
+	_, err = c.Call("DomaininfoClear", "Domain", args["$2"])
 	if err != nil {
-		Fatalf("Error removing file: %v", err)
+		Fatalf("Error removing domaininfo entry: %v", err)
 	}
 }
 

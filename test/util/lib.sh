@@ -43,6 +43,17 @@ function chasquid() {
 		"${TBASE}/../../chasquid" "$@"
 }
 
+function chasquid-util() {
+	# Run chasquid-util from inside the config dir, since in our tests
+	# data_dir is relative to the config.
+	CONFDIR="${CONFDIR:-config}"
+	( cd "$CONFDIR" && \
+	  go run "${TBASE}/../../cmd/chasquid-util/chasquid-util.go" \
+		-C=. \
+		"$@" \
+	)
+}
+
 # Add a user with chasquid-util. Because this is somewhat cryptographically
 # intensive, it can slow down the tests significantly, so most of the time we
 # use the simpler add_user (below) for testing purposes.
@@ -50,8 +61,7 @@ function chasquid-util-user-add() {
 	CONFDIR="${CONFDIR:-config}"
 	DOMAIN=$(echo "$1" | cut -d @ -f 2)
 	mkdir -p "${CONFDIR}/domains/$DOMAIN/"
-	go run "${TBASE}/../../cmd/chasquid-util/chasquid-util.go" \
-		-C="${CONFDIR}" \
+	chasquid-util \
 		user-add "$1" \
 		--password="$2" \
 		>> .add_user_logs

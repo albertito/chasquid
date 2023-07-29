@@ -1,0 +1,19 @@
+# Test success.
+server unix_listen .data/localrpc-v1
+c = ./chasquid-util -C=.config domaininfo-remove domain.com
+
+server <- DomaininfoClear Domain=domain.com
+server -> 200 
+
+c wait 0
+
+
+# Test error.
+server unix_listen .data/localrpc-v1
+c = ./chasquid-util -C=.config domaininfo-remove domain.com
+
+server <- DomaininfoClear Domain=domain.com
+server -> 500 This is a test error
+
+c <- Error removing domaininfo entry: This is a test error
+c wait 1

@@ -1,0 +1,21 @@
+# Test success.
+server unix_listen .data/localrpc-v1
+c = ./chasquid-util -C=.config aliases-resolve test@test.com
+
+server <- AliasResolve Address=test%40test.com
+server -> 200 %28email%29=r1%40r1.com&%28pipe%29=cmd%20args
+
+c <- (email)  r1@r1.com
+c <- (pipe)  cmd args
+c wait 0
+
+
+# Test error.
+server unix_listen .data/localrpc-v1
+c = ./chasquid-util -C=.config aliases-resolve test@test.com
+
+server <- AliasResolve Address=test%40test.com
+server -> 500 This is a test error
+
+c <- Error resolving: This is a test error
+c wait 1
