@@ -20,6 +20,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/dovecot"
+	"blitiri.com.ar/go/chasquid/internal/localrpc"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/smtpsrv"
@@ -171,6 +172,8 @@ func main() {
 	if naddr == 0 {
 		log.Fatalf("No address to listen on")
 	}
+
+	go localrpc.DefaultServer.ListenAndServe(conf.DataDir + "/localrpc-v1")
 
 	go signalHandler(dinfo, s)
 

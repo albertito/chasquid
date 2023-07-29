@@ -4,8 +4,10 @@ package smtpsrv
 import (
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"path"
 	"time"
 
@@ -13,9 +15,11 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/auth"
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
+	"blitiri.com.ar/go/chasquid/internal/localrpc"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
+	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 	"blitiri.com.ar/go/log"
 )
@@ -162,6 +166,29 @@ func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
 		})
 }
 
+func (s *Server) aliasResolveRPC(tr *trace.Trace, req url.Values) (url.Values, error) {
+	rcpts, err := s.aliasesR.Resolve(tr, req.Get("Address"))
+	if err != nil {
+		return nil, err
+	}
+
+	v := url.Values{}
+	for _, rcpt := range rcpts {
+		v.Add(string(rcpt.Type), rcpt.Addr)
+	}
+
+	return v, nil
+}
+
+func (s *Server) dinfoClearRPC(tr *trace.Trace, req url.Values) (url.Values, error) {
+	domain := req.Get("Domain")
+	exists := s.dinfo.Clear(tr, domain)
+	if !exists {
+		return nil, fmt.Errorf("does not exist")
+	}
+	return nil, nil
+}
+
 // periodicallyReload some of the server's information that can be changed
 // without the server knowing, such as aliases and the user databases.
 func (s *Server) periodicallyReload() {
@@ -199,6 +226,9 @@ func (s *Server) ListenAndServe() {
 		log.Errorf("Ideally there should be a certificate for each MX you act as")
 		log.Fatalf("At least one valid certificate is needed")
 	}
+
+	localrpc.DefaultServer.Register("AliasResolve", s.aliasResolveRPC)
+	localrpc.DefaultServer.Register("DomaininfoClear", s.dinfoClearRPC)
 
 	go s.periodicallyReload()
 
