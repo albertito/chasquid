@@ -75,7 +75,7 @@ func (db *DB) Reload() error {
 	return nil
 }
 
-func (db *DB) write(tr *trace.Trace, d *Domain) {
+func (db *DB) write(tr *trace.Trace, d *Domain) error {
 	tr = tr.NewChild("DomainInfo.write", d.Name)
 	defer tr.Finish()
 
@@ -85,6 +85,7 @@ func (db *DB) write(tr *trace.Trace, d *Domain) {
 	} else {
 		tr.Debugf("saved")
 	}
+	return err
 }
 
 // IncomingSecLevel checks an incoming security level for the domain.
@@ -157,4 +158,27 @@ func (db *DB) OutgoingSecLevel(tr *trace.Trace, domain string, level SecLevel) b
 		}
 		return true
 	}
+}
+
+// Clear sets the security level for the given domain to plain.
+// This can be used for manual overrides in case there's an operational need
+// to do so.
+func (db *DB) Clear(tr *trace.Trace, domain string) bool {
+	tr = tr.NewChild("DomainInfo.SetToPlain", domain)
+	defer tr.Finish()
+
+	db.Lock()
+	defer db.Unlock()
+
+	d, exists := db.info[domain]
+	if !exists {
+		tr.Debugf("does not exist")
+		return false
+	}
+
+	d.IncomingSecLevel = SecLevel_PLAIN
+	d.OutgoingSecLevel = SecLevel_PLAIN
+	db.write(tr, d)
+	tr.Printf("set to plain")
+	return true
 }
