@@ -16,7 +16,6 @@ import (
 	"strings"
 	"syscall"
 
-	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/localrpc"
@@ -37,7 +36,6 @@ Usage:
   chasquid-util [options] aliases-resolve <address>
   chasquid-util [options] domaininfo-remove <domain>
   chasquid-util [options] print-config
-  chasquid-util [options] aliases-add <source> <target>
 
 Options:
   -C=<path>, --configdir=<path>  Configuration directory
@@ -80,7 +78,6 @@ func main() {
 		"aliases-resolve":   aliasesResolve,
 		"print-config":      printConfig,
 		"domaininfo-remove": domaininfoRemove,
-		"aliases-add":       aliasesAdd,
 	}
 
 	cmd := args["$1"]
@@ -272,63 +269,6 @@ func domaininfoRemove() {
 
 func allUsersExist(tr *trace.Trace, user, domain string) (bool, error) {
 	return true, nil
-}
-
-// chasquid-util aliases-add <source> <target>
-func aliasesAdd() {
-	source := args["$2"]
-	target := args["$3"]
-
-	user, domain := envelope.Split(source)
-	if domain == "" {
-		Fatalf("Domain required in source address")
-	}
-
-	if target == "" {
-		Fatalf("Target must be present")
-	}
-
-	// Ensure the domain exists.
-	if _, err := os.Stat(filepath.Join(configDir, "domains", domain)); os.IsNotExist(err) {
-		Fatalf("Domain doesn't exist")
-	}
-
-	conf, err := config.Load(configDir+"/chasquid.conf", "")
-	if err != nil {
-		Fatalf("Error loading config: %v", err)
-	}
-	_ = os.Chdir(configDir)
-
-	// Setup alias resolver.
-	r := aliases.NewResolver(allUsersExist)
-	r.SuffixSep = *conf.SuffixSeparators
-	r.DropChars = *conf.DropCharacters
-
-	r.AddDomain(domain)
-	aliasesFilePath := filepath.Join("domains", domain, "aliases")
-	if err := r.AddAliasesFile(domain, aliasesFilePath); err != nil {
-		Fatalf("%s: error loading %q: %v", domain, aliasesFilePath, err)
-	}
-
-	tr := trace.New("chasquid-util", "aliasesAdd")
-	defer tr.Finish()
-
-	// Check for existing entry.
-	if _, ok := r.Exists(tr, source); ok {
-		Fatalf("There's already an entry for %v", source)
-	}
-
-	// Append the new entry.
-	aliasesFile, err := os.OpenFile(aliasesFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		Fatalf("Couldn't open %s: %v", aliasesFilePath, err)
-	}
-	_, err = fmt.Fprintf(aliasesFile, "%s: %s\n", user, target)
-	if err != nil {
-		Fatalf("Couldn't write to %s: %v", aliasesFilePath, err)
-	}
-	aliasesFile.Close()
-	fmt.Println("Added alias")
 }
 
 // parseArgs parses the command line arguments, and returns a map.
