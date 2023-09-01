@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
+	"io/fs"
 
 	"blitiri.com.ar/go/chasquid/internal/config"
 	"blitiri.com.ar/go/chasquid/internal/courier"
@@ -92,6 +93,11 @@ func main() {
 	// The structure matches letsencrypt's, to make it easier for that case.
 	log.Infof("Loading certificates")
 	for _, info := range mustReadDir("certs/") {
+		info, err = maybeFollowSymlink("certs/", info)
+		if err != nil {
+			log.Errorf("error resolving symlink: %s", err)
+			continue
+		}
 		if !info.IsDir() {
 			// Skip non-directories.
 			continue
@@ -283,4 +289,26 @@ func mustReadDir(path string) []os.DirEntry {
 	}
 
 	return dirs
+}
+
+// Maybe resolve an os.DirEntry symlink
+func maybeFollowSymlink ( dir string, info os.DirEntry) (os.DirEntry, error) {
+	fileinfo, err := info.Info()
+	if err != nil {
+		return nil, err
+	}
+	if fileinfo.Mode() & fs.ModeSymlink == 0 {
+		return info, nil
+	}
+	// is symlink
+	path := dir + fileinfo.Name()
+	target, err := os.Readlink(path)
+	if err != nil {
+		return nil, err
+	}
+	new_info, err := os.Stat(target)
+	if err != nil {
+		return nil, err
+	}
+	return fs.FileInfoToDirEntry(new_info), nil
 }
