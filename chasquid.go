@@ -92,8 +92,8 @@ func main() {
 	// The structure matches letsencrypt's, to make it easier for that case.
 	log.Infof("Loading certificates")
 	for _, info := range mustReadDir("certs/") {
-		if !info.IsDir() {
-			// Skip non-directories.
+		if info.Type().IsRegular() {
+			// Ignore regular files, we only care about directories.
 			continue
 		}
 
@@ -101,12 +101,16 @@ func main() {
 		dir := filepath.Join("certs/", name)
 		log.Infof("  %s", name)
 
+		// Ignore directories that don't have both keys.
+		// We warn about this because it can be hard to debug otherwise.
 		certPath := filepath.Join(dir, "fullchain.pem")
-		if _, err := os.Stat(certPath); os.IsNotExist(err) {
+		if _, err := os.Stat(certPath); err != nil {
+			log.Infof("    skipping: %v", err)
 			continue
 		}
 		keyPath := filepath.Join(dir, "privkey.pem")
-		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+		if _, err := os.Stat(keyPath); err != nil {
+			log.Infof("    skipping: %v", err)
 			continue
 		}
 
