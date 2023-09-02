@@ -33,13 +33,15 @@ for i in c-*; do
 	fi
 
 	# Test that they failed as expected, and not by chance/unrelated error.
-	if ! tail -n 1 ".chasquid-$i.out" \
+	# Look in the last 4 lines, because the fatal error may not be in the
+	# very last one due to asynchronous logging.
+	if ! tail -n 4 ".chasquid-$i.out" \
 	   | grep -q -E "$(cat "$i/.expected-error")"; then
 		echo "$i failed"
-		echo "expected last line to match:"
+		echo "expected last 4 lines to contain:"
 		echo "    '$(cat "$i/.expected-error")'"
-		echo "got last line:"
-		echo "    '$(tail -n 1 ".chasquid-$i.out")'"
+		echo "got last 4 lines:"
+		tail -n 4 ".chasquid-$i.out" | sed -e 's/^/    /g'
 		echo
 		fail "$i: chasquid did not fail as expected"
 	fi
