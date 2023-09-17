@@ -99,25 +99,7 @@ func main() {
 
 		name := info.Name()
 		dir := filepath.Join("certs/", name)
-		log.Infof("  %s", name)
-
-		// Ignore directories that don't have both keys.
-		// We warn about this because it can be hard to debug otherwise.
-		certPath := filepath.Join(dir, "fullchain.pem")
-		if _, err := os.Stat(certPath); err != nil {
-			log.Infof("    skipping: %v", err)
-			continue
-		}
-		keyPath := filepath.Join(dir, "privkey.pem")
-		if _, err := os.Stat(keyPath); err != nil {
-			log.Infof("    skipping: %v", err)
-			continue
-		}
-
-		err := s.AddCerts(certPath, keyPath)
-		if err != nil {
-			log.Fatalf("    %v", err)
-		}
+		loadCert(name, dir, s)
 	}
 
 	// Load domains from "domains/".
@@ -262,6 +244,29 @@ func signalHandler(dinfo *domaininfo.DB, srv *smtpsrv.Server) {
 		default:
 			log.Errorf("Unexpected signal %v", sig)
 		}
+	}
+}
+
+// Helper to load a single certificate configuration into the server.
+func loadCert(name, dir string, s *smtpsrv.Server) {
+	log.Infof("  %s", name)
+
+	// Ignore directories that don't have both keys.
+	// We warn about this because it can be hard to debug otherwise.
+	certPath := filepath.Join(dir, "fullchain.pem")
+	if _, err := os.Stat(certPath); err != nil {
+		log.Infof("    skipping: %v", err)
+		return
+	}
+	keyPath := filepath.Join(dir, "privkey.pem")
+	if _, err := os.Stat(keyPath); err != nil {
+		log.Infof("    skipping: %v", err)
+		return
+	}
+
+	err := s.AddCerts(certPath, keyPath)
+	if err != nil {
+		log.Fatalf("    %v", err)
 	}
 }
 
