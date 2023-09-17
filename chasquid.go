@@ -90,7 +90,7 @@ func main() {
 
 	// Load certificates from "certs/<directory>/{fullchain,privkey}.pem".
 	// The structure matches letsencrypt's, to make it easier for that case.
-	log.Infof("Loading certificates")
+	log.Infof("Loading certificates:")
 	for _, info := range mustReadDir("certs/") {
 		if info.Type().IsRegular() {
 			// Ignore regular files, we only care about directories.
@@ -121,7 +121,7 @@ func main() {
 	}
 
 	// Load domains from "domains/".
-	log.Infof("Domain config paths:")
+	log.Infof("Loading domains:")
 	for _, info := range mustReadDir("domains/") {
 		domain, err := normalize.Domain(info.Name())
 		if err != nil {
@@ -270,20 +270,18 @@ func loadDomain(name, dir string, s *smtpsrv.Server) {
 	log.Infof("  %s", name)
 	s.AddDomain(name)
 
-	if _, err := os.Stat(dir + "/users"); err == nil {
-		log.Infof("    adding users")
-		udb, err := userdb.Load(dir + "/users")
-		if err != nil {
-			log.Errorf("      error: %v", err)
-		} else {
-			s.AddUserDB(name, udb)
-		}
+	udb, err := userdb.Load(dir + "/users")
+	if os.IsNotExist(err) {
+		// No users file present, that's okay.
+	} else if err != nil {
+		log.Errorf("    users file error: %v", err)
+	} else {
+		s.AddUserDB(name, udb)
 	}
 
-	log.Infof("    adding aliases")
-	err := s.AddAliasesFile(name, dir+"/aliases")
+	err = s.AddAliasesFile(name, dir+"/aliases")
 	if err != nil {
-		log.Errorf("      error: %v", err)
+		log.Errorf("    aliases file error: %v", err)
 	}
 }
 
