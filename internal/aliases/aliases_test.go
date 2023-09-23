@@ -162,6 +162,11 @@ func TestAddrRewrite(t *testing.T) {
 		"ñoño@def": {{"x@y", EMAIL}},
 		"recu@def": {{"ab+cd@p-q.com", EMAIL}},
 		"remo@def": {{"x-@y-z.com", EMAIL}},
+
+		// Aliases with a suffix, to make sure we handle them correctly.
+		// Note we don't allow aliases with drop characters, they get
+		// normalized at parsing time.
+		"recu-zzz@def": {{"z@z", EMAIL}},
 	}
 	resolver.DropChars = ".~"
 	resolver.SuffixSep = "-+"
@@ -185,6 +190,18 @@ func TestAddrRewrite(t *testing.T) {
 		// Clean the right hand side too (if it's a local domain).
 		{"recu+blah@def", []Recipient{{"ab@p-q.com", EMAIL}}, nil},
 
+		// Requests for "recu" and variants, because it has an alias with a
+		// suffix.
+		{"re-cu@def", []Recipient{{"re@def", EMAIL}}, nil},
+		{"re.cu@def", []Recipient{{"ab@p-q.com", EMAIL}}, nil},
+		{"re.cu-zzz@def", []Recipient{{"z@z", EMAIL}}, nil},
+
+		// Check that because we have an alias with a suffix, we do not
+		// accidentally use it for their "clean" versions.
+		{"re@def", []Recipient{{"re@def", EMAIL}}, nil},
+		{"r.e.c.u@def", []Recipient{{"ab@p-q.com", EMAIL}}, nil},
+		{"re.cu-yyy@def", []Recipient{{"ab@p-q.com", EMAIL}}, nil},
+
 		// We should not mess with emails for domains we don't know.
 		{"xy@z.com", []Recipient{{"xy@z.com", EMAIL}}, nil},
 		{"x.y@z.com", []Recipient{{"x.y@z.com", EMAIL}}, nil},
@@ -203,6 +220,11 @@ func TestExists(t *testing.T) {
 		"abc@def":  {{"x@y", EMAIL}},
 		"ñoño@def": {{"x@y", EMAIL}},
 		"recu@def": {{"ab+cd@p-q.com", EMAIL}},
+
+		// Aliases with a suffix, to make sure we handle them correctly.
+		// Note we don't allow aliases with drop characters, they get
+		// normalized at parsing time.
+		"ex-act@def": {{"x@y", EMAIL}},
 	}
 	resolver.DropChars = ".~"
 	resolver.SuffixSep = "-+"
@@ -215,7 +237,9 @@ func TestExists(t *testing.T) {
 		"ñoño@def",
 		"ño.ño@def",
 		"recu@def",
-		"re.cu@def")
+		"re.cu@def",
+		"ex-act@def",
+	)
 	mustNotExist(t, resolver,
 		"abc@d.ef",
 		"nothere@def",
@@ -223,7 +247,11 @@ func TestExists(t *testing.T) {
 		"a.bc@unknown",
 		"x.yz@def",
 		"x.yz@d.ef",
-		"abc@d.ef")
+		"abc@d.ef",
+		"exact@def",
+		"exa.ct@def",
+		"ex@def",
+	)
 }
 
 func TestRemoveDropsAndSuffix(t *testing.T) {
@@ -253,6 +281,51 @@ func TestRemoveDropsAndSuffix(t *testing.T) {
 		addr := resolver.RemoveDropsAndSuffix(c.addr)
 		if addr != c.want {
 			t.Errorf("RemoveDropsAndSuffix(%q): want %q, got %q",
+				c.addr, c.want, addr)
+		}
+	}
+}
+
+func TestRemoveDropCharacters(t *testing.T) {
+	resolver := NewResolver(allUsersExist)
+	resolver.AddDomain("def")
+	resolver.DropChars = "._"
+	resolver.SuffixSep = "-+"
+
+	cases := []struct {
+		addr string
+		want string
+	}{
+		{"abc@def", "abc@def"},
+		{"abc+blah@def", "abc+blah@def"},
+		{"a.b@def", "ab@def"},
+		{"a.b+c@def", "ab+c@def"},
+		{"a.b+c.d@def", "ab+c.d@def"},
+		{"a@def", "a@def"},
+		{"a+b@def", "a+b@def"},
+
+		// Cases with UTF-8, to make sure we handle indexing correctly.
+		{"ñoño@def", "ñoño@def"},
+		{"ñoño+blah@def", "ñoño+blah@def"},
+		{"ño.ño@def", "ñoño@def"},
+		{"ño.ño+blah@def", "ñoño+blah@def"},
+		{"ño.ño+ñaca@def", "ñoño+ñaca@def"},
+		{"ño.ño+ña.ca@def", "ñoño+ña.ca@def"},
+		{"ño.ño+ñaña@def", "ñoño+ñaña@def"},
+		{"ño.ño+ña.ña@def", "ñoño+ña.ña@def"},
+
+		// Check "the other" drop char/suffix separator to make sure we
+		// don't skip any of them.
+		{"a_b@def", "ab@def"},
+		{"a_b-c@def", "ab-c@def"},
+		{"a_b-c.d@def", "ab-c.d@def"},
+		{"ño_ño-ña.ña@def", "ñoño-ña.ña@def"},
+	}
+
+	for _, c := range cases {
+		addr := resolver.RemoveDropCharacters(c.addr)
+		if addr != c.want {
+			t.Errorf("RemoveDropCharacters(%q): want %q, got %q",
 				c.addr, c.want, addr)
 		}
 	}
@@ -399,6 +472,15 @@ o1: b
 # Check that we normalize the right hand side.
 aA: bB@dom-B
 
+# Test that exact aliases take precedence.
+pq: pa
+p.q: pb
+p.q+r: pc
+pq+r: pd
+ppp1: p.q+r
+ppp2: p.q
+ppp3: ppp2
+
 # Finally one to make the file NOT end in \n:
 y: z`
 
@@ -407,6 +489,8 @@ func TestRichFile(t *testing.T) {
 	defer os.Remove(fname)
 
 	resolver := NewResolver(allUsersExist)
+	resolver.DropChars = "."
+	resolver.SuffixSep = "+"
 	err := resolver.AddAliasesFile("dom", fname)
 	if err != nil {
 		t.Fatalf("failed to add file: %v", err)
@@ -416,9 +500,23 @@ func TestRichFile(t *testing.T) {
 		{"a@dom", []Recipient{{"b@dom", EMAIL}}, nil},
 		{"c@dom", []Recipient{{"d@e", EMAIL}, {"f@dom", EMAIL}}, nil},
 		{"x@dom", []Recipient{{"command", PIPE}}, nil},
+
 		{"o1@dom", []Recipient{{"b@dom", EMAIL}}, nil},
+
 		{"aA@dom", []Recipient{{"bb@dom-b", EMAIL}}, nil},
 		{"aa@dom", []Recipient{{"bb@dom-b", EMAIL}}, nil},
+
+		{"pq@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
+		{"p.q@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
+		{"p.q+r@dom", []Recipient{{"pd@dom", EMAIL}}, nil},
+		{"pq+r@dom", []Recipient{{"pd@dom", EMAIL}}, nil},
+		{"pq+z@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
+		{"p..q@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
+		{"p..q+r@dom", []Recipient{{"pd@dom", EMAIL}}, nil},
+		{"ppp1@dom", []Recipient{{"pd@dom", EMAIL}}, nil},
+		{"ppp2@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
+		{"ppp3@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
+
 		{"y@dom", []Recipient{{"z@dom", EMAIL}}, nil},
 	}
 	cases.check(t, resolver)

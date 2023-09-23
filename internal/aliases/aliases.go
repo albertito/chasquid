@@ -50,6 +50,9 @@
 // and "us.er@domain" into "user@domain".
 //
 // Both are optional, and the characters configurable globally.
+//
+// There are more complex semantics around handling of drop characters and
+// suffixes, see the documentation for more details.
 package aliases
 
 import (
@@ -157,8 +160,18 @@ func (v *Resolver) Exists(tr *trace.Trace, addr string) bool {
 	tr = tr.NewChild("Alias.Exists", addr)
 	defer tr.Finish()
 
-	addr = v.RemoveDropsAndSuffix(addr)
+	// First, see if there's an exact match in the database.
+	// This allows us to have aliases that include suffixes in them, and have
+	// them take precedence.
 	rcpts, _ := v.lookup(addr, tr)
+	if len(rcpts) > 0 {
+		return true
+	}
+
+	// "Clean" the address, removing drop characters and suffixes, and try
+	// again.
+	addr = v.RemoveDropsAndSuffix(addr)
+	rcpts, _ = v.lookup(addr, tr)
 	if len(rcpts) > 0 {
 		return true
 	}
@@ -173,11 +186,17 @@ func (v *Resolver) Exists(tr *trace.Trace, addr string) bool {
 }
 
 func (v *Resolver) lookup(addr string, tr *trace.Trace) ([]Recipient, error) {
+	// Do a lookup in the aliases map. Note we remove drop characters first,
+	// which matches what we did at parsing time. Suffixes, if any, are left
+	// as-is; that is handled by the callers.
+	clean := v.RemoveDropCharacters(addr)
 	v.mu.Lock()
-	rcpts := v.aliases[addr]
+	rcpts := v.aliases[clean]
 	v.mu.Unlock()
 
 	// Augment with the hook results.
+	// Note we use the original address, to give maximum flexibility to the
+	// hooks.
 	hr, err := v.runResolveHook(tr, addr)
 	if err != nil {
 		tr.Debugf("lookup(%q) hook error: %v", addr, err)
@@ -203,16 +222,25 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 		return []Recipient{{addr, EMAIL}}, nil
 	}
 
-	// Drop suffixes and chars to get the "clean" address before resolving.
-	// This also means that we will return the clean version if there's no
-	// match, which our callers can rely upon.
-	addr = v.RemoveDropsAndSuffix(addr)
-
-	// Lookup in the aliases database.
+	// First, see if there's an exact match in the database.
+	// This allows us to have aliases that include suffixes in them, and have
+	// them take precedence.
 	rcpts, err := v.lookup(addr, tr)
 	if err != nil {
 		tr.Debugf("%d| error in lookup: %v", rcount, err)
 		return nil, err
+	}
+
+	if len(rcpts) == 0 {
+		// Retry after removing drop characters and suffixes.
+		// This also means that we will return the clean version if there's no
+		// match, which our callers can rely upon.
+		addr = v.RemoveDropsAndSuffix(addr)
+		rcpts, err = v.lookup(addr, tr)
+		if err != nil {
+			tr.Debugf("%d| error in lookup: %v", rcount, err)
+			return nil, err
+		}
 	}
 
 	// No alias for this local address.
@@ -273,6 +301,32 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 
 	tr.Debugf("%d| returning %v", rcount, ret)
 	return ret, nil
+}
+
+// Remove drop characters, but only up to the first suffix separator.
+func (v *Resolver) RemoveDropCharacters(addr string) string {
+	user, domain := envelope.Split(addr)
+
+	// Remove drop characters up to the first suffix separator.
+	firstSuffixSep := strings.IndexAny(user, v.SuffixSep)
+	if firstSuffixSep == -1 {
+		firstSuffixSep = len(user)
+	}
+
+	nu := ""
+	for _, c := range user[:firstSuffixSep] {
+		if !strings.ContainsRune(v.DropChars, c) {
+			nu += string(c)
+		}
+	}
+
+	// Copy any remaining suffix as-is.
+	if firstSuffixSep < len(user) {
+		nu += user[firstSuffixSep:]
+	}
+
+	nu, _ = normalize.User(nu)
+	return nu + "@" + domain
 }
 
 func (v *Resolver) RemoveDropsAndSuffix(addr string) string {
@@ -394,7 +448,11 @@ func (v *Resolver) parseReader(domain string, r io.Reader) (map[string][]Recipie
 			continue
 		}
 
+		// We remove DropChars from the address, but leave the suffixes (if
+		// any). This matches the behaviour expected by Exists and Resolve,
+		// see the documentation for more details.
 		addr = addr + "@" + domain
+		addr = v.RemoveDropCharacters(addr)
 		addr, _ = normalize.Addr(addr)
 
 		rs := parseRHS(rawalias, domain)

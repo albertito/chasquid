@@ -5,6 +5,9 @@ case "$1" in
 	# Test one naked, one full. These exist in the static aliases file.
 	echo pepe, joan@testserver
 	;;
+"vic.uña+abc@testserver")
+	echo uña
+	;;
 "ñandú@testserver")
 	echo "| writemailto ../.data/pipe_alias_worked"
 	;;

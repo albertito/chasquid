@@ -76,6 +76,57 @@ pepe: jose
 *: pepe, rose@backgarden
 ```
 
+### Overrides
+
+If the same left-side address appears more than once, the last one will take
+precedence.
+
+For example, in this case, the result is that `pepe` is aliased to `jose`, the
+first line is effectively ignored.
+
+```
+pepe: juan
+pepe: jose
+```
+
+### Drop characters and suffix separators
+
+When parsing aliases files, drop characters will be ignored. Suffix separators
+are kept as-is.
+
+When doing lookups, drop characters will also be ignored. If the address has a
+suffix, the lookup will include it; if there is no match, it will try again
+without the suffix.
+
+In practice, this means that if the aliases file contains:
+
+```
+juana.perez: juana
+juana.perez+fruta: fruta
+```
+
+Then (assuming the default drop characters and suffix separators), these are
+the results:
+
+```
+juana.perez -> juana
+juanaperez -> juana
+ju.ana.pe.rez -> juana
+
+juana.perez+abc -> juana
+juanaperez+abc -> juana
+
+juana.perez+fruta -> fruta
+juanaperez+fruta -> fruta
+```
+
+This allows addresses with suffixes to have specific aliases, without having
+to worry about drop characters, which is the most common use case.
+
+If different semantics are needed, they can be implemented using the
+[hook](#hooks).
+
+
 ## Processing
 
 Aliases files are read upon start-up and refreshed every 30 seconds, so

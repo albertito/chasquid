@@ -50,8 +50,11 @@ mail_diff content .data/pipe_alias_worked
 mkdir -p config/hooks/
 cp alias-resolve-hook config/hooks/alias-resolve
 
-# Test email aliases.
+# Test email aliases via the hook.
 send_and_check vicuña juan jose
+send_and_check vi.cu.ña juan jose
+send_and_check vi.cu.ña+abc juan jose
+send_and_check vic.uña+abc uña
 
 # Test the pipe alias separately.
 rm -f .data/pipe_alias_worked
