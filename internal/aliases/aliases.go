@@ -303,7 +303,7 @@ func (v *Resolver) AddAliasesFile(domain, path string) error {
 	v.domains[domain] = true
 	v.mu.Unlock()
 
-	aliases, err := parseFile(domain, path)
+	aliases, err := v.parseFile(domain, path)
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -333,7 +333,7 @@ func (v *Resolver) Reload() error {
 
 	for domain, paths := range v.files {
 		for _, path := range paths {
-			aliases, err := parseFile(domain, path)
+			aliases, err := v.parseFile(domain, path)
 			if os.IsNotExist(err) {
 				continue
 			}
@@ -355,21 +355,21 @@ func (v *Resolver) Reload() error {
 	return nil
 }
 
-func parseFile(domain, path string) (map[string][]Recipient, error) {
+func (v *Resolver) parseFile(domain, path string) (map[string][]Recipient, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	aliases, err := parseReader(domain, f)
+	aliases, err := v.parseReader(domain, f)
 	if err != nil {
 		return nil, fmt.Errorf("reading %q: %v", path, err)
 	}
 	return aliases, nil
 }
 
-func parseReader(domain string, r io.Reader) (map[string][]Recipient, error) {
+func (v *Resolver) parseReader(domain string, r io.Reader) (map[string][]Recipient, error) {
 	aliases := map[string][]Recipient{}
 
 	scanner := bufio.NewScanner(r)

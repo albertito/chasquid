@@ -504,7 +504,11 @@ func TestHookError(t *testing.T) {
 
 // Fuzz testing for the parser.
 func FuzzReader(f *testing.F) {
+	resolver := NewResolver(allUsersExist)
+	resolver.AddDomain("domain")
+	resolver.DropChars = "."
+	resolver.SuffixSep = "-+"
 	f.Fuzz(func(t *testing.T, data []byte) {
-		parseReader("domain", bytes.NewReader(data))
+		resolver.parseReader("domain", bytes.NewReader(data))
 	})
 }
