@@ -41,7 +41,7 @@ func mustExist(t *testing.T, r *Resolver, addrs ...string) {
 	tr := trace.New("test", "mustExist")
 	defer tr.Finish()
 	for _, addr := range addrs {
-		if _, ok := r.Exists(tr, addr); !ok {
+		if ok := r.Exists(tr, addr); !ok {
 			t.Errorf("address %q does not exist, it should", addr)
 		}
 	}
@@ -52,7 +52,7 @@ func mustNotExist(t *testing.T, r *Resolver, addrs ...string) {
 	tr := trace.New("test", "mustNotExist")
 	defer tr.Finish()
 	for _, addr := range addrs {
-		if _, ok := r.Exists(tr, addr); ok {
+		if ok := r.Exists(tr, addr); ok {
 			t.Errorf("address %q exists, it should not", addr)
 		}
 	}
@@ -86,9 +86,9 @@ func TestBasic(t *testing.T) {
 	resolver.AddDomain("localA")
 	resolver.AddDomain("localB")
 	resolver.aliases = map[string][]Recipient{
-		"a@localA": {{"c@d", EMAIL}, {"e@localB", EMAIL}},
-		"e@localB": {{"cmd", PIPE}},
-		"cmd":      {{"x@y", EMAIL}}, // it's a trap!
+		"a@localA":   {{"c@d", EMAIL}, {"e@localB", EMAIL}},
+		"e@localB":   {{"cmd", PIPE}},
+		"cmd@localA": {{"x@y", EMAIL}},
 	}
 
 	cases := Cases{
@@ -98,7 +98,7 @@ func TestBasic(t *testing.T) {
 	}
 	cases.check(t, resolver)
 
-	mustExist(t, resolver, "a@localA", "e@localB", "cmd")
+	mustExist(t, resolver, "a@localA", "e@localB", "cmd@localA")
 	mustNotExist(t, resolver, "x@y")
 }
 
@@ -195,7 +195,7 @@ func TestAddrRewrite(t *testing.T) {
 	cases.check(t, resolver)
 }
 
-func TestExistsRewrite(t *testing.T) {
+func TestExists(t *testing.T) {
 	resolver := NewResolver(allUsersExist)
 	resolver.AddDomain("def")
 	resolver.AddDomain("p-q.com")
@@ -207,35 +207,53 @@ func TestExistsRewrite(t *testing.T) {
 	resolver.DropChars = ".~"
 	resolver.SuffixSep = "-+"
 
-	mustExist(t, resolver, "abc@def", "a.bc+blah@def", "ño.ño@def")
-	mustNotExist(t, resolver, "abc@d.ef", "nothere@def")
+	mustExist(t, resolver,
+		"abc@def",
+		"abc+blah@def",
+		"a.bc+blah@def",
+		"a.b~c@def",
+		"ñoño@def",
+		"ño.ño@def",
+		"recu@def",
+		"re.cu@def")
+	mustNotExist(t, resolver,
+		"abc@d.ef",
+		"nothere@def",
+		"ex@def",
+		"a.bc@unknown",
+		"x.yz@def",
+		"x.yz@d.ef",
+		"abc@d.ef")
+}
 
-	tr := trace.New("test", "TestExistsRewrite")
-	defer tr.Finish()
+func TestRemoveDropsAndSuffix(t *testing.T) {
+	resolver := NewResolver(allUsersExist)
+	resolver.AddDomain("def")
+	resolver.AddDomain("p-q.com")
+	resolver.aliases = map[string][]Recipient{
+		"abc@def":  {{"x@y", EMAIL}},
+		"ñoño@def": {{"x@y", EMAIL}},
+		"recu@def": {{"ab+cd@p-q.com", EMAIL}},
+	}
+	resolver.DropChars = ".~"
+	resolver.SuffixSep = "-+"
 
 	cases := []struct {
-		addr         string
-		expectAddr   string
-		expectExists bool
+		addr string
+		want string
 	}{
-		{"abc@def", "abc@def", true},
-		{"abc+blah@def", "abc@def", true},
-		{"a.b~c@def", "abc@def", true},
-		{"a.bc+blah@def", "abc@def", true},
-
-		{"a.bc@unknown", "a.bc@unknown", false},
-		{"x.yz@def", "xyz@def", false},
-		{"x.yz@d.ef", "x.yz@d.ef", false},
+		{"abc@def", "abc@def"},
+		{"abc+blah@def", "abc@def"},
+		{"a.b~c@def", "abc@def"},
+		{"a.bc+blah@def", "abc@def"},
+		{"x.yz@def", "xyz@def"},
+		{"x.yz@d.ef", "xyz@d.ef"},
 	}
 	for _, c := range cases {
-		addr, exists := resolver.Exists(tr, c.addr)
-		if addr != c.expectAddr {
-			t.Errorf("%q: expected addr %q, got %q",
-				c.addr, c.expectAddr, addr)
-		}
-		if exists != c.expectExists {
-			t.Errorf("%q: expected exists %v, got %v",
-				c.addr, c.expectExists, exists)
+		addr := resolver.RemoveDropsAndSuffix(c.addr)
+		if addr != c.want {
+			t.Errorf("RemoveDropsAndSuffix(%q): want %q, got %q",
+				c.addr, c.want, addr)
 		}
 	}
 }

@@ -151,28 +151,25 @@ func (v *Resolver) Resolve(tr *trace.Trace, addr string) ([]Recipient, error) {
 	return v.resolve(0, addr, tr)
 }
 
-// Exists check that the address exists in the database.
-// It returns the cleaned address, and a boolean indicating the result.
-// The clean address can be used to look it up in other databases, even if it
-// doesn't exist. It must only be called for local addresses.
-func (v *Resolver) Exists(tr *trace.Trace, addr string) (string, bool) {
+// Exists check that the address exists in the database.  It must only be
+// called for local addresses.
+func (v *Resolver) Exists(tr *trace.Trace, addr string) bool {
 	tr = tr.NewChild("Alias.Exists", addr)
 	defer tr.Finish()
 
-	addr = v.cleanIfLocal(addr)
-
+	addr = v.RemoveDropsAndSuffix(addr)
 	rcpts, _ := v.lookup(addr, tr)
 	if len(rcpts) > 0 {
-		return addr, true
+		return true
 	}
 
 	domain := envelope.DomainOf(addr)
 	catchAll, _ := v.lookup("*@"+domain, tr)
 	if len(catchAll) > 0 {
-		return addr, true
+		return true
 	}
 
-	return addr, false
+	return false
 }
 
 func (v *Resolver) lookup(addr string, tr *trace.Trace) ([]Recipient, error) {
@@ -209,7 +206,7 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 	// Drop suffixes and chars to get the "clean" address before resolving.
 	// This also means that we will return the clean version if there's no
 	// match, which our callers can rely upon.
-	addr = v.cleanIfLocal(addr)
+	addr = v.RemoveDropsAndSuffix(addr)
 
 	// Lookup in the aliases database.
 	rcpts, err := v.lookup(addr, tr)
@@ -278,17 +275,8 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 	return ret, nil
 }
 
-func (v *Resolver) cleanIfLocal(addr string) string {
+func (v *Resolver) RemoveDropsAndSuffix(addr string) string {
 	user, domain := envelope.Split(addr)
-
-	v.mu.Lock()
-	isLocal := v.domains[domain]
-	v.mu.Unlock()
-
-	if !isLocal {
-		return addr
-	}
-
 	user = removeAllAfter(user, v.SuffixSep)
 	user = removeChars(user, v.DropChars)
 	user, _ = normalize.User(user)

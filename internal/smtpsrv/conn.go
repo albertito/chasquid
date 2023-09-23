@@ -591,7 +591,7 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 			return 550, "5.1.3 Destination address is invalid"
 		}
 
-		ok, err := c.userExists(addr)
+		ok, err := c.localUserExists(addr)
 		if err != nil {
 			c.tr.Errorf("error checking if user %q exists: %v", addr, err)
 			maillog.Rejected(c.remoteAddr, c.mailFrom, []string{addr},
@@ -1096,17 +1096,14 @@ func (c *Conn) resetEnvelope() {
 	c.spfError = nil
 }
 
-func (c *Conn) userExists(addr string) (bool, error) {
-	var ok bool
-	addr, ok = c.aliasesR.Exists(c.tr, addr)
-	if ok {
+func (c *Conn) localUserExists(addr string) (bool, error) {
+	if c.aliasesR.Exists(c.tr, addr) {
 		return true, nil
 	}
 
-	// Note we used the address returned by the aliases resolver, which has
-	// cleaned it up. This means that a check for "us.er@domain" will have us
-	// look up "user" in our databases if the domain is local, which is what
-	// we want.
+	// Remove the drop chars and suffixes, if any, so the database lookup is
+	// on a "clean" address.
+	addr = c.aliasesR.RemoveDropsAndSuffix(addr)
 	user, domain := envelope.Split(addr)
 	return c.authr.Exists(c.tr, user, domain)
 }
