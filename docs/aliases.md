@@ -90,7 +90,8 @@ will fail.  If the command exits with an error (non-0 exit code), the delivery
 will be considered failed.
 
 The `chasquid-util` command-line tool can be used to check and resolve
-aliases. Note that it doesn't run aliases hooks, or handle catch-all aliases.
+aliases manually. It talks to the running server, so the response is fully
+authoritative.
 
 
 ## Hooks
