@@ -21,6 +21,9 @@ function send_and_check() {
 		mail_diff content ".mail/$i@testserver"
 		rm -f ".mail/$i@testserver"
 	done
+	if ! [ -z "$(ls .mail/)" ]; then
+		fail "unexpected mail was delivered: $(ls .mail/)"
+	fi
 }
 
 # Remove the hooks that could be left over from previous failed tests.
@@ -58,12 +61,12 @@ mail_diff content .data/pipe_alias_worked
 
 # Test when alias-resolve exits with an error
 if run_msmtp roto@testserver < content 2> .logs/msmtp.out; then
-	echo "expected delivery to roto@ to fail, but succeeded"
+	fail "expected delivery to roto@ to fail, but succeeded"
 fi
 
 # Test a non-existent alias.
 if run_msmtp nono@testserver < content 2> .logs/msmtp.out; then
-	echo "expected delivery to nono@ to fail, but succeeded"
+	fail "expected delivery to nono@ to fail, but succeeded"
 fi
 
 # Test chasquid-util's ability to do alias resolution talking to chasquid.
