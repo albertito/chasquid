@@ -24,4 +24,7 @@ for IN in *.pod; do
 	pod2man --section="$SECTION" --name="$NAME" \
 		--release "" --center "" \
 		"$IN" "$OUT"
+	pod2markdown "$IN" \
+		| sed 's@\([a-z.-]\+\)(\([1-9]\))@[\1(\2)](\1.\2.md)@g' \
+		> "$OUT.md"
 done

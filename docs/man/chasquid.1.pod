@@ -102,7 +102,7 @@ Private key.
 
 =back
 
-Note the F<certs/> directory layout matches the one from certbot(1) (client for
+Note the F<certs/> directory layout matches the one from certbot (client for
 Let's Encrypt CA), so you can just symlink F<certs/> to
 F</etc/letsencrypt/live>.
 
