@@ -55,6 +55,11 @@ install-config-skeleton:
 		chown -v mail:mail /var/lib/chasquid ; \
 	fi
 
+fmt:
+	go vet ./...
+	gofmt -s -w .
+	clang-format -i $(shell find . -iname '*.proto')
 
 .PHONY: chasquid test \
-	chasquid-util smtp-check mda-lmtp dovecot-auth-cli
+	chasquid-util smtp-check mda-lmtp dovecot-auth-cli \
+	fmt

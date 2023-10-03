@@ -49,10 +49,9 @@ message Recipient {
 // We used to use the well-known type, but the dependency makes packaging much
 // more convoluted and adds very little value, so we now just include it here.
 message Timestamp {
-  // Represents seconds of UTC time since Unix epoch.
-  int64 seconds = 1;
+	// Represents seconds of UTC time since Unix epoch.
+	int64 seconds = 1;
 
-  // Non-negative fractions of a second at nanosecond resolution.
-  int32 nanos = 2;
+	// Non-negative fractions of a second at nanosecond resolution.
+	int32 nanos = 2;
 }
-

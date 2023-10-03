@@ -28,7 +28,8 @@ message Config {
 
 	// Addresses to listen on for submission-over-TLS (usually port 465).
 	// Default: "systemd", which means systemd passes sockets to us.
-	// systemd sockets must be named with "FileDescriptorName=submission_tls".
+	// systemd sockets must be named with
+	// "FileDescriptorName=submission_tls".
 	repeated string submission_over_tls_address = 5;
 
 	// Address for the monitoring http server.
@@ -37,9 +38,9 @@ message Config {
 	string monitoring_address = 6;
 
 	// Mail delivery agent (MDA, also known as LDA) to use.
-	// This should point to the binary to use to deliver email to local users.
-	// The content of the email will be passed via stdin.
-	// If it exits unsuccessfully, we assume the mail was not delivered.
+	// This should point to the binary to use to deliver email to local
+	// users. The content of the email will be passed via stdin. If it exits
+	// unsuccessfully, we assume the mail was not delivered.
 	// Default: "maildrop".
 	string mail_delivery_agent_bin = 7;
 
