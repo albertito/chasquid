@@ -15,13 +15,13 @@ func NewFakeServer(t *testing.T, path, output string) {
 	t.Helper()
 	lis, err := net.Listen("unix", path)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
-			t.Fatal(err)
+			panic(err)
 		}
 		t.Logf("FakeServer %v: accepted ", conn)
 
