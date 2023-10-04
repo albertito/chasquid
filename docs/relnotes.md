@@ -5,6 +5,20 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.12 (2023-10-07)
+
+- Support [aliases with drop characters and
+  suffix separators](aliases.md#drop-characters-and-suffix-separators).
+- Improved delivery on some low-level TLS negotiation errors.
+- `smtp-check`: Add flag to specify local name.
+- `chasquid-util`: `aliases-resolve` and `domaininfo-remove` subcommands now
+  talk to the running server. That results in more authoritative answers, and
+  performance improvements.
+- `chasquid-util`: Remove `aliases-add` subcommand. This was an undocumented
+  command that was added a while ago, and there is no need for it anymore.
+- Handle symlinks under the `certs/` directory.
+
+
 ## 1.11 (2023-02-19)
 
 - New tracing library for improved observability.
