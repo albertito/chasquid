@@ -606,6 +606,7 @@ func FuzzReader(f *testing.F) {
 	resolver.AddDomain("domain")
 	resolver.DropChars = "."
 	resolver.SuffixSep = "-+"
+	f.Add([]byte(richFileContents))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		resolver.parseReader("domain", bytes.NewReader(data))
 	})
