@@ -21,7 +21,7 @@ function send_and_check() {
 		mail_diff content ".mail/$i@testserver"
 		rm -f ".mail/$i@testserver"
 	done
-	if ! [ -z "$(ls .mail/)" ]; then
+	if [ -n "$(ls .mail/)" ]; then
 		fail "unexpected mail was delivered: $(ls .mail/)"
 	fi
 }
