@@ -90,7 +90,7 @@ func TestNewDomain(t *testing.T) {
 	for _, c := range cases {
 		// The other tests do an incoming check first, so new domains would get
 		// created via that path. We switch the order here to exercise that
-		// OutgoingSecLevel also handles new domains successfuly.
+		// OutgoingSecLevel also handles new domains successfully.
 		if !db.OutgoingSecLevel(tr, c.domain, c.level) {
 			t.Errorf("domain %q not allowed (out) at %s", c.domain, c.level)
 		}

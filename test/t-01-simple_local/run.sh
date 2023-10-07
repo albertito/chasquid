@@ -37,7 +37,7 @@ if ! run_msmtp -a subm_tls someone@testserver < content 2> /dev/null; then
 fi
 
 if run_msmtp nobody@testserver < content 2> /dev/null; then
-	fail "successfuly sent an email to a non-existent user"
+	fail "successfully sent an email to a non-existent user"
 fi
 
 if run_msmtp -a baduser someone@testserver < content 2> /dev/null; then

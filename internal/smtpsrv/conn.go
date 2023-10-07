@@ -845,7 +845,7 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 	cmd.Stdin = bytes.NewReader(data)
 
 	// Prepare the environment, copying some common variables so the hook has
-	// someting reasonable, and then setting the specific ones for this case.
+	// something reasonable, and then setting the specific ones for this case.
 	for _, v := range strings.Fields("USER PWD SHELL PATH") {
 		cmd.Env = append(cmd.Env, v+"="+os.Getenv(v))
 	}

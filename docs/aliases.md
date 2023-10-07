@@ -32,7 +32,7 @@ For example:
 # Redirect mail to pepe@ to jose@ on the same domain.
 pepe: jose
 
-# Redirect mail to flowers@ to the indvidual flowers.
+# Redirect mail to flowers@ to the individual flowers.
 flowers: rose@backgarden, lilly@pond
 ```
 

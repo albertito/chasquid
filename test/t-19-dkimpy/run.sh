@@ -56,7 +56,7 @@ fi
 
 # Verify the signature manually, just in case.
 # NOTE: This is using driusan/dkim instead of dkimpy, because dkimpy can't be
-# overriden to get the DNS information from anywhere else (text file or custom
+# overridden to get the DNS information from anywhere else (text file or custom
 # DNS server).
 dkimverify -txt .dkimcerts/private.dns < .mail/someone@testserver
 

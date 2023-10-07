@@ -86,7 +86,7 @@ type Recipient struct {
 	Type RType
 }
 
-// RType represents a recipient type, see the contants below for valid values.
+// RType represents a recipient type, see the constants below for valid values.
 type RType string
 
 // Valid recipient types.

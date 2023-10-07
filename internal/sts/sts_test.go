@@ -550,7 +550,7 @@ func TestHTTPGet(t *testing.T) {
 		t.Errorf("content type != text/plain was allowed: got %q, %v", raw, err)
 	}
 
-	// Invalid (unparseable) media type.
+	// Invalid (unparsable) media type.
 	srv4 := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "invalid/content/type")

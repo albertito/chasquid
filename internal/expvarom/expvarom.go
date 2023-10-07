@@ -19,7 +19,7 @@
 // and it is possible that it will change in the future.
 //
 // Backwards compatibility is NOT guaranteed, until the format is fully
-// standarized.
+// standardized.
 package expvarom
 
 import (

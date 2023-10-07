@@ -301,7 +301,7 @@ func (tr *trace) IsError() bool {
 // We keep this many buckets of finished traces.
 const nBuckets = 8
 
-// Buckets to use. Lenght must match nBuckets.
+// Buckets to use. Length must match nBuckets.
 // "Traces with a latency >= $duration".
 var buckets = []time.Duration{
 	time.Duration(0),

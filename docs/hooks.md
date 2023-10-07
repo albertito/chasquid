@@ -68,7 +68,7 @@ The output of the command will be parsed as if it was the right-hand side of
 the aliases configuration file (see [Aliases](aliases.md) for more details).
 Results are appended to the results of the file-based alias resolution.
 
-If there is no alias for the address, the hook should just exit successfuly
+If there is no alias for the address, the hook should just exit successfully
 without emitting any output.
 
 There is a 5 second timeout for hook execution. If the hook exits with an

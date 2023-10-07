@@ -18,7 +18,7 @@ fi
 
 # Create a temporary directory for dovecot to use, and generate the dovecot
 # config based on the template.
-# Note the lenght of the path must be < 100, because unix sockets have a low
+# Note the length of the path must be < 100, because unix sockets have a low
 # limitation, so we use a directory in /tmp, which is not ideal, as a
 # workaround.
 export ROOT="/tmp/chasquid-dovecot-test"
@@ -69,7 +69,7 @@ mail_diff content .mail/naked@srv
 
 # Fail to send to nobody@srv (user does not exist).
 if run_msmtp nobody@srv < content 2> /dev/null; then
-	fail "successfuly sent an email to a non-existent user"
+	fail "successfully sent an email to a non-existent user"
 fi
 
 # Fail to send from baduser@srv (user does not exist).

@@ -2,7 +2,7 @@
 //
 // This is a simple RPC package that uses a line-oriented protocol for
 // encoding and decoding, and Unix sockets for transport. It is meant to be
-// used for lightweight occassional communication between processes on the
+// used for lightweight occasional communication between processes on the
 // same machine.
 package localrpc
 

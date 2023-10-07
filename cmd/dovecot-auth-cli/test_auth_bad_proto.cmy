@@ -1,5 +1,5 @@
 
-# Break the handhake early.
+# Break the handshake early.
 client unix_listen .dovecot-client
 c = ./dovecot-auth-cli .dovecot auth username password
 
