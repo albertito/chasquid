@@ -62,7 +62,7 @@ for i in /etc/letsencrypt/live/*; do
 done
 
 # We need one domain to use as a default - pick the last one.
-ONE_DOMAIN=$i
+ONE_DOMAIN=$D
 
 # Check that there's at least once certificate at this point.
 if [ "$CERT_DOMAINS" == "" ]; then
