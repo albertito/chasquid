@@ -7,16 +7,19 @@
 
 set -e
 
-read -r -p "Email (full user@domain format): " EMAIL
+if test -z "${EMAIL:-}"; then
+        read -r -p "Email (full user@domain format): " EMAIL
+fi
 
 if ! echo "${EMAIL}" | grep -q @; then
 	echo "Error: email should have '@'."
 	exit 1
 fi
 
-
-read -r -p "Password: " -s PASSWORD
-echo
+if test -z "${PASSWORD:-}"; then
+        read -r -p "Password: " -s PASSWORD
+        echo
+fi
 
 DOMAIN=$(echo echo "${EMAIL}" | cut -d '@' -f 2)
 
