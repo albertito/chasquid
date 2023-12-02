@@ -169,8 +169,13 @@ func main() {
 func loadAddresses(srv *smtpsrv.Server, addrs []string, ls []net.Listener, mode smtpsrv.SocketMode) int {
 	naddr := 0
 	for _, addr := range addrs {
-		// The "systemd" address indicates we get listeners via systemd.
-		if addr == "systemd" {
+		if addr == "" {
+			// An empty address is invalid, to prevent accidental
+			// misconfiguration.
+			log.Errorf("Invalid empty listening address for %v", mode)
+			log.Fatalf("If you want to disable %v, remove it from the config", mode)
+		} else if addr == "systemd" {
+			// The "systemd" address indicates we get listeners via systemd.
 			srv.AddListeners(ls, mode)
 			naddr += len(ls)
 		} else {
