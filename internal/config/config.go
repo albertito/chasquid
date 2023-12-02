@@ -133,23 +133,23 @@ func LogConfig(c *Config) {
 	log.Infof("Configuration:")
 	log.Infof("  Hostname: %q", c.Hostname)
 	log.Infof("  Max data size (MB): %d", c.MaxDataSizeMb)
-	log.Infof("  SMTP Addresses: %v", c.SmtpAddress)
-	log.Infof("  Submission Addresses: %v", c.SubmissionAddress)
-	log.Infof("  Submission+TLS Addresses: %v", c.SubmissionOverTlsAddress)
-	log.Infof("  Monitoring address: %s", c.MonitoringAddress)
-	log.Infof("  MDA: %s %v", c.MailDeliveryAgentBin, c.MailDeliveryAgentArgs)
-	log.Infof("  Data directory: %s", c.DataDir)
+	log.Infof("  SMTP Addresses: %q", c.SmtpAddress)
+	log.Infof("  Submission Addresses: %q", c.SubmissionAddress)
+	log.Infof("  Submission+TLS Addresses: %q", c.SubmissionOverTlsAddress)
+	log.Infof("  Monitoring address: %q", c.MonitoringAddress)
+	log.Infof("  MDA: %q %q", c.MailDeliveryAgentBin, c.MailDeliveryAgentArgs)
+	log.Infof("  Data directory: %q", c.DataDir)
 	if c.SuffixSeparators == nil {
 		log.Infof("  Suffix separators: nil")
 	} else {
-		log.Infof("  Suffix separators: %s", *c.SuffixSeparators)
+		log.Infof("  Suffix separators: %q", *c.SuffixSeparators)
 	}
 	if c.DropCharacters == nil {
 		log.Infof("  Drop characters: nil")
 	} else {
-		log.Infof("  Drop characters: %s", *c.DropCharacters)
+		log.Infof("  Drop characters: %q", *c.DropCharacters)
 	}
-	log.Infof("  Mail log: %s", c.MailLogPath)
+	log.Infof("  Mail log: %q", c.MailLogPath)
 	log.Infof("  Dovecot auth: %v (%q, %q)",
 		c.DovecotAuth, c.DovecotUserdbPath, c.DovecotClientPath)
 	log.Infof("  HAProxy incoming: %v", c.HaproxyIncoming)
