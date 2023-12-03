@@ -133,7 +133,7 @@
 .\" ========================================================================
 .\"
 .IX Title "chasquid-util 1"
-.TH chasquid-util 1 "2023-07-29" "" ""
+.TH chasquid-util 1 "2023-12-03" "" ""
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -142,7 +142,7 @@
 chasquid\-util \- chasquid management tool
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-\&\fBchasquid-util\fR [\fIoptions\fR] user-add \fIuser@domain\fR [\-\-password=\fIpassword\fR]
+\&\fBchasquid-util\fR [\fIoptions\fR] user-add \fIuser@domain\fR [\-\-password=\fIpassword\fR] [\-\-receive_only]
 .PP
 \&\fBchasquid-util\fR [\fIoptions\fR] user-remove \fIuser@domain\fR
 .PP
@@ -160,9 +160,12 @@ chasquid\-util \- chasquid management tool
 chasquid-util is a command-line utility for \fBchasquid\fR\|(1) operations.
 .SH "OPTIONS"
 .IX Header "OPTIONS"
-.IP "\fBuser-add\fR \fIuser@domain\fR [\-\-password=\fIpassword\fR]" 8
-.IX Item "user-add user@domain [--password=password]"
+.IP "\fBuser-add\fR \fIuser@domain\fR [\-\-password=\fIpassword\fR] [\-\-receive_only]" 8
+.IX Item "user-add user@domain [--password=password] [--receive_only]"
 Add a new user to the domain.
+.Sp
+If \fI\-\-receive_only\fR is given, then the user will never successfully
+authenticate. This is useful when creating receive-only users.
 .IP "\fBuser-remove\fR \fIuser@domain\fR" 8
 .IX Item "user-remove user@domain"
 Remove the user from the domain.

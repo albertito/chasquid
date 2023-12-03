@@ -34,6 +34,17 @@ if ! r user-add user@domain --password=passwd > /dev/null; then
 fi
 check_userdb
 
+if ! r user-add denied@domain --receive_only > /dev/null; then
+	echo user-add --receive_only failed
+	exit 1
+fi
+check_userdb
+
+if r user-add xxx@domain --password=passwd --receive_only > /dev/null; then
+	echo user-add --password --receive_only worked
+	exit 1
+fi
+
 if ! r authenticate user@domain --password=passwd > /dev/null; then
 	echo authenticate failed
 	exit 1
@@ -41,6 +52,11 @@ fi
 
 if r authenticate user@domain --password=abcd > /dev/null; then
 	echo authenticate with bad password worked
+	exit 1
+fi
+
+if r authenticate denied@domain --password=abcd > /dev/null; then
+	echo authenticate on a no-submission user worked
 	exit 1
 fi
 

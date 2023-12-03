@@ -123,6 +123,8 @@ func (p *Password) PasswordMatches(plain string) bool {
 		return s.Scrypt.PasswordMatches(plain)
 	case *Password_Plain:
 		return s.Plain.PasswordMatches(plain)
+	case *Password_Denied:
+		return false
 	default:
 		return false
 	}
@@ -158,6 +160,22 @@ func (db *DB) AddUser(name, plainPassword string) error {
 	db.mu.Lock()
 	db.db.Users[name] = &Password{
 		Scheme: &Password_Scrypt{s},
+	}
+	db.mu.Unlock()
+
+	return nil
+}
+
+// AddDenied to the database. If the user is already present, override it.
+// Note we enforce that the name has been normalized previously.
+func (db *DB) AddDeniedUser(name string) error {
+	if norm, err := normalize.User(name); err != nil || name != norm {
+		return errors.New("invalid username")
+	}
+
+	db.mu.Lock()
+	db.db.Users[name] = &Password{
+		Scheme: &Password_Denied{&Denied{}},
 	}
 	db.mu.Unlock()
 

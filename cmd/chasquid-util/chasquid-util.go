@@ -29,7 +29,7 @@ import (
 // Usage to show users on --help or invocation errors.
 const usage = `
 Usage:
-  chasquid-util [options] user-add <user@domain> [--password=<password>]
+  chasquid-util [options] user-add <user@domain> [--password=<password>] [--receive_only]
   chasquid-util [options] user-remove <user@domain>
   chasquid-util [options] authenticate <user@domain> [--password=<password>]
   chasquid-util [options] check-userdb <domain>
@@ -140,12 +140,25 @@ func checkUserDB() {
 	fmt.Println("Database loaded")
 }
 
-// chasquid-util user-add <user@domain> [--password=<password>]
+// chasquid-util user-add <user@domain> [--password=<password>] [--receive_only]
 func userAdd() {
 	user, _, db := userDBFromArgs(true)
-	password := getPassword()
 
-	err := db.AddUser(user, password)
+	_, recvOnly := args["--receive_only"]
+	_, hasPassword := args["--password"]
+
+	if recvOnly && hasPassword {
+		Fatalf("Cannot specify both --receive_only and --password")
+	}
+
+	var err error
+	if recvOnly {
+		err = db.AddDeniedUser(user)
+	} else {
+		password := getPassword()
+		err = db.AddUser(user, password)
+	}
+
 	if err != nil {
 		Fatalf("Error adding user: %v", err)
 	}

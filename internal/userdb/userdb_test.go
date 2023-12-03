@@ -122,24 +122,27 @@ func TestWrite(t *testing.T) {
 		t.Fatalf("expected %v, got %v", emptyDB, db)
 	}
 
-	// Add two users, write, and load again.
+	// Add users, write, and load again.
 	if err := db.AddUser("user1", "passwd1"); err != nil {
 		t.Fatalf("failed to add user1: %v", err)
 	}
 	if err := db.AddUser("ñoño", "añicos"); err != nil {
 		t.Fatalf("failed to add ñoño: %v", err)
 	}
+	if err := db.AddDeniedUser("ñaca"); err != nil {
+		t.Fatalf("failed to add ñaca: %v", err)
+	}
 	if err := db.Write(); err != nil {
 		t.Fatalf("error writing database: %v", err)
 	}
 
 	db = mustLoad(t, fname)
-	for _, name := range []string{"user1", "ñoño"} {
+	for _, name := range []string{"user1", "ñoño", "ñaca"} {
 		if !db.Exists(name) {
 			t.Errorf("user %q not in database", name)
 		}
 		if db.db.Users[name].GetScheme() == nil {
-			t.Errorf("user %q not using scrypt: %#v", name, db.db.Users[name])
+			t.Errorf("user %q missing scheme: %#v", name, db.db.Users[name])
 		}
 	}
 
@@ -153,6 +156,8 @@ func TestWrite(t *testing.T) {
 		{"user1", "passwd12", false},
 		{"ñoño", "añicos", true},
 		{"ñoño", "anicos", false},
+		{"ñaca", "", false},
+		{"ñaca", "lalala", false},
 		{"notindb", "something", false},
 		{"", "", false},
 		{" ", "  ", false},
@@ -202,6 +207,11 @@ func TestInvalidUsername(t *testing.T) {
 		if err == nil {
 			t.Errorf("AddUser(%q) worked, expected it to fail", name)
 		}
+
+		err = db.AddDeniedUser(name)
+		if err == nil {
+			t.Errorf("AddDeniedUser(%q) worked, expected it to fail", name)
+		}
 	}
 }
 
@@ -232,6 +242,24 @@ func TestPlainScheme(t *testing.T) {
 	}
 	if db.Authenticate("user", "wrong") {
 		t.Errorf("plain authentication worked but it shouldn't")
+	}
+}
+
+// Test the denied scheme.
+func TestDeniedScheme(t *testing.T) {
+	fname := mustCreateDB(t, "")
+	defer removeIfSuccessful(t, fname)
+	db := mustLoad(t, fname)
+
+	db.db.Users["user"] = &Password{Scheme: &Password_Denied{}}
+	err := db.Write()
+	if err != nil {
+		t.Errorf("Write failed: %v", err)
+	}
+
+	db = mustLoad(t, fname)
+	if db.Authenticate("user", "anything") {
+		t.Errorf("denied authentication worked but it shouldn't")
 	}
 }
 
@@ -325,5 +353,13 @@ func TestExists(t *testing.T) {
 
 	if !db.Exists("user") {
 		t.Errorf("known user does not exist")
+	}
+
+	if err := db.AddDeniedUser("denieduser"); err != nil {
+		t.Fatalf("error adding user: %v", err)
+	}
+
+	if !db.Exists("denieduser") {
+		t.Errorf("known (denied) user does not exist")
 	}
 }

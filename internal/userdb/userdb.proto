@@ -12,6 +12,7 @@ message Password {
 	oneof scheme {
 		Scrypt scrypt = 2;
 		Plain plain = 3;
+		Denied denied = 4;
 	}
 }
 
@@ -27,3 +28,5 @@ message Scrypt {
 message Plain {
 	bytes password = 1;
 }
+
+message Denied { }

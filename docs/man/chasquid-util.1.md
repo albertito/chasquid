@@ -4,7 +4,7 @@ chasquid-util - chasquid management tool
 
 # SYNOPSIS
 
-**chasquid-util** \[_options_\] user-add _user@domain_ \[--password=_password_\]
+**chasquid-util** \[_options_\] user-add _user@domain_ \[--password=_password_\] \[--receive\_only\]
 
 **chasquid-util** \[_options_\] user-remove _user@domain_
 
@@ -24,9 +24,12 @@ chasquid-util is a command-line utility for [chasquid(1)](chasquid.1.md) operati
 
 # OPTIONS
 
-- **user-add** _user@domain_ \[--password=_password_\]
+- **user-add** _user@domain_ \[--password=_password_\] \[--receive\_only\]
 
     Add a new user to the domain.
+
+    If _--receive\_only_ is given, then the user will never successfully
+    authenticate. This is useful when creating receive-only users.
 
 - **user-remove** _user@domain_
 

@@ -5,7 +5,7 @@ chasquid-util - chasquid management tool
 
 =head1 SYNOPSIS
 
-B<chasquid-util> [I<options>] user-add I<user@domain> [--password=I<password>]
+B<chasquid-util> [I<options>] user-add I<user@domain> [--password=I<password>] [--receive_only]
 
 B<chasquid-util> [I<options>] user-remove I<user@domain>
 
@@ -28,9 +28,12 @@ chasquid-util is a command-line utility for chasquid(1) operations.
 
 =over 8
 
-=item B<user-add> I<user@domain> [--password=I<password>]
+=item B<user-add> I<user@domain> [--password=I<password>] [--receive_only]
 
 Add a new user to the domain.
+
+If I<--receive_only> is given, then the user will never successfully
+authenticate. This is useful when creating receive-only users.
 
 =item B<user-remove> I<user@domain>
 
