@@ -109,6 +109,10 @@ func main() {
 		if err != nil {
 			log.Fatalf("Invalid name %+q: %v", info.Name(), err)
 		}
+		if info.Type().IsRegular() {
+			// Ignore regular files, we only care about directories.
+                        continue
+                }
 		dir := filepath.Join("domains", info.Name())
 		loadDomain(domain, dir, s)
 	}
