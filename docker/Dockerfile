@@ -34,6 +34,7 @@ RUN apt-get install -y -q \
 # built above.
 COPY --from=build /go/bin/chasquid /usr/bin/
 COPY --from=build /go/bin/chasquid-util /usr/bin/
+COPY --from=build /go/bin/dovecot-auth-cli /usr/bin/
 COPY --from=build /go/bin/smtp-check /usr/bin/
 COPY --from=build /go/bin/mda-lmtp /usr/bin/
 
