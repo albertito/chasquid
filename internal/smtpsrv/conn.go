@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
@@ -1035,7 +1036,7 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 	// response back from the client in the next message.
 
 	sp := strings.SplitN(params, " ", 2)
-	if len(sp) < 1 || sp[0] != "PLAIN" {
+	if len(sp) < 1 || (sp[0] != "PLAIN" && sp[0] != "LOGIN") {
 		// As we only offer plain, this should not really happen.
 		return 534, "5.7.9 Asmodeus demands 534 zorkmids for safe passage"
 	}
@@ -1047,6 +1048,39 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 	response := ""
 	if len(sp) == 2 {
 		response = sp[1]
+	} else if sp[0] == "LOGIN" {
+		// With the LOGIN method, the user password and domain are
+		// passed in separate messages. Here we prompt for the LOGIN
+		// parameters and convert them into the PLAIN authentication
+		// format, i.e. the base64-encoded string:
+		//	<authorization id> NUL <authentication id> NUL <password>
+		if err := c.writeResponse(334, ""); err != nil {
+			return 554, fmt.Sprintf("5.4.0 Error writing AUTH 334: %v", err)
+		}
+		user := []byte{}
+		pass := []byte{}
+
+		if userb64, err := c.readLine(); err != nil {
+			return 554, fmt.Sprintf("5.4.0 Error reading AUTH LOGIN user response: %v", err)
+		} else if user, err = base64.StdEncoding.DecodeString(userb64); err != nil {
+			return 554, fmt.Sprintf("5.4.0 Error parsing AUTH LOGIN user 334: %v", err)
+		} else if err := c.writeResponse(334, ""); err != nil {
+			return 554, fmt.Sprintf("5.4.0 Error writing AUTH 334: %v", err)
+		}
+
+		if passb64, err := c.readLine(); err != nil {
+			return 554, fmt.Sprintf("5.4.0 Error reading AUTH LOGIN pass response: %v", err)
+		} else if pass, err = base64.StdEncoding.DecodeString(passb64); err != nil {
+			return 554, fmt.Sprintf("5.4.0 Error parsing AUTH LOGIN pass 334: %v", err)
+		}
+
+		plain := []byte{}
+		plain = append(plain, user...)
+		plain = append(plain, '\000')
+		plain = append(plain, user...)
+		plain = append(plain, '\000')
+		plain = append(plain, pass...)
+		response = base64.StdEncoding.EncodeToString(plain)
 	} else {
 		// Reply 334 and expect the user to provide it.
 		// In this case, the text IS relevant, as it is taken as the
