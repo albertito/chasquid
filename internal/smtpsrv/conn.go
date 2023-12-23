@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"net"
 	"net/mail"
-	"net/textproto"
 	"os"
 	"os/exec"
 	"strconv"
@@ -312,6 +311,12 @@ loop:
 			if err != nil {
 				break
 			}
+		} else if code < 0 {
+			// Negative code means that we have to break the connection.
+			// TODO: This is hacky, it's probably worth it at this point to
+			// refactor this into using a custom response type.
+			c.tr.Errorf("%s closed the connection: %s", cmd, msg)
+			break
 		}
 	}
 
@@ -638,18 +643,18 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	// one, we don't want the command timeout to interfere.
 	c.conn.SetDeadline(c.deadline)
 
-	// Create a dot reader, limited to the maximum size.
-	dotr := textproto.NewReader(bufio.NewReader(
-		io.LimitReader(c.reader, c.maxDataSize))).DotReader()
-	c.data, err = io.ReadAll(dotr)
+	// Read the data. Enforce CRLF correctness, and maximum size.
+	c.data, err = readUntilDot(c.reader, c.maxDataSize)
 	if err != nil {
-		if err == io.ErrUnexpectedEOF {
-			// Message is too big already. But we need to keep reading until we see
-			// the "\r\n.\r\n", otherwise we will treat the remanent data that
-			// the user keeps sending as commands, and that's a security
-			// issue.
-			readUntilDot(c.reader)
+		if err == errMessageTooLarge {
+			// Message is too big; excess data has already been discarded.
 			return 552, "5.3.4 Message too big"
+		}
+		if err == errInvalidLineEnding {
+			// We can't properly recover from this, so we have to drop the
+			// connection.
+			c.writeResponse(521, "5.5.2 Error reading DATA: invalid line ending")
+			return -1, "Invalid line ending, closing connection"
 		}
 		return 554, fmt.Sprintf("5.4.0 Error reading DATA: %v", err)
 	}
@@ -950,24 +955,6 @@ func boolToStr(b bool) string {
 		return "1"
 	}
 	return "0"
-}
-
-func readUntilDot(r *bufio.Reader) {
-	prevMore := false
-	for {
-		// The reader will not read more than the size of the buffer,
-		// so this doesn't cause increased memory consumption.
-		// The reader's data deadline will prevent this from continuing
-		// forever.
-		l, more, err := r.ReadLine()
-		if err != nil {
-			break
-		}
-		if !more && !prevMore && string(l) == "." {
-			break
-		}
-		prevMore = more
-	}
 }
 
 // STARTTLS SMTP command handler.

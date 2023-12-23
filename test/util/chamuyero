@@ -204,12 +204,15 @@ class Interpreter (object):
                 sock.connect()
                 self.procs[proc] = sock
 
-            # ->   Send to a process stdin, with a \n at the end.
-            # .>   Send to a process stdin, no \n at the end.
+            # ->   Send to a process stdin, with a \r\n at the end.
+            # .>   Send to a process stdin, no \r\n at the end.
+            # ~>   Send to a process stdin, string is python-evaluated.
             elif op == "->":
-                self.procs[proc].write(params + "\n")
+                self.procs[proc].write(params + "\r\n")
             elif op == ".>":
                 self.procs[proc].write(params)
+            elif op == "~>":
+                self.procs[proc].write(eval(params))
 
             # <-   Read from the process, expect matching input.
             # <~   Read from the process, match input using regexp.

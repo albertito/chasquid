@@ -3,6 +3,7 @@
 package normalize
 
 import (
+	"bytes"
 	"strings"
 
 	"blitiri.com.ar/go/chasquid/internal/envelope"
@@ -71,4 +72,24 @@ func DomainToUnicode(addr string) (string, error) {
 
 	domain, err := Domain(domain)
 	return user + "@" + domain, err
+}
+
+// ToCRLF converts the given buffer to CRLF line endings. If a line has a
+// preexisting CRLF, it leaves it be. It assumes that CR is never used on its
+// own.
+func ToCRLF(in []byte) []byte {
+	b := bytes.NewBuffer(nil)
+	b.Grow(len(in))
+	for _, c := range in {
+		switch c {
+		case '\r':
+			// Ignore CR, we'll add it back later. It should never appear
+			// alone in the contexts where this function is used.
+		case '\n':
+			b.Write([]byte("\r\n"))
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return b.Bytes()
 }

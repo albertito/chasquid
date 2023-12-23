@@ -1,0 +1,37 @@
+
+c tcp_connect localhost:1025
+
+c <~ 220
+c -> EHLO localhost
+c <... 250 HELP
+c -> MAIL FROM: <>
+c <~ 250
+c -> RCPT TO: user@testserver
+c <~ 250
+c -> DATA
+c <~ 354
+c -> Subject: Message too big
+c -> 
+
+# Max message size is 1 MiB. Note this includes line endings but converted to
+# \n (as per textproto.DotReader), and excluding the final ".".
+# We already sent (in the header) 26.
+# Send lines of len 900 to stay under the limit.
+# (1024 * 1024 - 26) - (900 * 1165) = 50
+c ~> ('a' * 899 + '\r\n') * 1165
+
+# We have 50 characters left before the message is too big.
+c ~> 'b' * 55 + '\r\n'
+
+# At this point the message is too big. The remainder data should be
+# discarded.
+# We use a "bad ." to try to do an SMTP smuggling attack.
+c ~> '.\n'
+c -> HELP
+c -> HELP
+
+# And now the "good .".
+c -> .
+
+c <- 521 5.5.2 Error reading DATA: invalid line ending
+
