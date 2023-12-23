@@ -1,0 +1,28 @@
+
+c tcp_connect localhost:1025
+
+c <~ 220
+c -> EHLO localhost
+c <... 250 HELP
+c -> MAIL FROM: <>
+c <~ 250
+c -> RCPT TO: user@testserver
+c <~ 250
+c -> DATA
+c <~ 354
+c -> Subject: Message too big
+c -> 
+
+# Max message size is 1 MiB. Note this includes line endings but converted to
+# \n (as per textproto.DotReader), and excluding the final ".".
+# We already sent (in the header) 26.
+# Send lines of len 900 to stay under the limit.
+# (1024 * 1024 - 26) - (900 * 1166) = -850
+c ~> ('a' * 899 + '\r\n') * 1166
+
+c -> .
+
+c <~ 552 5.3.4 Message too big
+c -> QUIT
+c <~ 221
+

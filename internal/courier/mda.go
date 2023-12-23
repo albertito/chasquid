@@ -11,6 +11,7 @@ import (
 	"unicode"
 
 	"blitiri.com.ar/go/chasquid/internal/envelope"
+	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
@@ -60,7 +61,12 @@ func (p *MDA) Deliver(from string, to string, data []byte) (error, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), p.Timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, p.Binary, args...)
-	cmd.Stdin = bytes.NewReader(data)
+
+	// Pass the email data via stdin. Normalize it to CRLF which is what the
+	// RFC-compliant representation require. By doing this at this end, we can
+	// keep a simpler internal representation and ensure there won't be any
+	// inconsistencies in newlines within the message (e.g. added headers).
+	cmd.Stdin = bytes.NewReader(normalize.ToCRLF(data))
 
 	output, err := cmd.CombinedOutput()
 	if ctx.Err() == context.DeadlineExceeded {

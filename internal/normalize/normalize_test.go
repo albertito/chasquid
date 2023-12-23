@@ -129,6 +129,22 @@ func TestDomainToUnicode(t *testing.T) {
 	}
 }
 
+func TestToCRLF(t *testing.T) {
+	cases := []struct {
+		in, out string
+	}{
+		{"", ""},
+		{"a\nb", "a\r\nb"},
+		{"a\r\nb", "a\r\nb"},
+	}
+	for _, c := range cases {
+		got := string(ToCRLF([]byte(c.in)))
+		if got != c.out {
+			t.Errorf("ToCRLF(%q) = %q, expected %q", c.in, got, c.out)
+		}
+	}
+}
+
 func FuzzUser(f *testing.F) {
 	f.Fuzz(func(t *testing.T, user string) {
 		User(user)

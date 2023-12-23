@@ -1,0 +1,28 @@
+
+c tcp_connect localhost:1025
+
+c <~ 220
+c -> EHLO localhost
+c <... 250 HELP
+c -> MAIL FROM: <>
+c <~ 250
+c -> RCPT TO: user@testserver
+c <~ 250
+c -> DATA
+c <~ 354
+c -> .From: Mailer daemon <somewhere@horns.com>
+c -> Subject: I've come to haunt you
+c -> 
+c -> .Muahahahaha
+c -> 
+c -> ..x
+c -> 
+c -> ..
+c ->
+c -> .This is stuffy.
+c -> 
+c -> .
+c <~ 250
+c -> QUIT
+c <~ 221
+
