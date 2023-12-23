@@ -2,6 +2,7 @@
 
 import difflib
 import email.parser
+import email.policy
 import itertools
 import mailbox
 import sys
@@ -27,7 +28,7 @@ def flexible_eq(expected, got):
             posG += 1
             continue
         if c == '*':
-            while posG < len(got) and got[posG] != '\n':
+            while posG < len(got) and got[posG] != '\t':
                 posG += 1
                 continue
             continue
@@ -89,7 +90,14 @@ def msg_equals(expected, msg):
 if __name__ == "__main__":
 	f1, f2 = sys.argv[1:3]
 
-	expected = email.parser.Parser().parse(open(f1))
-	msg = email.parser.Parser().parse(open(f2))
+	# We use a custom strict policy to do more strict content validation.
+	policy = email.policy.EmailPolicy(
+			utf8=True,
+			linesep="\r\n",
+			refold_source='none',
+			raise_on_defect=True)
+
+	expected = email.parser.Parser(policy=policy).parse(open(f1))
+	msg = email.parser.Parser(policy=policy).parse(open(f2))
 
 	sys.exit(0 if msg_equals(expected, msg) else 1)
