@@ -5,6 +5,30 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.13 (2023-12-24)
+
+Security fixes:
+
+- Strict CRLF enforcement in DATA contents, to prevent [SMTP smuggling
+  attacks](https://www.postfix.org/smtp-smuggling.html). \
+  [RFC5322](https://www.rfc-editor.org/rfc/rfc5322#section-2.3) and
+  [RFC5321](https://www.rfc-editor.org/rfc/rfc5321#section-2.3.8) say
+  that the only valid newline terminator in SMTP is CRLF. \
+  When an invalid newline terminator is found in an incoming message, the
+  connection is now aborted immediately (previous releases also accepted
+  LF-terminated lines). \
+  The MTA courier now uses CRLF-terminated lines (previous releases used
+  LF-terminated lines).
+
+Other changes:
+
+- Add support for receive-only users.
+- Reject empty listening addresses, to help prevent accidental
+  misconfiguration. To prevent chasquid from listening, just comment out the
+  entry in the config.
+- `docker/add-user.sh`: Support getting email and password from env variables.
+
+
 ## 1.12 (2023-10-07)
 
 - Support [aliases with drop characters and
