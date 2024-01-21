@@ -48,6 +48,11 @@ Other changes:
 - New tracing library for improved observability.
 - Update [fuzz tests](tests.md#fuzz-tests) to the new standard infrastructure.
 
+### 1.11.1 (2023-12-26)
+
+Backport the security fixes from 1.13 (*Strict CRLF enforcement in DATA
+contents*).
+
 
 ## 1.10 (2022-09-01)
 
