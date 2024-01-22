@@ -10,7 +10,8 @@ noting backward-incompatible changes or known security issues.
 Security fixes:
 
 - Strict CRLF enforcement in DATA contents, to prevent [SMTP smuggling
-  attacks](https://www.postfix.org/smtp-smuggling.html). \
+  attacks](https://www.postfix.org/smtp-smuggling.html)
+  ([CVE-2023-52354](https://nvd.nist.gov/vuln/detail/CVE-2023-52354)). \
   [RFC5322](https://www.rfc-editor.org/rfc/rfc5322#section-2.3) and
   [RFC5321](https://www.rfc-editor.org/rfc/rfc5321#section-2.3.8) say
   that the only valid newline terminator in SMTP is CRLF. \
@@ -51,7 +52,8 @@ Other changes:
 ### 1.11.1 (2023-12-26)
 
 Backport the security fixes from 1.13 (*Strict CRLF enforcement in DATA
-contents*).
+contents*, fixes
+[CVE-2023-52354](https://nvd.nist.gov/vuln/detail/CVE-2023-52354)).
 
 
 ## 1.10 (2022-09-01)
