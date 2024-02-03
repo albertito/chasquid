@@ -3,6 +3,7 @@ name: "docker"
 on:
   push:
     branches: [ "master", "next" ]
+    tags: [ "v*", "test-tag-*" ]
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [ "master", "next" ]
