@@ -24,6 +24,7 @@ nav:
 - All:
     - aliases.md
     - hooks.md
+    - clients.md
     - dovecot.md
     - dkim.md
     - haproxy.md
