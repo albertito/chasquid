@@ -31,9 +31,7 @@ if [ "$AUTH_AS" != "" ]; then
 	# dkimpy doesn't provide a way to just show the new headers, so we
 	# have to compute the difference.
 	# ALSOCHANGE(etc/chasquid/hooks/post-data)
-	diff --changed-group-format='%>' \
-		--unchanged-group-format='' \
-		"$TF" "$TF.dkimout" && exit 1
+	comm -3 "$TF.dkimout" "$TF"
 	rm "$TF.dkimout"
 else
 	# NOTE: This is using driusan/dkim instead of dkimpy, because dkimpy can't be
