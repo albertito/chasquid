@@ -1,0 +1,11 @@
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed;
+	d=srv-a; s=s1; t=1709494311;
+	h=from:subject:to:from:subject:date:to:cc:message-id;
+	bh=0MIF2K4/fGA4bxV9yOwV0PQSZ3Glv67jLvQ8NwgjcKQ=;
+	b=JkROrF9he5gqMhWcU47h6koleiwkz0IWcRV467KuzsMdTeWPMUVB+JDu+6HElBofdzNsz5
+	  Ptug637opt4UaAAg==;
+From: user-a@srv-a
+To: user-b@srv-b
+Subject: Hola amigo pingüino!
+
+Que tal va la vida?

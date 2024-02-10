@@ -142,6 +142,11 @@ func TestToCRLF(t *testing.T) {
 		if got != c.out {
 			t.Errorf("ToCRLF(%q) = %q, expected %q", c.in, got, c.out)
 		}
+
+		got = StringToCRLF(c.in)
+		if got != c.out {
+			t.Errorf("StringToCRLF(%q) = %q, expected %q", c.in, got, c.out)
+		}
 	}
 }
 

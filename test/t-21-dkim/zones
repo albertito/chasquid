@@ -1,0 +1,6 @@
+srv-a  A     127.0.0.1
+srv-a  AAAA  ::1
+srv-b  A     127.0.0.1
+srv-b  AAAA  ::1
+
+s1._domainkey.srv-a  TXT  v=DKIM1; k=ed25519; p=SvoPT692bVrQBT8UNxt6SF538O3snA4fE3/i/glCxwQ=

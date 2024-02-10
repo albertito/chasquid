@@ -1,0 +1,15 @@
+From user-a@srv-a
+Authentication-Results: srv-a
+	;spf=none (no DNS record found)
+	;dkim=pass  header.b=*
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed;
+	d=srv-b; s=sel77; *
+	h=from:subject:to:from:subject:date:to:cc:message-id;
+	bh=*
+	b=*
+	  *
+From: user-b@srv-b
+To: user-a@srv-a
+Subject: Feliz primavera!
+
+Espero que florezcas feliz!

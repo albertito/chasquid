@@ -1,0 +1,4 @@
+In this test, one of the selectors has two valid TXT records with different
+key types.
+
+Only one of them is valid.

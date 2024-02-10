@@ -29,17 +29,18 @@ It's written in [Go](https://golang.org), and distributed under the
 * Useful
     * Multiple/virtual domains, with per-domain users and aliases.
     * Suffix dropping (`user+something@domain` → `user@domain`).
-    * [Hooks] for integration with greylisting, anti-virus, anti-spam, and
-      DKIM/DMARC.
+    * [Hooks] for integration with greylisting, anti-virus, and anti-spam.
     * International usernames ([SMTPUTF8]) and domain names ([IDNA]).
 * Secure
     * [Tracking] of per-domain TLS support, prevents connection downgrading.
     * Multiple TLS certificates.
     * Easy integration with [Let's Encrypt].
     * [SPF] and [MTA-STS] checking.
+    * [DKIM] support (signing and verification).
 
 
 [Arch]: https://blitiri.com.ar/p/chasquid/install/#arch
+[DKIM]: https://en.wikipedia.org/wiki/DomainKeys_Identified_Mail
 [Debian]: https://blitiri.com.ar/p/chasquid/install/#debianubuntu
 [Dovecot]: https://blitiri.com.ar/p/chasquid/dovecot/
 [Hooks]: https://blitiri.com.ar/p/chasquid/hooks/

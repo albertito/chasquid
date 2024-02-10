@@ -24,16 +24,16 @@ func New(family, title string) *Trace {
 	t := &Trace{family, title, nettrace.New(family, title)}
 
 	// The default for max events is 10, which is a bit short for a normal
-	// SMTP exchange. Expand it to 30 which should be large enough to keep
+	// SMTP exchange. Expand it to 100 which should be large enough to keep
 	// most of the traces.
-	t.t.SetMaxEvents(30)
+	t.t.SetMaxEvents(100)
 	return t
 }
 
 // NewChild creates a new child trace.
 func (t *Trace) NewChild(family, title string) *Trace {
 	n := &Trace{family, title, t.t.NewChild(family, title)}
-	n.t.SetMaxEvents(30)
+	n.t.SetMaxEvents(100)
 	return n
 }
 

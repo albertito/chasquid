@@ -12,7 +12,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -297,6 +299,14 @@ func loadDomain(name, dir string, s *smtpsrv.Server) {
 	if err != nil {
 		log.Errorf("    aliases file error: %v", err)
 	}
+
+	err = loadDKIM(name, dir, s)
+	if err != nil {
+		// DKIM errors are fatal because if the user set DKIM up, then we
+		// don't want it to be failing silently, as that could cause
+		// deliverability issues.
+		log.Fatalf("    DKIM loading error: %v", err)
+	}
 }
 
 func loadDovecot(s *smtpsrv.Server, userdb, client string) {
@@ -307,6 +317,26 @@ func loadDovecot(s *smtpsrv.Server, userdb, client string) {
 	if err := a.Check(); err != nil {
 		log.Errorf("Warning: Dovecot auth is not responding: %v", err)
 	}
+}
+
+func loadDKIM(domain, dir string, s *smtpsrv.Server) error {
+	glob := path.Clean(dir + "/dkim:*.pem")
+	pems, err := filepath.Glob(glob)
+	if err != nil {
+		return err
+	}
+
+	for _, pem := range pems {
+		base := filepath.Base(pem)
+		selector := strings.TrimPrefix(base, "dkim:")
+		selector = strings.TrimSuffix(selector, ".pem")
+
+		err = s.AddDKIMSigner(domain, selector, pem)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Read a directory, which must have at least some entries.

@@ -39,8 +39,15 @@ Usage:
   chasquid-util [options] print-config
     Print the current chasquid configuration.
 
+  chasquid-util [options] dkim-keygen <domain> [<selector> <private-key.pem>] [--algo=rsa3072|rsa4096|ed25519]
+    Generate a new DKIM key pair for the domain.
+  chasquid-util [options] dkim-dns <domain> [<selector> <private-key.pem>]
+    Print the DNS TXT record to use for the domain, selector and
+    private key.
+
 Options:
   -C=<path>, --configdir=<path>  Configuration directory
+  -v                             Verbose mode
 `
 
 // Command-line arguments.
@@ -80,6 +87,13 @@ func main() {
 		"aliases-resolve":   aliasesResolve,
 		"print-config":      printConfig,
 		"domaininfo-remove": domaininfoRemove,
+		"dkim-keygen":       dkimKeygen,
+		"dkim-dns":          dkimDNS,
+
+		// These exist for testing purposes and may be removed in the future.
+		// Do not rely on them.
+		"dkim-verify": dkimVerify,
+		"dkim-sign":   dkimSign,
 	}
 
 	cmd := args["$1"]

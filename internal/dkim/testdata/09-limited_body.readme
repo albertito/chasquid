@@ -1,0 +1,3 @@
+This test a DKIM signature that uses an l= tag.
+
+It was constructed using an ad-hoc modified version of the signer.

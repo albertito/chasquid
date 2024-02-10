@@ -43,7 +43,7 @@ class Process (object):
         return self.cmd.wait()
 
     def close(self):
-        return self.cmd.terminate()
+        return self.cmd.stdin.close()
 
 class Sock (object):
     """A (generic) socket.

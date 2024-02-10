@@ -1,0 +1,2 @@
+selector._domainkey.example.com: \
+  v=DKIM1; k=ed25519; t=s; p=SvoPT692bVrQBT8UNxt6SF538O3snA4fE3/i/glCxwQ=

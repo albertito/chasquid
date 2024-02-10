@@ -1,0 +1,4 @@
+*.got
+
+# Ignore private test cases, to reduce the chances of accidental leaks.
+private/

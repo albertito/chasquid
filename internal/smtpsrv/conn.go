@@ -20,6 +20,7 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/auth"
+	"blitiri.com.ar/go/chasquid/internal/dkim"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/expvarom"
@@ -51,6 +52,20 @@ var (
 		"result", "count of hook invocations, by result")
 	wrongProtoCount = expvarom.NewMap("chasquid/smtpIn/wrongProtoCount",
 		"command", "count of commands for other protocols")
+
+	dkimSigned = expvarom.NewInt("chasquid/smtpIn/dkimSigned",
+		"count of successful DKIM signs")
+	dkimSignErrors = expvarom.NewInt("chasquid/smtpIn/dkimSignErrors",
+		"count of DKIM sign errors")
+
+	dkimVerifyFound = expvarom.NewInt("chasquid/smtpIn/dkimVerifyFound",
+		"count of messages with at least one DKIM signature")
+	dkimVerifyNotFound = expvarom.NewInt("chasquid/smtpIn/dkimVerifyNotFound",
+		"count of messages with no DKIM signatures")
+	dkimVerifyValid = expvarom.NewInt("chasquid/smtpIn/dkimVerifyValid",
+		"count of messages with at least one valid DKIM signature")
+	dkimVerifyErrors = expvarom.NewInt("chasquid/smtpIn/dkimVerifyErrors",
+		"count of DKIM verification errors")
 )
 
 var (
@@ -129,6 +144,9 @@ type Conn struct {
 	spfResult spf.Result
 	spfError  error
 
+	// DKIM verification results.
+	dkimVerifyResult *dkim.VerifyResult
+
 	// Are we using TLS?
 	onTLS bool
 
@@ -141,6 +159,9 @@ type Conn struct {
 	localDomains *set.String
 	aliasesR     *aliases.Resolver
 	dinfo        *domaininfo.DB
+
+	// Map of domain -> DKIM signers. Taken from the server at creation time.
+	dkimSigners map[string][]*dkim.Signer
 
 	// Have we successfully completed AUTH?
 	completedAuth bool
@@ -666,6 +687,18 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 		return 554, err.Error()
 	}
 
+	if c.completedAuth {
+		err = c.dkimSign()
+		if err != nil {
+			// If we failed to sign, then reject to prevent sending unsigned
+			// messages. Treat the failure as temporary.
+			c.tr.Errorf("DKIM failed: %v", err)
+			return 451, "4.3.0 DKIM signing failed"
+		}
+	} else {
+		c.dkimVerify()
+	}
+
 	c.addReceivedHeader()
 
 	hookOut, permanent, err := c.runPostDataHook(c.data)
@@ -704,7 +737,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 }
 
 func (c *Conn) addReceivedHeader() {
-	var v string
+	var received string
 
 	// Format is semi-structured, defined by
 	// https://tools.ietf.org/html/rfc5321#section-4.4
@@ -712,16 +745,16 @@ func (c *Conn) addReceivedHeader() {
 	if c.completedAuth {
 		// For authenticated users, only show the EHLO domain they gave;
 		// explicitly hide their network address.
-		v += fmt.Sprintf("from %s\n", c.ehloDomain)
+		received += fmt.Sprintf("from %s\n", c.ehloDomain)
 	} else {
 		// For non-authenticated users we show the real address as canonical,
 		// and then the given EHLO domain for convenience and
 		// troubleshooting.
-		v += fmt.Sprintf("from [%s] (%s)\n",
+		received += fmt.Sprintf("from [%s] (%s)\n",
 			addrLiteral(c.remoteAddr), c.ehloDomain)
 	}
 
-	v += fmt.Sprintf("by %s (chasquid) ", c.hostname)
+	received += fmt.Sprintf("by %s (chasquid) ", c.hostname)
 
 	// https://www.iana.org/assignments/mail-parameters/mail-parameters.xhtml#mail-parameters-7
 	with := "SMTP"
@@ -734,35 +767,60 @@ func (c *Conn) addReceivedHeader() {
 	if c.completedAuth {
 		with += "A"
 	}
-	v += fmt.Sprintf("with %s\n", with)
+	received += fmt.Sprintf("with %s\n", with)
 
 	if c.tlsConnState != nil {
 		// https://tools.ietf.org/html/rfc8314#section-4.3
-		v += fmt.Sprintf("tls %s\n",
+		received += fmt.Sprintf("tls %s\n",
 			tlsconst.CipherSuiteName(c.tlsConnState.CipherSuite))
 	}
 
-	v += fmt.Sprintf("(over %s, ", c.mode)
+	received += fmt.Sprintf("(over %s, ", c.mode)
 	if c.tlsConnState != nil {
-		v += fmt.Sprintf("%s, ", tlsconst.VersionName(c.tlsConnState.Version))
+		received += fmt.Sprintf("%s, ", tlsconst.VersionName(c.tlsConnState.Version))
 	} else {
-		v += "plain text!, "
+		received += "plain text!, "
 	}
 
 	// Note we must NOT include c.rcptTo, that would leak BCCs.
-	v += fmt.Sprintf("envelope from %q)\n", c.mailFrom)
+	received += fmt.Sprintf("envelope from %q)\n", c.mailFrom)
 
 	// This should be the last part in the Received header, by RFC.
 	// The ";" is a mandatory separator. The date format is not standard but
 	// this one seems to be widely used.
 	// https://tools.ietf.org/html/rfc5322#section-3.6.7
-	v += fmt.Sprintf("; %s\n", time.Now().Format(time.RFC1123Z))
-	c.data = envelope.AddHeader(c.data, "Received", v)
+	received += fmt.Sprintf("; %s\n", time.Now().Format(time.RFC1123Z))
+	c.data = envelope.AddHeader(c.data, "Received", received)
+
+	// Add Authentication-Results header too, but only if there's anything to
+	// report. We add it above the Received header, so it can easily be
+	// associated and traced to it, even though it is not a hard requirement.
+	// Note we include results even if they're "none" or "neutral", as that
+	// allows MUAs to know that the message was checked.
+	arHdr := c.hostname + "\r\n"
+	includeAR := false
 
 	if c.spfResult != "" {
 		// https://tools.ietf.org/html/rfc7208#section-9.1
-		v = fmt.Sprintf("%s (%v)", c.spfResult, c.spfError)
-		c.data = envelope.AddHeader(c.data, "Received-SPF", v)
+		received = fmt.Sprintf("%s (%v)", c.spfResult, c.spfError)
+		c.data = envelope.AddHeader(c.data, "Received-SPF", received)
+
+		// https://datatracker.ietf.org/doc/html/rfc8601#section-2.7.2
+		arHdr += fmt.Sprintf(";spf=%s (%v)\r\n", c.spfResult, c.spfError)
+		includeAR = true
+	}
+
+	if c.dkimVerifyResult != nil {
+		// https://datatracker.ietf.org/doc/html/rfc8601#section-2.7.1
+		arHdr += c.dkimVerifyResult.AuthenticationResults() + "\r\n"
+		includeAR = true
+	}
+
+	if includeAR {
+		// Only include the Authentication-Results header if we have something
+		// to report.
+		c.data = envelope.AddHeader(c.data, "Authentication-Results",
+			strings.TrimSpace(arHdr))
 	}
 }
 
@@ -955,6 +1013,79 @@ func boolToStr(b bool) string {
 		return "1"
 	}
 	return "0"
+}
+
+func (c *Conn) dkimSign() error {
+	// We only sign if the user authenticated. However, the authenticated user
+	// and the MAIL FROM address may be different; even the domain may be
+	// different.
+	// We explicitly let this happen and trust authenticated users.
+	// So for DKIM signing purposes, we use the MAIL FROM domain: this
+	// prevents leaking the authenticated user's domain, and is more in line
+	// with expectations around signatures.
+	domain := envelope.DomainOf(c.mailFrom)
+	signers := c.dkimSigners[domain]
+	if len(signers) == 0 {
+		return nil
+	}
+
+	tr := c.tr.NewChild("DKIM.Sign", domain)
+	defer tr.Finish()
+
+	ctx := context.Background()
+	ctx = dkim.WithTraceFunc(ctx, tr.Debugf)
+
+	for _, signer := range signers {
+		sig, err := signer.Sign(ctx, normalize.StringToCRLF(string(c.data)))
+		if err != nil {
+			dkimSignErrors.Add(1)
+			return err
+		}
+
+		// The signature is returned with \r\n; however, our internal
+		// representation uses \n, so normalize it.
+		sig = strings.ReplaceAll(sig, "\r\n", "\n")
+		c.data = envelope.AddHeader(c.data, "DKIM-Signature", sig)
+	}
+	dkimSigned.Add(1)
+	return nil
+}
+
+func (c *Conn) dkimVerify() {
+	tr := c.tr.NewChild("DKIM.Verify", c.mailFrom)
+	defer tr.Finish()
+
+	var err error
+	ctx := context.Background()
+	ctx = dkim.WithTraceFunc(ctx, tr.Debugf)
+
+	c.dkimVerifyResult, err = dkim.VerifyMessage(
+		ctx, string(normalize.ToCRLF(c.data)))
+	if err != nil {
+		// The only error we expect is because of a malformed mail, which is
+		// checked before this is invoked.
+		tr.Errorf("Error verifying DKIM: %v", err)
+		dkimVerifyErrors.Add(1)
+	}
+
+	if c.dkimVerifyResult != nil {
+		if c.dkimVerifyResult.Found > 0 {
+			dkimVerifyFound.Add(1)
+		} else {
+			dkimVerifyNotFound.Add(1)
+		}
+
+		if c.dkimVerifyResult.Valid > 0 {
+			dkimVerifyValid.Add(1)
+		}
+	}
+
+	// Note we don't fail emails because they failed to verify, in line
+	// with RFC recommendations.
+	// DMARC policies may cause it to fail at some point, but that is not
+	// implemented yet, and would happen separately.
+	// The results will get included in the Authentication-Results header, see
+	// addReceivedHeader for more details.
 }
 
 // STARTTLS SMTP command handler.

@@ -2,18 +2,26 @@
 package smtpsrv
 
 import (
+	"crypto"
+	"crypto/ed25519"
+	"crypto/rsa"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
+	"strings"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/auth"
 	"blitiri.com.ar/go/chasquid/internal/courier"
+	"blitiri.com.ar/go/chasquid/internal/dkim"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/localrpc"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
@@ -65,6 +73,9 @@ type Server struct {
 	// Domain info database.
 	dinfo *domaininfo.DB
 
+	// Map of domain -> DKIM signers.
+	dkimSigners map[string][]*dkim.Signer
+
 	// Time before we give up on a connection, even if it's sending data.
 	connTimeout time.Duration
 
@@ -91,6 +102,7 @@ func NewServer() *Server {
 		localDomains:   &set.String{},
 		authr:          authr,
 		aliasesR:       aliasesR,
+		dkimSigners:    map[string][]*dkim.Signer{},
 	}
 }
 
@@ -128,6 +140,48 @@ func (s *Server) AddUserDB(domain string, db *userdb.DB) {
 // AddAliasesFile adds an aliases file for the given domain.
 func (s *Server) AddAliasesFile(domain, f string) error {
 	return s.aliasesR.AddAliasesFile(domain, f)
+}
+
+var (
+	errDecodingPEMBlock     = fmt.Errorf("error decoding PEM block")
+	errUnsupportedBlockType = fmt.Errorf("unsupported block type")
+	errUnsupportedKeyType   = fmt.Errorf("unsupported key type")
+)
+
+// AddDKIMSigner for the given domain and selector.
+func (s *Server) AddDKIMSigner(domain, selector, keyPath string) error {
+	key, err := os.ReadFile(keyPath)
+	if err != nil {
+		return err
+	}
+
+	block, _ := pem.Decode(key)
+	if block == nil {
+		return errDecodingPEMBlock
+	}
+
+	if strings.ToUpper(block.Type) != "PRIVATE KEY" {
+		return fmt.Errorf("%w: %s", errUnsupportedBlockType, block.Type)
+	}
+
+	signer, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return err
+	}
+
+	switch k := signer.(type) {
+	case *rsa.PrivateKey, ed25519.PrivateKey:
+		// These are supported, nothing to do.
+	default:
+		return fmt.Errorf("%w: %T", errUnsupportedKeyType, k)
+	}
+
+	s.dkimSigners[domain] = append(s.dkimSigners[domain], &dkim.Signer{
+		Domain:   domain,
+		Selector: selector,
+		Signer:   signer.(crypto.Signer),
+	})
+	return nil
 }
 
 // SetAuthFallback sets the authentication backend to use as fallback.
@@ -287,6 +341,7 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 			aliasesR:       s.aliasesR,
 			localDomains:   s.localDomains,
 			dinfo:          s.dinfo,
+			dkimSigners:    s.dkimSigners,
 			deadline:       time.Now().Add(s.connTimeout),
 			commandTimeout: s.commandTimeout,
 			queue:          s.queue,

@@ -1,0 +1,14 @@
+{
+	"Found": 1,
+	"Valid": 0,
+	"Results": [
+		{
+			"Error": "invalid version",
+			"SignatureHeader": " v=8; a=ed25519-sha256; c=relaxed/relaxed;\r\n d=football.example.com; i=@football.example.com;\r\n q=dns/txt; s=brisbane; t=1528637909; h=from : to :\r\n subject : date : message-id : from : subject : date;\r\n bh=2jUSOH9NhtVGCQWNr9BrIAPreKQjO6Sn7XIkfJVOzv8=;\r\n b=/gCrinpcQOoIfuHNQIbq4pgh9kyIK3AQUdt9OdqQehSwhEIug4D11Bus\r\n Fa3bT3FY5OsU7ZbnKELq+eXdp1Q1Dw==",
+			"Domain": "",
+			"Selector": "",
+			"B": "",
+			"State": "PERMFAIL"
+		}
+	]
+}

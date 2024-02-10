@@ -2,11 +2,13 @@ package smtpsrv
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
 	"net/smtp"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -478,6 +480,69 @@ func TestStartTLSOnTLS(t *testing.T) {
 
 	if err := c.StartTLS(tlsConfig); err == nil {
 		t.Errorf("STARTTLS did not fail as expected")
+	}
+}
+
+func TestAddDKIMSigner(t *testing.T) {
+	s := NewServer()
+	err := s.AddDKIMSigner("example.com", "selector", "keyfile-does-not-exist")
+	if !os.IsNotExist(err) {
+		t.Errorf("AddDKIMSigner: expected not exist, got %v", err)
+	}
+
+	tmpDir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, tmpDir)
+
+	// Invalid PEM file.
+	kf1 := tmpDir + "/key1-bad_pem.pem"
+	testlib.Rewrite(t, kf1, "not a valid PEM file")
+	err = s.AddDKIMSigner("example.com", "selector", kf1)
+	if !errors.Is(err, errDecodingPEMBlock) {
+		t.Errorf("AddDKIMSigner: expected %v, got %v",
+			errDecodingPEMBlock, err)
+	}
+
+	// Unsupported block type.
+	kf2 := tmpDir + "/key2.pem"
+	testlib.Rewrite(t, kf2,
+		"-----BEGIN TEST KEY-----\n-----END TEST KEY-----")
+	err = s.AddDKIMSigner("example.com", "selector", kf2)
+	if !errors.Is(err, errUnsupportedBlockType) {
+		t.Errorf("AddDKIMSigner: expected %v, got %v",
+			errUnsupportedBlockType, err)
+	}
+
+	// x509 error: this is an ed448 key, which is not supported.
+	kf3 := tmpDir + "/key3.pem"
+	testlib.Rewrite(t, kf3, `-----BEGIN PRIVATE KEY-----
+MEcCAQAwBQYDK2VxBDsEOSBHT9DNG6/FNBnRGrLay+jIrK8WrViiVMz9AoXqYSb6
+ghwTZSd3E0X8oIFTgs9ch3pxJM1KDrs4NA==
+-----END PRIVATE KEY-----`)
+	err = s.AddDKIMSigner("example.com", "selector", kf3)
+	if !strings.Contains(err.Error(),
+		"x509: PKCS#8 wrapping contained private key with unknown algorithm") {
+		t.Errorf("AddDKIMSigner: expected x509 error, got %q", err.Error())
+	}
+
+	// Unsupported key type: X25519.
+	kf4 := tmpDir + "/key4.pem"
+	testlib.Rewrite(t, kf4, `-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VuBCIEIKBUDwEDc5cCv/yEvnA93yk0gXyiTZe7Qip8QU3rJuZC
+-----END PRIVATE KEY-----`)
+	err = s.AddDKIMSigner("example.com", "selector", kf4)
+	if !errors.Is(err, errUnsupportedKeyType) {
+		t.Errorf("AddDKIMSigner: expected %v, got %v",
+			errUnsupportedKeyType, err)
+	}
+
+	// Successful.
+	kf5 := tmpDir + "/key5.pem"
+	testlib.Rewrite(t, kf5, `-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEID6bjSoiW6g6NJA67RNl0SZ7zpylVOq9w/VGAXF5whnS
+-----END PRIVATE KEY-----`)
+	err = s.AddDKIMSigner("example.com", "selector", kf5)
+	if err != nil {
+		t.Errorf("AddDKIMSigner: %v", err)
 	}
 }
 

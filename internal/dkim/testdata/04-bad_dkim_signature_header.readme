@@ -1,0 +1,4 @@
+Check that we reject invalid DKIM signature headers.
+
+In this case, we force this by taking an otherwise valid header, but using v=8
+instead of v=1.

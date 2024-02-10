@@ -1,0 +1,5 @@
+Check that we don't process more than 5 headers.
+
+The message contains 7 headers, but only the first 5 should be validated (and
+appear as valid).
+

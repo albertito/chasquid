@@ -1,0 +1,6 @@
+Strict domain check is enabled, but fails.
+
+This test has a DNS key with t=s, but the DKIM signature's i= is different
+than d= (but it is a subdomain, which is enforced at parsing time as per RFC).
+
+It was constructed using an ad-hoc modified version of the signer.

@@ -53,6 +53,18 @@ List of exported variables:
 - **chasquid/smtpIn/commandCount** (map of command -> count)  
   count of SMTP commands received, by command. Note that for unknown commands
   we use `unknown<COMMAND>`.
+- **chasquid/smtpIn/dkimSignErrors** (counter)  
+  count of DKIM sign errors
+- **chasquid/smtpIn/dkimSigned** (counter)  
+  count of successful DKIM signs
+- **chasquid/smtpIn/dkimVerifyErrors** (counter)  
+  count of DKIM verification errors
+- **chasquid/smtpIn/dkimVerifyFound** (counter)  
+  count of messages with at least one DKIM signature
+- **chasquid/smtpIn/dkimVerifyNotFound** (counter)  
+  count of messages with no DKIM signatures
+- **chasquid/smtpIn/dkimVerifyValid** (counter)  
+  count of messages with at least one valid DKIM signature
 - **chasquid/smtpIn/hookResults** (result -> counter)  
   count of hook invocations, by result.
 - **chasquid/smtpIn/loopsDetected** (counter)  

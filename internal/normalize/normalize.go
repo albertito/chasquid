@@ -93,3 +93,8 @@ func ToCRLF(in []byte) []byte {
 	}
 	return b.Bytes()
 }
+
+// StringToCRLF is like ToCRLF, but operates on strings.
+func StringToCRLF(in string) string {
+	return string(ToCRLF([]byte(in)))
+}

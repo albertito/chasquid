@@ -18,7 +18,8 @@ mkdir -p c-04-no_cert_dirs/certs/
 
 # Generate certs for the tests that need them.
 for i in c-05-no_addrs c-06-bad_maillog c-07-bad_domain_info \
-	c-08-bad_sts_cache c-09-bad_queue_dir c-10-empty_listening_addr ;
+	c-08-bad_sts_cache c-09-bad_queue_dir c-10-empty_listening_addr \
+	c-11-bad_dkim_key;
 do
 	CONFDIR=$i/ generate_certs_for testserver
 done

@@ -456,6 +456,8 @@ func sendDSN(tr *trace.Trace, q *Queue, item *Item) {
 		return
 	}
 
+	// TODO: DKIM signing.
+
 	id, err := q.Put(tr, "<>", []string{item.From}, msg)
 	if err != nil {
 		tr.Errorf("failed to queue DSN: %v", err)

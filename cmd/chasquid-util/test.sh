@@ -24,8 +24,8 @@ function check_userdb() {
 }
 
 
+rm -rf .config/
 mkdir -p .config/domains/domain/ .data/domaininfo
-rm -f .config/chasquid.conf
 echo 'data_dir: ".data"' >> .config/chasquid.conf
 
 if ! r print-config > /dev/null; then
@@ -56,6 +56,9 @@ if ! ( echo "$C" | grep -E -q "hostname:.*\"$HOSTNAME\"" ); then
 	echo output: "$C"
 	exit 1
 fi
+
+rm -rf .keys/
+mkdir .keys/
 
 # Run all the chamuyero tests.
 for i in *.cmy; do

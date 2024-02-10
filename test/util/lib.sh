@@ -48,7 +48,7 @@ function chasquid-util() {
 	# data_dir is relative to the config.
 	CONFDIR="${CONFDIR:-config}"
 	( cd "$CONFDIR" && \
-	  go run "${TBASE}/../../cmd/chasquid-util/chasquid-util.go" \
+	  go run "${TBASE}/../../cmd/chasquid-util/" \
 		-C=. \
 		"$@" \
 	)

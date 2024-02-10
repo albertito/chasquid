@@ -1,0 +1,14 @@
+{
+	"Found": 1,
+	"Valid": 0,
+	"Results": [
+		{
+			"Error": "verification failed",
+			"SignatureHeader": " v=1; a=ed25519-sha256; c=relaxed/relaxed;\r\n    d=example.com; s=selector; t=1709466347;\r\n    i=test@sub.example.com;\r\n    h=from:subject:date:to:message-id:from:subject:date:to:cc:message-id;\r\n    bh=2jUSOH9NhtVGCQWNr9BrIAPreKQjO6Sn7XIkfJVOzv8=;\r\n    b=NDV3SShyaF7fXYoOx9GnBQjFIfsr5bTJUtAwRTk2sTq+5wl/r0uTN1zaSfUWuxYnMIMoSq\r\n      b/xGMFTFmpSbNeCg==;",
+			"Domain": "example.com",
+			"Selector": "selector",
+			"B": "NDV3SShyaF7fXYoOx9GnBQjFIfsr5bTJUtAwRTk2sTq+5wl/r0uTN1zaSfUWuxYnMIMoSqb/xGMFTFmpSbNeCg==",
+			"State": "PERMFAIL"
+		}
+	]
+}
