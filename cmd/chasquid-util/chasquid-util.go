@@ -96,9 +96,10 @@ func main() {
 	}
 }
 
-// Fatalf prints the given message, then exits the program with an error code.
+// Fatalf prints the given message to stderr, then exits the program with an
+// error code.
 func Fatalf(s string, arg ...interface{}) {
-	fmt.Printf(s+"\n", arg...)
+	fmt.Fprintf(os.Stderr, s+"\n", arg...)
 	os.Exit(1)
 }
 
