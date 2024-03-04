@@ -173,12 +173,49 @@ const htmlTmpl = `<!DOCTYPE html>
     <title>{{.Title}}</title>
 
     <style>
+      :root {
+        --txt: #333;
+        --bg: white;
+        --a: #1c3986;
+        --a-hover: #069;
+        --odd-bg: #f5f5f7;
+        --pre-bg: #f8f8f8;
+        --pre-border: #e5e5e5;
+
+        // color palette from graphiq.
+        --cov0: red;
+        --cov1: #0b7bab;
+        --cov2: #09639b;
+        --cov3: #034a8b;
+        --cov4: #00337c;
+        --cov5: #032663;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --txt: rgba(255, 255, 255, 0.90);
+          --bg: #121212;
+          --a: #44b4ec;
+          --a-hover: #7fc9ee;
+          --odd-bg: #222222;
+          --pre-bg: #111;
+          --pre-border: #333;
+          --cov0: #f2a359;
+          --cov1: #2b84b1;
+          --cov2: #3393c4;
+          --cov3: #3ca3d7;
+          --cov4: #44b3eb;
+          --cov5: #4dc3ff;
+        }
+      }
+
       body {
         font: 100%/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans",
           "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
           "Segoe UI Emoji", "Segoe UI Symbol";
-        color: #333;
+        color: var(--txt);
+        background: var(--bg);
       }
 
       h1 {
@@ -186,13 +223,13 @@ const htmlTmpl = `<!DOCTYPE html>
       }
 
       a {
-        color: #1c3986;
+        color: var(--a);
         text-decoration: none;
         cursor: pointer;
       }
 
       a:hover {
-        color: #069;
+        color: var(--a-hover);
       }
 
       table {
@@ -200,7 +237,7 @@ const htmlTmpl = `<!DOCTYPE html>
       }
 
       tr:nth-child(odd) {
-        background: #f5f5f7;
+        background: var(--odd-bg);
       }
 
       tr.total {
@@ -220,24 +257,23 @@ const htmlTmpl = `<!DOCTYPE html>
         font-family: Monaco, Bitstream Vera Sans Mono, Lucida Console,
           Terminal, Consolas, Liberation Mono, DejaVu Sans Mono,
           Courier New, monospace;
-        color:#333;
+        color: var(--txt);
       }
 
       pre {
         padding: 0.5em 0.8em;
-        background: #f8f8f8;
+        background: var(--pre-bg);
         border-radius: 1em;
-        border:1px solid #e5e5e5;
+        border:1px solid var(--pre-border);
         overflow-x: auto;
       }
 
-      // Color palette from graphiq.
-      .cov0 { color: red; }
-      .cov1 { color: #0B7BAB; }
-      .cov2 { color: #09639B; }
-      .cov3 { color: #034A8B; }
-      .cov4 { color: #00337C; }
-      .cov5 { color: #032663; }
+      .cov0 { color: var(--cov0); }
+      .cov1 { color: var(--cov1); }
+      .cov2 { color: var(--cov2); }
+      .cov3 { color: var(--cov3); }
+      .cov4 { color: var(--cov4); }
+      .cov5 { color: var(--cov5); }
     </style>
 
     <script>
