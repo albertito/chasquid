@@ -30,12 +30,19 @@ import (
 const usage = `
 Usage:
   chasquid-util [options] user-add <user@domain> [--password=<password>] [--receive_only]
+    Add a user to the userdb.
   chasquid-util [options] user-remove <user@domain>
+    Remove a user from the userdb.
   chasquid-util [options] authenticate <user@domain> [--password=<password>]
+    Authenticate a user.
   chasquid-util [options] check-userdb <domain>
+    Check if the userdb for the given domain is accessible.
   chasquid-util [options] aliases-resolve <address>
+    Resolve an address. Talks to the running chasquid.
   chasquid-util [options] domaininfo-remove <domain>
+    Remove domaininfo for the given domain. Talks to the running chasquid.
   chasquid-util [options] print-config
+    Print the current chasquid configuration.
 
 Options:
   -C=<path>, --configdir=<path>  Configuration directory
