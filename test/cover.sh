@@ -37,6 +37,9 @@ GOCOVERDIR="${COVER_DIR}/sh" setsid -w ./test/run.sh
 echo "dovecot cli ..."
 GOCOVERDIR="${COVER_DIR}/sh" setsid -w ./cmd/dovecot-auth-cli/test.sh
 
+echo "chasquid-util ..."
+GOCOVERDIR="${COVER_DIR}/sh" setsid -w ./cmd/chasquid-util/test.sh
+
 # Merge all coverage output into a single file.
 go tool covdata merge -i "${COVER_DIR}/go,${COVER_DIR}/sh" -o "${COVER_DIR}/all"
 go tool covdata textfmt -i "${COVER_DIR}/all" -o "${COVER_DIR}/merged.out"

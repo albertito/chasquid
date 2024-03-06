@@ -5,7 +5,12 @@ set -e
 
 init
 
-go build || exit 1
+if [ "${GOCOVERDIR}" != "" ]; then
+	GOFLAGS="-cover -covermode=count -o chasquid-util $GOFLAGS"
+fi
+
+# shellcheck disable=SC2086
+go build $GOFLAGS -tags="$GOTAGS" .
 
 function r() {
 	./chasquid-util -C=.config "$@"
