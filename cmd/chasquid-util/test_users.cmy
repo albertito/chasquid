@@ -1,0 +1,51 @@
+# Tests for user management commands.
+c = ./chasquid-util -C=.config user-add user@domain --password=passwd
+c <- Added user
+c wait 0
+
+c = ./chasquid-util -C=.config check-userdb domain
+c <- Database loaded
+c wait 0
+
+c = ./chasquid-util -C=.config user-add receive@domain --receive_only
+c <- Added user
+c wait 0
+
+c = ./chasquid-util -C=.config user-add xxx@domain \
+	--password=passwd --receive_only
+c <- Cannot specify both --receive_only and --password
+c wait 1
+
+c = ./chasquid-util -C=.config authenticate user@domain --password=passwd
+c <- Authentication succeeded
+c wait 0
+
+c = ./chasquid-util -C=.config authenticate user@domain --password=abcd
+c <- Authentication failed
+c wait 1
+
+# Try to authenticate on the receive-only user
+c = ./chasquid-util -C=.config authenticate receive@domain --password=passwd
+c <- Authentication failed
+c wait 1
+
+# Remove a user, then check authentication fails.
+c = ./chasquid-util -C=.config user-remove user@domain
+c <- Removed user
+c wait 0
+
+c = ./chasquid-util -C=.config authenticate user@domain --password=passwd
+c <- Authentication failed
+c wait 1
+
+c = ./chasquid-util -C=.config user-remove unknown@domain
+c <- Unknown user
+c wait 1
+
+c = ./chasquid-util -C=.config user-add badarg
+c <- Domain missing, username should be of the form 'user@domain'
+c wait 1
+
+c = ./chasquid-util -C=.config user-add "bad user@domain"
+c <- Error normalizing user: precis: disallowed rune encountered
+c wait 1

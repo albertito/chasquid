@@ -1,0 +1,24 @@
+# --help
+c = ./chasquid-util --configdir=.config --help
+c <-
+c <- Usage:
+c wait 0
+
+# print-config
+c = ./chasquid-util -C=.config print-config
+c <~ hostname: +".*"
+c <~ max_data_size_mb: +50
+c <~ smtp_address: +"systemd"
+c <~ submission_address: +"systemd"
+c <~ submission_over_tls_address: +"systemd"
+c <~ mail_delivery_agent_bin: +"maildrop"
+c <~ mail_delivery_agent_args: +"-f"
+c <~ mail_delivery_agent_args: +"%from%"
+c <~ mail_delivery_agent_args: +"-d"
+c <~ mail_delivery_agent_args: +"%to_user%"
+c <~ data_dir: +".data"
+c <~ suffix_separators: +"\+"
+c <~ drop_characters: +"\."
+c <~ mail_log_path: +"<syslog>"
+c wait 0
+

@@ -29,40 +29,11 @@ rm -f .config/chasquid.conf
 echo 'data_dir: ".data"' >> .config/chasquid.conf
 
 if ! r print-config > /dev/null; then
-	echo print-config failed
-	exit 1
+	fail print-config
 fi
 
-if ! r user-add user@domain --password=passwd > /dev/null; then
-	echo user-add failed
-	exit 1
-fi
-check_userdb
-
-if ! r user-add denied@domain --receive_only > /dev/null; then
-	echo user-add --receive_only failed
-	exit 1
-fi
-check_userdb
-
-if r user-add xxx@domain --password=passwd --receive_only > /dev/null 2>&1; then
-	echo user-add --password --receive_only worked
-	exit 1
-fi
-
-if ! r authenticate user@domain --password=passwd > /dev/null; then
-	echo authenticate failed
-	exit 1
-fi
-
-if r authenticate user@domain --password=abcd > /dev/null 2>&1; then
-	echo authenticate with bad password worked
-	exit 1
-fi
-
-if r authenticate denied@domain --password=abcd > /dev/null 2>&1; then
-	echo authenticate on a no-submission user worked
-	exit 1
+if ! r user-add interactive@domain --password=passwd > /dev/null; then
+	fail user-add
 fi
 
 # Interactive authentication.
@@ -71,25 +42,12 @@ fi
 if hash script 2>/dev/null; then
 	if ! (echo passwd; echo passwd ) \
 		| script \
-			-qfec "./chasquid-util -C=.config authenticate user@domain" \
+			-qfec "./chasquid-util -C=.config authenticate interactive@domain" \
 			".script-out" \
 		| grep -q "Authentication succeeded";
 	then
-		echo interactive authenticate failed
-		exit 1
+		fail interactive authentication
 	fi
-fi
-
-
-if ! r user-remove user@domain > /dev/null; then
-	echo user-remove failed
-	exit 1
-fi
-check_userdb
-
-if r authenticate user@domain --password=passwd > /dev/null 2>&1; then
-	echo authenticate for removed user worked
-	exit 1
 fi
 
 C=$(r print-config | grep hostname)

@@ -16,7 +16,6 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/localrpc"
 	"blitiri.com.ar/go/chasquid/internal/normalize"
-	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/chasquid/internal/userdb"
 	"golang.org/x/term"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -282,10 +281,6 @@ func domaininfoRemove() {
 	if err != nil {
 		Fatalf("Error removing domaininfo entry: %v", err)
 	}
-}
-
-func allUsersExist(tr *trace.Trace, user, domain string) (bool, error) {
-	return true, nil
 }
 
 // parseArgs parses the command line arguments, and returns a map.
