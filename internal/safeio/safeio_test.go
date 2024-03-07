@@ -112,6 +112,135 @@ func TestWriteFileWithFailingOp(t *testing.T) {
 	}
 }
 
-// TODO: We should test the possible failure scenarios for WriteFile, but it
-// gets tricky without being able to do failure injection (or turning the code
-// into a mess).
+type testFile struct {
+	t *testing.T
+
+	name string
+
+	expectChmod os.FileMode
+	chmodErr    error
+
+	expectChownUid, expectChownGid int
+	chownErr                       error
+
+	expectWrite []byte
+	writeN      int
+	writeErr    error
+
+	closeErr error
+}
+
+func (f *testFile) Name() string {
+	return f.name
+}
+
+func (f *testFile) Chmod(perm os.FileMode) error {
+	if f.expectChmod != perm {
+		f.t.Errorf("unexpected Chmod(%v), expected Chmod(%v)",
+			perm, f.expectChmod)
+	}
+	return f.chmodErr
+}
+
+func (f *testFile) Chown(uid, gid int) error {
+	if f.expectChownUid != uid || f.expectChownGid != gid {
+		f.t.Errorf("unexpected Chown(%v, %v), expected Chown(%v, %v)",
+			uid, gid, f.expectChownUid, f.expectChownGid)
+	}
+	return f.chownErr
+}
+
+func (f *testFile) Write(b []byte) (int, error) {
+	if !bytes.Equal(b, f.expectWrite) {
+		f.t.Errorf("unexpected Write(%q), expected Write(%q)",
+			b, f.expectWrite)
+	}
+	return f.writeN, f.writeErr
+}
+
+func (f *testFile) Close() error {
+	return f.closeErr
+}
+
+var _ osFile = &testFile{}
+
+func TestErrors(t *testing.T) {
+	dir := testlib.MustTempDir(t)
+	defer testlib.RemoveIfOk(t, dir)
+
+	oldCreateTemp := createTemp
+	defer func() { createTemp = oldCreateTemp }()
+
+	// createTemp failure.
+	ctError := errors.New("createTemp error")
+	createTemp = func(dir, pattern string) (osFile, error) {
+		return nil, ctError
+	}
+	err := WriteFile("fname", []byte("new content"), 0660)
+	if err != ctError {
+		t.Errorf("expected %v, got %v", ctError, err)
+	}
+
+	// Have a real backing file for some of the operations, like getting the
+	// owner.
+	fname := dir + "/file1"
+
+	// Test file to simulate failures on.
+	tf := &testFile{name: fname, t: t}
+	createTemp = func(dir, pattern string) (osFile, error) {
+		return tf, nil
+	}
+
+	// Test Chmod error.
+	testlib.Rewrite(t, fname, "old content")
+	tf.expectChmod = 0660
+	tf.chmodErr = errors.New("chmod error")
+	err = WriteFile(fname, []byte("new content"), 0660)
+	if err != tf.chmodErr {
+		t.Errorf("expected %v, got %v", tf.chmodErr, err)
+	}
+	checkNotExists(t, fname)
+
+	// Test Chown error.
+	testlib.Rewrite(t, fname, "old content")
+	tf.chmodErr = nil
+	tf.expectChownUid, tf.expectChownGid = getOwner(fname)
+	if tf.expectChownUid < 0 {
+		t.Fatalf("error getting owner of %v", fname)
+	}
+	tf.chownErr = errors.New("chown error")
+	err = WriteFile(fname, []byte("new content"), 0660)
+	if err != tf.chownErr {
+		t.Errorf("expected %v, got %v", tf.chownErr, err)
+	}
+	checkNotExists(t, fname)
+
+	// Test Write error.
+	testlib.Rewrite(t, fname, "old content")
+	tf.chownErr = nil
+	tf.expectWrite = []byte("new content")
+	tf.writeErr = errors.New("write error")
+	err = WriteFile(fname, []byte("new content"), 0660)
+	if err != tf.writeErr {
+		t.Errorf("expected %v, got %v", tf.writeErr, err)
+	}
+	checkNotExists(t, fname)
+
+	// Test Close error.
+	testlib.Rewrite(t, fname, "old content")
+	tf.writeErr = nil
+	tf.writeN = len(tf.expectWrite)
+	tf.closeErr = errors.New("close error")
+	err = WriteFile(fname, []byte("new content"), 0660)
+	if err != tf.closeErr {
+		t.Errorf("expected %v, got %v", tf.closeErr, err)
+	}
+	checkNotExists(t, fname)
+}
+
+func checkNotExists(t *testing.T, fname string) {
+	t.Helper()
+	if _, err := os.Stat(fname); err == nil {
+		t.Fatalf("file %v exists", fname)
+	}
+}

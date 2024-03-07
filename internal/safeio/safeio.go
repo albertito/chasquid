@@ -8,6 +8,21 @@ import (
 	"syscall"
 )
 
+// osFile is an interface to the methods of os.File that we need, so we can
+// simulate failures in tests.
+type osFile interface {
+	Name() string
+	Chmod(os.FileMode) error
+	Chown(int, int) error
+	Write([]byte) (int, error)
+	Close() error
+}
+
+var createTemp func(dir, pattern string) (osFile, error) = func(
+	dir, pattern string) (osFile, error) {
+	return os.CreateTemp(dir, pattern)
+}
+
 // FileOp represents an operation on a file (passed by its name).
 type FileOp func(fname string) error
 
@@ -27,7 +42,7 @@ func WriteFile(filename string, data []byte, perm os.FileMode, ops ...FileOp) er
 	// would have no expectation of Rename being atomic.
 	// We make the file names start with "." so there's no confusion with the
 	// originals.
-	tmpf, err := os.CreateTemp(path.Dir(filename), "."+path.Base(filename))
+	tmpf, err := createTemp(path.Dir(filename), "."+path.Base(filename))
 	if err != nil {
 		return err
 	}
