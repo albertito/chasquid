@@ -1,6 +1,6 @@
 module blitiri.com.ar/go/chasquid
 
-go 1.18
+go 1.21
 
 require (
 	blitiri.com.ar/go/log v1.1.0
