@@ -13,6 +13,10 @@ default_login_user = $USER
 # We drop the domain, to exercise "naked" auth handling.
 auth_username_format = "%n-x"
 
+# Disable authentication penalty, since we intentionally make failed requests
+# and it just slows down tests.
+auth_failure_delay = 0
+
 passdb {
 	driver = passwd-file
 	args = $ROOT/passwd
