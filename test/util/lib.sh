@@ -195,11 +195,10 @@ function generate_certs_for() {
 	# Generating certs is takes time and slows the tests down, so we keep
 	# a little cache that is common to all tests.
 	CACHEDIR="${TBASE}/../.generate_certs_cache"
-	mkdir -p "${CACHEDIR}"
+	mkdir -p "${CACHEDIR}/$1/"
 	touch -d "10 minutes ago" "${CACHEDIR}/.reference"
-	if [ "${CACHEDIR}/$1/" -ot "${CACHEDIR}/.reference" ]; then
+	if [ "${CACHEDIR}/$1/privkey.pem" -ot "${CACHEDIR}/.reference" ]; then
 		# Cache miss (either was not there, or was too old).
-		mkdir -p "${CACHEDIR}/$1/"
 		(
 			cd "${CACHEDIR}/$1/" || exit 1
 			generate_cert -ca -validfor=1h -host="$1"
