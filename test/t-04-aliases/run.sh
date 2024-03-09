@@ -74,6 +74,8 @@ fi
 
 # Test chasquid-util's ability to do alias resolution talking to chasquid.
 # We use chamuyero for convenience, so we can match the output exactly.
+# We run it once to ensure it gets built.
+chasquid-util --help > /dev/null
 for i in *.cmy; do
 	if ! chamuyero "$i" > "$i.log" 2>&1 ; then
 		echo "$i failed, log follows"

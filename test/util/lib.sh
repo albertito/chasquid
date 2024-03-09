@@ -15,6 +15,9 @@ function init() {
 	if [ "${RACE}" == "1" ]; then
 		GOFLAGS="$GOFLAGS -race"
 	fi
+	if [ "${GOCOVERDIR}" != "" ]; then
+		GOFLAGS="$GOFLAGS -cover -covermode=count"
+	fi
 
 	# Remove the directory where test-mda will deliver mail, so previous
 	# runs don't interfere with this one.
@@ -27,12 +30,7 @@ function init() {
 }
 
 function chasquid() {
-	if [ "${GOCOVERDIR}" != "" ]; then
-		GOFLAGS="-cover -covermode=count -o chasquid $GOFLAGS"
-	fi
-
-	# shellcheck disable=SC2086
-	( cd "${TBASE}/../../" || exit 1; go build $GOFLAGS -tags="$GOTAGS" . )
+	go-build-cached "${TBASE}/../../"
 
 	# HOSTALIASES: so we "fake" hostnames.
 	# PATH: so chasquid can call test-mda without path issues.
@@ -43,12 +41,37 @@ function chasquid() {
 		"${TBASE}/../../chasquid" "$@"
 }
 
+function go-build-cached() { (
+	# This runs "go build" on the given directory, but only once every
+	# 10s, or if the build flags/tags change.
+	# Because in tests we run some of the Go programs often, this speeds
+	# up the tests.
+	cd "$1" || exit 1
+	touch -d "10 seconds ago" .reference
+	echo "-tags=$GOTAGS : $GOFLAGS" > .flags-new
+	if
+		! cmp -s .flags-new .flags >/dev/null 2>&1 ||
+		[ "$(basename "$PWD")" -ot ".reference" ] ;
+	then
+		# shellcheck disable=SC2086
+		go build -tags="$GOTAGS" $GOFLAGS
+
+		# Write to .flags instead of renaming, to prevent races where
+		# was .flags-new is already renamed by the time we get here.
+		# Do this _after_ the build so worst case we build twice,
+		# instead of having the chance to run an old binary.
+		echo "-tags=$GOTAGS : $GOFLAGS" > .flags
+	fi
+) }
+
+
 function chasquid-util() {
 	# Run chasquid-util from inside the config dir, since in our tests
 	# data_dir is relative to the config.
+	go-build-cached "${TBASE}/../../cmd/chasquid-util/"
 	CONFDIR="${CONFDIR:-config}"
 	( cd "$CONFDIR" && \
-	  go run "${TBASE}/../../cmd/chasquid-util/" \
+	  "${TBASE}/../../cmd/chasquid-util/chasquid-util" \
 		-C=. \
 		"$@" \
 	)
@@ -80,7 +103,8 @@ function add_user() {
 }
 
 function dovecot-auth-cli() {
-	go run "${TBASE}/../../cmd/dovecot-auth-cli/dovecot-auth-cli.go" "$@"
+	go-build-cached "${TBASE}/../../cmd/dovecot-auth-cli/"
+	"${TBASE}/../../cmd/dovecot-auth-cli/dovecot-auth-cli" "$@"
 }
 
 function run_msmtp() {
@@ -109,28 +133,28 @@ function chamuyero() {
 }
 
 function generate_cert() {
-	( cd "${UTILDIR}/generate_cert/" || exit 1; go build )
+	go-build-cached "${UTILDIR}/generate_cert/"
 	"${UTILDIR}/generate_cert/generate_cert" "$@"
 }
 
 function loadgen() {
-	( cd "${UTILDIR}/loadgen/" || exit 1; go build )
+	go-build-cached "${UTILDIR}/loadgen/"
 	"${UTILDIR}/loadgen/loadgen" "$@"
 }
 
 function conngen() {
-	( cd "${UTILDIR}/conngen/" || exit 1; go build )
+	go-build-cached "${UTILDIR}/conngen/"
 	"${UTILDIR}/conngen/conngen" "$@"
 }
 
 function minidns_bg() {
-	( cd "${UTILDIR}/minidns" || exit 1; go build )
+	go-build-cached "${UTILDIR}/minidns/"
 	"${UTILDIR}/minidns/minidns" "$@" &
 	export MINIDNS=$!
 }
 
 function fexp() {
-	( cd "${UTILDIR}/fexp/" || exit 1; go build )
+	go-build-cached "${UTILDIR}/fexp/"
 	"${UTILDIR}/fexp/fexp" "$@"
 }
 

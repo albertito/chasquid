@@ -44,8 +44,12 @@ GOCOVERDIR="${COVER_DIR}/sh" setsid -w ./cmd/chasquid-util/test.sh
 go tool covdata merge -i "${COVER_DIR}/go,${COVER_DIR}/sh" -o "${COVER_DIR}/all"
 go tool covdata textfmt -i "${COVER_DIR}/all" -o "${COVER_DIR}/merged.out"
 
-# Ignore protocol buffer-generated files, as they are not relevant.
-grep -v ".pb.go:" < "${COVER_DIR}/merged.out" > "${COVER_DIR}/final.out"
+# Ignore protocol buffer-generated files and test utilities, as they are not
+# relevant.
+cat "${COVER_DIR}/merged.out" \
+	| grep -v ".pb.go:" \
+	| grep -v "blitiri.com.ar/go/chasquid/test/util/" \
+	> "${COVER_DIR}/final.out"
 
 # Generate reports based on the merged output.
 go tool cover -func="$COVER_DIR/final.out" | sort -k 3 -n > "$COVER_DIR/func.txt"

@@ -3,4 +3,4 @@
 
 # Run from the config directory because data_dir is relative.
 cd config || exit 1
-go run ../../../cmd/chasquid-util/ -C=. "$@"
+../../../cmd/chasquid-util/chasquid-util -C=. "$@"
