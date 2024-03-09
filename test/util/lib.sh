@@ -120,10 +120,6 @@ function run_msmtp() {
 		"${UTILDIR}/.msmtp-bin" -C msmtprc "$@"
 }
 
-function smtpc.py() {
-	"${UTILDIR}/smtpc.py" "$@"
-}
-
 function mail_diff() {
 	"${UTILDIR}/mail_diff" "$@"
 }
@@ -156,6 +152,11 @@ function minidns_bg() {
 function fexp() {
 	go-build-cached "${UTILDIR}/fexp/"
 	"${UTILDIR}/fexp/fexp" "$@"
+}
+
+function smtpc() {
+	go-build-cached "${UTILDIR}/smtpc/"
+	"${UTILDIR}/smtpc/smtpc" "$@"
 }
 
 function timeout() {
@@ -230,16 +231,6 @@ function generate_certs_for() {
 	fi
 	mkdir -p "${CONFDIR}/certs/$1/"
 	cp -p "${CACHEDIR}/$1"/* "${CONFDIR}/certs/$1/"
-}
-
-# Check the Python version, and skip if it's too old.
-# This will check against the version required for smtpc.py.
-function skip_if_python_is_too_old() {
-	# We need Python >= 3.5 to be able to use SMTPUTF8.
-	check='import sys; sys.exit(0 if sys.version_info >= (3, 5) else 1)'
-	if ! python3 -c "${check}" > /dev/null 2>&1; then
-		skip "python3 >= 3.5 not available"
-	fi
 }
 
 function chasquid_ram_peak() {

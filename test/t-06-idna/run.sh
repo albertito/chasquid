@@ -8,8 +8,6 @@ check_hostaliases
 
 rm -rf .data-A .data-B .mail
 
-skip_if_python_is_too_old
-
 # Build with the DNS override, so we can fake DNS records.
 export GOTAGS="dnsoverride"
 
@@ -37,20 +35,22 @@ chasquid -v=2 --logfile=.logs-B/chasquid.log --config_dir=B \
 	--testing__dns_addr=127.0.0.1:9053 \
 	--testing__outgoing_smtp_port=1025 &
 
-wait_until_ready 1025
-wait_until_ready 2025
+wait_until_ready 1465
+wait_until_ready 2465
 wait_until_ready 9053
 
 # Send from A to B.
-smtpc.py --server=localhost:1025 --user=nadaA@nadaA --password=nadaA \
-	< from_A_to_B
+smtpc --addr=localhost:1465 --user=nadaA@nadaA --password=nadaA \
+	--server_cert=A/certs/srv-ñ/fullchain.pem \
+	pingüino@srv-ü < from_A_to_B
 
 wait_for_file .mail/pingüino@srv-ü
 mail_diff from_A_to_B .mail/pingüino@srv-ü
 
 # Send from B to A.
-smtpc.py --server=localhost:2025 --user=nadaB@nadaB --password=nadaB \
-	< from_B_to_A
+smtpc --addr=localhost:2465 --user=nadaB@nadaB --password=nadaB \
+	--server_cert=B/certs/srv-ü/fullchain.pem \
+	ñangapirí@srv-ñ < from_B_to_A
 
 wait_for_file .mail/ñangapirí@srv-ñ
 mail_diff from_B_to_A .mail/ñangapirí@srv-ñ

@@ -54,8 +54,6 @@ Received: from localhost
 	tls *
 	(over *
 	; *
-From: userA@srv-A
-Date: *
 Subject: Prueba desde el test
 
 Crece desde el test el futuro

@@ -54,7 +54,7 @@ function launch_minidns() {
 
 # T0: Successful.
 launch_minidns zones.t0
-run_msmtp userB@srv-B < content
+smtpc userB@srv-B < content
 wait_for_file .mail/userb@srv-b
 mail_diff content .mail/userb@srv-b
 
@@ -62,7 +62,7 @@ mail_diff content .mail/userb@srv-b
 # Check that userA got a DSN about it.
 rm .mail/*
 launch_minidns zones.t1
-run_msmtp userB@srv-B < content
+smtpc userB@srv-B < content
 wait_for_file .mail/usera@srv-a
 mail_diff expected_dsn .mail/usera@srv-a
 

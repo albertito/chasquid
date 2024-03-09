@@ -22,7 +22,7 @@ chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config \
 wait_until_ready 1025
 
 # First, check that delivery fails with the "wrong" password.
-if run_msmtp someone@testserver < content 2>/dev/null; then
+if smtpc someone@testserver < content 2>/dev/null; then
 	fail "success using the wrong password"
 fi
 
@@ -32,7 +32,7 @@ chasquid-util-user-add someone@testserver password222
 echo "analias: someone" > config/domains/testserver/aliases
 sleep 0.2
 
-run_msmtp analias@testserver < content
+smtpc analias@testserver < content
 wait_for_file .mail/someone@testserver
 
 
@@ -50,7 +50,7 @@ sleep 0.2
 
 # Send another mail.
 rm .mail/someone@testserver
-run_msmtp analias@testserver < content
+smtpc analias@testserver < content
 wait_for_file .mail/someone@testserver
 
 # Check there are new entries.

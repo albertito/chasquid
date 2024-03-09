@@ -54,7 +54,6 @@ Received: from localhost
 	tls *
 	(over *
 	; *
-Date: *
 From: Mailer daemon <somewhere@báratro>
 Subject: I've come to haunt you
 Message-Id: <booooo>

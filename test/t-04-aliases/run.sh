@@ -14,7 +14,7 @@ chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025
 
 function send_and_check() {
-	run_msmtp "$1@testserver" < content
+	smtpc "$1@testserver" < content
 	shift
 	for i in "$@"; do
 		wait_for_file ".mail/$i@testserver"
@@ -42,7 +42,7 @@ send_and_check añil+blah azul índigo
 
 # Test the pipe alias separately.
 rm -f .data/pipe_alias_worked
-run_msmtp tubo@testserver < content
+smtpc tubo@testserver < content
 wait_for_file .data/pipe_alias_worked
 mail_diff content .data/pipe_alias_worked
 
@@ -58,17 +58,17 @@ send_and_check vic.uña+abc uña
 
 # Test the pipe alias separately.
 rm -f .data/pipe_alias_worked
-run_msmtp ñandú@testserver < content
+smtpc ñandú@testserver < content
 wait_for_file .data/pipe_alias_worked
 mail_diff content .data/pipe_alias_worked
 
 # Test when alias-resolve exits with an error
-if run_msmtp roto@testserver < content 2> .logs/msmtp.out; then
+if smtpc roto@testserver < content 2> .logs/smtpc.out; then
 	fail "expected delivery to roto@ to fail, but succeeded"
 fi
 
 # Test a non-existent alias.
-if run_msmtp nono@testserver < content 2> .logs/msmtp.out; then
+if smtpc nono@testserver < content 2> .logs/smtpc.out; then
 	fail "expected delivery to nono@ to fail, but succeeded"
 fi
 

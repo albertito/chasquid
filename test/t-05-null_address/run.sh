@@ -22,7 +22,7 @@ rm -f .mail/user@testserver
 
 
 # Test that we get mail back for a failed delivery
-run_msmtp fail@testserver < content
+smtpc fail@testserver < content
 wait_for_file .mail/user@testserver
 mail_diff expected_dsr .mail/user@testserver
 

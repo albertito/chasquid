@@ -10,9 +10,9 @@
 #     someone@srv-chasquid.
 #
 # Test:
-#   msmtp --> chasquid --> exim --> chasquid --> local delivery
+#   smtpc --> chasquid --> exim --> chasquid --> local delivery
 #
-#   msmtp will auth as user@srv-chasquid to chasquid, and send an email with
+#   smtpc will auth as user@srv-chasquid to chasquid, and send an email with
 #   recipient someone@srv-exim.
 #
 #   chasquid will deliver the mail to exim.
@@ -28,14 +28,14 @@ set -e
 init
 check_hostaliases
 
-if ! .exim4/exim4 --version > /dev/null; then
-	skip "exim4 binary at .exim4/exim4 is not functional"
-fi
-
 # Create a temporary directory for exim4 to use, and generate the exim4
 # config based on the template.
 mkdir -p .exim4
 EXIMDIR="$PWD/.exim4" envsubst < config/exim4.in > .exim4/config
+
+if ! .exim4/exim4 -C "$PWD/.exim4/config" --version > /dev/null; then
+	skip "exim4 binary at .exim4/exim4 is not functional"
+fi
 
 # Build with the DNS override, so we can fake DNS records.
 export GOTAGS="dnsoverride"
@@ -62,8 +62,8 @@ wait_until_ready 9053
 .exim4/exim4 -bd -d -C "$PWD/.exim4/config" > .exim4/log 2>&1 &
 wait_until_ready 2025
 
-# msmtp will use chasquid to send an email to someone@srv-exim.
-run_msmtp someone@srv-exim < content
+# smtpc will use chasquid to send an email to someone@srv-exim.
+smtpc someone@srv-exim < content
 
 wait_for_file .mail/someone@srv-chasquid
 

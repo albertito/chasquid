@@ -40,7 +40,7 @@ wait_until_ready 1025
 wait_until_ready 2025
 wait_until_ready 9053
 
-run_msmtp aliasB@srv-B < content
+smtpc aliasB@srv-B < content
 
 # Get some of the debugging pages, for troubleshooting, and to make sure they
 # work reasonably well.

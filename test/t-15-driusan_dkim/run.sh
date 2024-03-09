@@ -23,11 +23,14 @@ add_user someone@testserver secretpassword
 
 mkdir -p .logs
 chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
-wait_until_ready 1025
+wait_until_ready 1465
 
 # Authenticated: user@testserver -> someone@testserver
 # Should be signed.
-run_msmtp someone@testserver < content
+smtpc --addr=localhost:1465 \
+	--server_cert=config/certs/testserver/fullchain.pem \
+	--user=user@testserver --password=secretpassword \
+	someone@testserver < content
 wait_for_file .mail/someone@testserver
 mail_diff content .mail/someone@testserver
 grep -q "DKIM-Signature:" .mail/someone@testserver
@@ -40,11 +43,14 @@ dkimverify -txt .dkimcerts/dns.txt < .mail/someone@testserver
 tail -n +2 .mail/someone@testserver > .signed_content
 
 # Not authenticated: someone@testserver -> someone@testserver
-smtpc.py --server=localhost:1025 < .signed_content
+smtpc --addr=localhost:1025 \
+	--from=someone@testserver someone@testserver < .signed_content
 
 # Check that the signature fails on modified content.
 echo "Added content, invalid and not signed" >> .signed_content
-if smtpc.py --server=localhost:1025 < .signed_content 2> /dev/null; then
+if smtpc --addr=localhost:1025 \
+	--from=someone@testserver someone@testserver < .signed_content \
+	> /dev/null 2>&1 ; then
 	fail "DKIM verification succeeded on modified content"
 fi
 

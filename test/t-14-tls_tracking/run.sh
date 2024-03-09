@@ -45,7 +45,7 @@ wait_until_ready 1025
 wait_until_ready 2025
 wait_until_ready 9053
 
-run_msmtp userB@srv-B < content
+smtpc userB@srv-B < content
 
 wait_for_file .mail/userb@srv-b
 mail_diff content .mail/userb@srv-b

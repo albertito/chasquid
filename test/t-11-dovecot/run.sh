@@ -52,33 +52,33 @@ chasquid -v=2 --logfile=.logs/chasquid.log --config_dir=config &
 wait_until_ready 1025
 
 # Send an email as "user@srv" successfully.
-run_msmtp user@srv < content
+smtpc user@srv < content
 wait_for_file .mail/user@srv
 mail_diff content .mail/user@srv
 
 # Send an email as "naked" successfully.
 rm .mail/user@srv
-run_msmtp -a naked user@srv < content
+smtpc --user=naked --password=gun --from=naked@srv user@srv < content
 wait_for_file .mail/user@srv
 mail_diff content .mail/user@srv
 
 # Send an email to the "naked" user successfully.
-run_msmtp naked@srv < content
+smtpc naked@srv < content
 wait_for_file .mail/naked@srv
 mail_diff content .mail/naked@srv
 
 # Fail to send to nobody@srv (user does not exist).
-if run_msmtp nobody@srv < content 2> /dev/null; then
+if smtpc nobody@srv < content 2> /dev/null; then
 	fail "successfully sent an email to a non-existent user"
 fi
 
-# Fail to send from baduser@srv (user does not exist).
-if run_msmtp -a baduser user@srv < content 2> /dev/null; then
+# Fail to send from unknownuser@srv (user does not exist).
+if smtpc --user=unknownuser@srv user@srv < content 2> /dev/null; then
 	fail "successfully sent an email with a bad user"
 fi
 
 # Fail to send with an incorrect password.
-if run_msmtp -a badpasswd user@srv < content 2> /dev/null; then
+if smtpc --password=badpasswd user@srv < content 2> /dev/null; then
 	fail "successfully sent an email with a bad password"
 fi
 

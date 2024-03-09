@@ -20,7 +20,7 @@ function send_one() {
 		> .logs/stdout 2> .logs/stderr &
 	wait_until_ready 1025
 
-	run_msmtp someone@testserver < content
+	smtpc someone@testserver < content
 	wait_for_file .mail/someone@testserver
 	mail_diff content .mail/someone@testserver
 

@@ -18,7 +18,7 @@ wait_until_ready 1025
 
 cp config/hooks/post-data.good config/hooks/post-data
 
-run_msmtp someone@testserver < content
+smtpc someone@testserver < content
 
 wait_for_file .mail/someone@testserver
 
@@ -51,20 +51,20 @@ check "SPF_PASS=0"
 
 # Check that failures in the script result in failing delivery.
 # Transient failure.
-if run_msmtp blockme@testserver < content 2>/dev/null; then
+if smtpc blockme@testserver < content >.logs/smtpc.log 2>&1; then
 	fail "ERROR: hook did not block email as expected"
 fi
-if ! tail -n 1 .logs/msmtp | grep -q "smtpstatus=451"; then
-	tail -n 1 .logs/msmtp
+if ! grep -q "451 ¡No pasarán!" .logs/smtpc.log; then
+	cat .logs/smtpc.log
 	fail "ERROR: transient hook error not returned correctly"
 fi
 
 # Permanent failure.
-if run_msmtp permanent@testserver < content 2>/dev/null; then
+if smtpc permanent@testserver < content >.logs/smtpc.log 2>&1; then
 	fail "ERROR: hook did not block email as expected"
 fi
-if ! tail -n 1 .logs/msmtp | grep -q "smtpstatus=554"; then
-	tail -n 1 .logs/msmtp
+if ! grep -q "554 Nos hacemos la permanente" .logs/smtpc.log; then
+	cat .logs/smtpc.log
 	fail "ERROR: permanent hook error not returned correctly"
 fi
 
@@ -72,7 +72,7 @@ fi
 for i in config/hooks/post-data.bad*; do
 	cp "$i" config/hooks/post-data
 
-	run_msmtp someone@testserver < content
+	smtpc someone@testserver < content
 	wait_for_file .mail/someone@testserver
 	mail_diff content .mail/someone@testserver
 done

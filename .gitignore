@@ -28,6 +28,7 @@ test/util/generate_cert/generate_cert
 test/util/gocovcat/gocovcat
 test/util/loadgen/loadgen
 test/util/minidns/minidns
+test/util/smtpc/smtpc
 
 # Test binary, generated during coverage tests.
 chasquid.test
