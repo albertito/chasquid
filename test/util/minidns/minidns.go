@@ -290,8 +290,17 @@ func (m *miniDNS) loadZones(f *os.File) {
 			}
 		case "txt":
 			qType = dnsmessage.TypeTXT
+
+			// Cut value in chunks of 255 bytes.
+			chunks := []string{}
+			v := value
+			for len(v) > 254 {
+				chunks = append(chunks, v[:254])
+				v = v[254:]
+			}
+			chunks = append(chunks, v)
 			body = &dnsmessage.TXTResource{
-				TXT: []string{value},
+				TXT: chunks,
 			}
 		default:
 			log.Fatalf("line %d: unknown type %q", lineno, t)

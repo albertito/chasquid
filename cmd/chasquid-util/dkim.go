@@ -82,6 +82,13 @@ func dkimVerify() {
 			})
 	}
 
+	if txt, ok := args["--txt"]; ok {
+		ctx = dkim.WithLookupTXTFunc(ctx,
+			func(ctx context.Context, domain string) ([]string, error) {
+				return []string{txt}, nil
+			})
+	}
+
 	results, err := dkim.VerifyMessage(ctx, string(msg))
 	if err != nil {
 		Fatalf("Error verifying message: %v", err)

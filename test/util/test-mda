@@ -5,7 +5,6 @@ set -e
 mkdir -p ${MDA_DIR}
 
 # TODO: use flock to lock the file, to prevent atomic writes.
-echo "From ${1}" >> ${MDA_DIR}/.tmp-${1}
 cat >> ${MDA_DIR}/.tmp-${1}
 X=$?
 if [ -e ${MDA_DIR}/.tmp-${1} ]; then
