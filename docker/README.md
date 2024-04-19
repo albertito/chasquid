@@ -18,7 +18,7 @@ There are pre-built images at the
 [gitlab registry](https://gitlab.com/albertito/chasquid/container_registry)
 and [dockerhub](https://hub.docker.com/r/albertito/chasquid).
 They are automatically built, and tagged with the corresponding branch name.
-Use the *master* tag for a stable version.
+Use the *main* tag for a stable version.
 
 If, instead, you want to build the image yourself, just run:
 
@@ -32,7 +32,7 @@ $ docker build -t chasquid -f docker/Dockerfile .
 First, pull the image into your target machine:
 
 ```sh
-$ docker pull registry.gitlab.com/albertito/chasquid:master
+$ docker pull registry.gitlab.com/albertito/chasquid:main
 ```
 
 You will need a data volume to store persistent data, outside the image. This
@@ -48,7 +48,7 @@ To add your first user to the image:
 $ docker run \
 	--mount source=chasquid-data,target=/data \
 	-it --entrypoint=/add-user.sh \
-	registry.gitlab.com/albertito/chasquid:master
+	registry.gitlab.com/albertito/chasquid:main
 Email (full user@domain format): pepe@example.com
 Password:
 pepe@example.com added to /data/dovecot/users
@@ -71,7 +71,7 @@ Finally, start the container:
 $ docker run -e AUTO_CERTS=mail.yourdomain.com \
 	--mount source=chasquid-data,target=/data \
 	--network host \
-	registry.gitlab.com/albertito/chasquid:master
+	registry.gitlab.com/albertito/chasquid:main
 ```
 
 

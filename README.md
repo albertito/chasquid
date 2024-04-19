@@ -9,7 +9,7 @@ It is designed mainly for individuals and small groups.
 It's written in [Go](https://golang.org), and distributed under the
 [Apache license 2.0](http://en.wikipedia.org/wiki/Apache_License).
 
-[![Go tests](https://github.com/albertito/chasquid/actions/workflows/gotests.yml/badge.svg?branch=master)](https://github.com/albertito/chasquid/actions)
+[![Go tests](https://github.com/albertito/chasquid/actions/workflows/gotests.yml/badge.svg?branch=main)](https://github.com/albertito/chasquid/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/albertito/chasquid)](https://goreportcard.com/report/github.com/albertito/chasquid)
 [![Coverage](https://coveralls.io/repos/github/albertito/chasquid/badge.svg?branch=next)](https://coveralls.io/github/albertito/chasquid?branch=next)  
 [![Docs](https://img.shields.io/badge/docs-reference-blue.svg)](https://blitiri.com.ar/p/chasquid/)

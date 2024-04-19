@@ -2,10 +2,10 @@ name: "govulncheck"
 
 on:
   push:
-    branches: [ "master", "next" ]
+    branches: [ "main", "next" ]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "master", "next" ]
+    branches: [ "main", "next" ]
   schedule:
     - cron: '29 21 * * 6'
 
