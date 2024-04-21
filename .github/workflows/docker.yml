@@ -77,7 +77,7 @@ jobs:
           docker tag chasquid index.docker.io/${{ secrets.DOCKER_REGISTRY_USER }}/chasquid:$GITHUB_REF_NAME
           docker push index.docker.io/${{ secrets.DOCKER_REGISTRY_USER }}/chasquid:$GITHUB_REF_NAME
       - name: Dockerhub tag latest
-        if: env.HAS_DOCKER && env.GITHUB_REF_NAME == 'main'
+        if: env.HAS_DOCKER && github.ref_name == 'main'
         run: |
           docker tag chasquid index.docker.io/${{ secrets.DOCKER_REGISTRY_USER }}/chasquid:latest
           docker push index.docker.io/${{ secrets.DOCKER_REGISTRY_USER }}/chasquid:latest
@@ -96,7 +96,7 @@ jobs:
           docker tag chasquid registry.gitlab.com/albertito/chasquid:$GITHUB_REF_NAME
           docker push registry.gitlab.com/albertito/chasquid:$GITHUB_REF_NAME
       - name: Gitlab tag latest
-        if: env.HAS_GITLAB && env.GITHUB_REF_NAME == 'main'
+        if: env.HAS_GITLAB && github.ref_name == 'main'
         run: |
           docker tag chasquid registry.gitlab.com/albertito/chasquid:latest
           docker push registry.gitlab.com/albertito/chasquid:latest
