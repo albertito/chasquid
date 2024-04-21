@@ -4,6 +4,16 @@
 This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
+## 1.14.0 (2024-04-21)
+
+- Add built-in [DKIM](dkim.md) signing and verification.
+- Rename `master` branch to `main`. Docker users pulling from the `master`
+  docker label should update the label accordingly. No action is needed if
+  using `latest`.
+- Starting with this release, version numbers will be
+  [SemVer](https://semver.org/)-compatible, to help integration with other
+  software that expects it (e.g. [pkg.go.dev](https://pkg.go.dev/)).
+
 
 ## 1.13 (2023-12-24)
 
