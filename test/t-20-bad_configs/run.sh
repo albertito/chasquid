@@ -24,6 +24,12 @@ do
 	CONFDIR=$i/ generate_certs_for testserver
 done
 
+# Adjust the name of the dkim key file in c-11-bad_dkim_key.
+# `go get` rejects repos that have files with ':', so as a workaround we store
+# a compatible file name in the repo, and copy it before testing.
+cp c-11-bad_dkim_key/domains/testserver/dkim__selector.pem \
+	c-11-bad_dkim_key/domains/testserver/dkim:selector.pem
+
 for i in c-*; do
 	if chasquid --config_dir="$i" > ".chasquid-$i.out" 2>&1; then
 		echo "$i failed; output:"
