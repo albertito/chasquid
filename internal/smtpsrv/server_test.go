@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
+	"blitiri.com.ar/go/chasquid/internal/auth"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/testlib"
@@ -671,8 +672,8 @@ func realMain(m *testing.M) int {
 		udb.AddUser("testuser", "testpasswd")
 		s.aliasesR.AddAliasForTesting(
 			"to@localhost", "testuser@localhost", aliases.EMAIL)
+		s.authr.Register("localhost", auth.WrapNoErrorBackend(udb))
 		s.AddDomain("localhost")
-		s.AddUserDB("localhost", udb)
 
 		s.AddDomain("broken")
 		s.authr.Register("broken", &brokenAuthBE{})

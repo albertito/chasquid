@@ -33,6 +33,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 
 	"golang.org/x/crypto/scrypt"
@@ -59,8 +60,8 @@ func New(fname string) *DB {
 }
 
 // Load the database from the given file.
-// Return the database, and a fatal error if the database could not be
-// loaded.
+// Return the database, and an error if the database could not be loaded. If
+// the file does not exist, that is not considered an error.
 func Load(fname string) (*DB, error) {
 	db := New(fname)
 	err := protoio.ReadTextMessage(fname, db.db)
@@ -70,6 +71,12 @@ func Load(fname string) (*DB, error) {
 	// This simplifies many of our uses, as we can assume the map is not nil.
 	if db.db == nil || db.db.Users == nil {
 		db.db = &ProtoDB{Users: map[string]*Password{}}
+	}
+
+	if os.IsNotExist(err) {
+		// If the file does not exist now, it is not an error, as it might
+		// exist later and we want to be able to read it.
+		err = nil
 	}
 
 	return db, err

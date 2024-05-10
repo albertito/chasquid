@@ -19,7 +19,7 @@ mkdir -p c-04-no_cert_dirs/certs/
 # Generate certs for the tests that need them.
 for i in c-05-no_addrs c-06-bad_maillog c-07-bad_domain_info \
 	c-08-bad_sts_cache c-09-bad_queue_dir c-10-empty_listening_addr \
-	c-11-bad_dkim_key;
+	c-11-bad_dkim_key c-12-bad_users c-13-bad_aliases;
 do
 	CONFDIR=$i/ generate_certs_for testserver
 done
@@ -29,6 +29,10 @@ done
 # a compatible file name in the repo, and copy it before testing.
 cp c-11-bad_dkim_key/domains/testserver/dkim__selector.pem \
 	c-11-bad_dkim_key/domains/testserver/dkim:selector.pem
+
+# For the bad_users and bad_aliases test, make the relevant file unreadable.
+chmod -rw c-12-bad_users/domains/testserver/users
+chmod -rw c-13-bad_aliases/domains/testserver/aliases
 
 for i in c-*; do
 	if chasquid --config_dir="$i" > ".chasquid-$i.out" 2>&1; then
@@ -53,5 +57,9 @@ for i in c-*; do
 		fail "$i: chasquid did not fail as expected"
 	fi
 done
+
+# Give permissions back, to avoid annoying git messages.
+chmod +rw c-12-bad_users/domains/testserver/users
+chmod +rw c-13-bad_aliases/domains/testserver/aliases
 
 success

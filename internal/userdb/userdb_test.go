@@ -293,14 +293,14 @@ func TestReload(t *testing.T) {
 		t.Errorf("expected 2 users, got %d", len(db.db.Users))
 	}
 
-	// Cause an even bigger error loading, check the database is not changed.
-	db.fname = "/does/not/exist"
+	// Delete the file (which is not considered an error).
+	os.Remove(fname)
 	err = db.Reload()
-	if err == nil {
-		t.Errorf("expected error, got nil")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
-	if len(db.db.Users) != 2 {
-		t.Errorf("expected 2 users, got %d", len(db.db.Users))
+	if len(db.db.Users) != 0 {
+		t.Errorf("expected 0 users, got %d", len(db.db.Users))
 	}
 }
 

@@ -4,7 +4,7 @@ c <- Unknown argument "blahrarghar"
 c wait 1
 
 c = ./chasquid-util --configdir=.nonono check-userdb
-c <- Error loading database: open .nonono/domains//users: no such file or directory
+c <- Error: file ".nonono/domains//users" does not exist
 c wait 1
 
 c = ./chasquid-util --configdir=.nonono print-config

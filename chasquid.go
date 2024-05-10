@@ -27,7 +27,6 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/smtpsrv"
 	"blitiri.com.ar/go/chasquid/internal/sts"
-	"blitiri.com.ar/go/chasquid/internal/userdb"
 	"blitiri.com.ar/go/log"
 	"blitiri.com.ar/go/systemd"
 )
@@ -286,18 +285,18 @@ func loadDomain(name, dir string, s *smtpsrv.Server) {
 	log.Infof("  %s", name)
 	s.AddDomain(name)
 
-	udb, err := userdb.Load(dir + "/users")
-	if os.IsNotExist(err) {
-		// No users file present, that's okay.
-	} else if err != nil {
-		log.Errorf("    users file error: %v", err)
-	} else {
-		s.AddUserDB(name, udb)
+	err := s.AddUserDB(name, dir+"/users")
+	if err != nil {
+		// If there is an error loading users, fail hard to make sure this is
+		// noticed and fixed as soon as it happens.
+		log.Fatalf("    users file error: %v", err)
 	}
 
 	err = s.AddAliasesFile(name, dir+"/aliases")
 	if err != nil {
-		log.Errorf("    aliases file error: %v", err)
+		// If there's an error loading aliases, fail hard to make sure this is
+		// noticed and fixed as soon as it happens.
+		log.Fatalf("    aliases file error: %v", err)
 	}
 
 	err = loadDKIM(name, dir, s)

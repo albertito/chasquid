@@ -132,9 +132,13 @@ func (s *Server) AddDomain(d string) {
 	s.aliasesR.AddDomain(d)
 }
 
-// AddUserDB adds a userdb.DB instance as backend for the domain.
-func (s *Server) AddUserDB(domain string, db *userdb.DB) {
-	s.authr.Register(domain, auth.WrapNoErrorBackend(db))
+// AddUserDB adds a userdb file as backend for the domain.
+func (s *Server) AddUserDB(domain, f string) error {
+	// Load the userdb, and register it unconditionally (so reload works even
+	// if there are errors right now).
+	udb, err := userdb.Load(f)
+	s.authr.Register(domain, auth.WrapNoErrorBackend(udb))
+	return err
 }
 
 // AddAliasesFile adds an aliases file for the given domain.

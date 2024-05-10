@@ -149,7 +149,14 @@ func userDBFromArgs(create bool) (string, string, *userdb.DB) {
 
 // chasquid-util check-userdb <domain>
 func checkUserDB() {
-	_, err := userdb.Load(userDBForDomain(""))
+	path := userDBForDomain("")
+	// Check if the file exists. This is because userdb.Load does not consider
+	// it an error.
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		Fatalf("Error: file %q does not exist", path)
+	}
+
+	_, err := userdb.Load(path)
 	if err != nil {
 		Fatalf("Error loading database: %v", err)
 	}

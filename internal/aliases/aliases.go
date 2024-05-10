@@ -345,7 +345,8 @@ func (v *Resolver) AddDomain(domain string) {
 }
 
 // AddAliasesFile to the resolver. The file will be parsed, and an error
-// returned if it does not exist or parse correctly.
+// returned if it does not parse correctly.  Note that the file not existing
+// does NOT result in an error.
 func (v *Resolver) AddAliasesFile(domain, path string) error {
 	// We unconditionally add the domain and file on our list.
 	// Even if the file does not exist now, it may later. This makes it be
