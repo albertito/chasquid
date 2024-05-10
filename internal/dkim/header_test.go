@@ -147,6 +147,18 @@ func TestSignatureFromHeader(t *testing.T) {
 			err:  strconv.ErrSyntax,
 		},
 		{
+			// Invalid t= tag.
+			in:   "v=1; a=rsa-sha256; t=-12345",
+			want: nil,
+			err:  errNegativeTimestamp,
+		},
+		{
+			// Invalid x= tag.
+			in:   "v=1; a=rsa-sha256; x=-1234",
+			want: nil,
+			err:  errNegativeTimestamp,
+		},
+		{
 			// Unknown hash algorithm.
 			in:   "v=1; a=rsa-sxa666",
 			want: nil,

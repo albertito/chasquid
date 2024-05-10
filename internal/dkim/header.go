@@ -144,6 +144,7 @@ var (
 	errUnsupportedHash    = errors.New("unsupported hash")
 	errUnsupportedKeyType = errors.New("unsupported key type")
 	errMissingRequiredTag = errors.New("missing required tag")
+	errNegativeTimestamp  = errors.New("negative timestamp")
 )
 
 // String replacer that removes whitespace.
@@ -257,11 +258,16 @@ func dkimSignatureFromHeader(header string) (*dkimSignature, error) {
 }
 
 func unixStrToTime(s string) (time.Time, error) {
-	ti, err := strconv.ParseUint(s, 10, 64)
+	// Technically the timestamp is an "unsigned decimal integer", but since
+	// time.Unix takes an int64, we use that and check it's positive.
+	ti, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return time.Unix(int64(ti), 0), nil
+	if ti < 0 {
+		return time.Time{}, errNegativeTimestamp
+	}
+	return time.Unix(ti, 0), nil
 }
 
 type keyType string
