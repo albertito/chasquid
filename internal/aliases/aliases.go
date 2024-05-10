@@ -347,7 +347,7 @@ func (v *Resolver) AddDomain(domain string) {
 // AddAliasesFile to the resolver. The file will be parsed, and an error
 // returned if it does not parse correctly.  Note that the file not existing
 // does NOT result in an error.
-func (v *Resolver) AddAliasesFile(domain, path string) error {
+func (v *Resolver) AddAliasesFile(domain, path string) (int, error) {
 	// We unconditionally add the domain and file on our list.
 	// Even if the file does not exist now, it may later. This makes it be
 	// consider when doing Reload.
@@ -360,10 +360,10 @@ func (v *Resolver) AddAliasesFile(domain, path string) error {
 
 	aliases, err := v.parseFile(domain, path)
 	if os.IsNotExist(err) {
-		return nil
+		return 0, nil
 	}
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// Add the aliases to the resolver, overriding any previous values.
@@ -373,7 +373,7 @@ func (v *Resolver) AddAliasesFile(domain, path string) error {
 	}
 	v.mu.Unlock()
 
-	return nil
+	return len(aliases), nil
 }
 
 // AddAliasForTesting adds an alias to the resolver, for testing purposes.

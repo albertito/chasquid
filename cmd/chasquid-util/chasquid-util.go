@@ -156,12 +156,12 @@ func checkUserDB() {
 		Fatalf("Error: file %q does not exist", path)
 	}
 
-	_, err := userdb.Load(path)
+	udb, err := userdb.Load(path)
 	if err != nil {
 		Fatalf("Error loading database: %v", err)
 	}
 
-	fmt.Println("Database loaded")
+	fmt.Printf("Database loaded (%d users)\n", udb.Len())
 }
 
 // chasquid-util user-add <user@domain> [--password=<password>] [--receive_only]

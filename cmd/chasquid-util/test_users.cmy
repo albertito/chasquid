@@ -1,14 +1,23 @@
 # Tests for user management commands.
+# Start with a clean slate by removing the database, which could have been
+# manipulated by previous tests.
+c = rm -f .config/domains/domain/users
+c wait 0
+
 c = ./chasquid-util -C=.config user-add user@domain --password=passwd
 c <- Added user
 c wait 0
 
 c = ./chasquid-util -C=.config check-userdb domain
-c <- Database loaded
+c <- Database loaded (1 users)
 c wait 0
 
 c = ./chasquid-util -C=.config user-add receive@domain --receive_only
 c <- Added user
+c wait 0
+
+c = ./chasquid-util -C=.config check-userdb domain
+c <- Database loaded (2 users)
 c wait 0
 
 c = ./chasquid-util -C=.config user-add xxx@domain \

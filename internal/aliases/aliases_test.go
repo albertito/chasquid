@@ -437,7 +437,7 @@ func TestAddFile(t *testing.T) {
 		defer os.Remove(fname)
 
 		resolver := NewResolver(allUsersExist)
-		err := resolver.AddAliasesFile("dom", fname)
+		_, err := resolver.AddAliasesFile("dom", fname)
 		if err != nil {
 			t.Fatalf("error adding file: %v", err)
 		}
@@ -491,9 +491,13 @@ func TestRichFile(t *testing.T) {
 	resolver := NewResolver(allUsersExist)
 	resolver.DropChars = "."
 	resolver.SuffixSep = "+"
-	err := resolver.AddAliasesFile("dom", fname)
+	n, err := resolver.AddAliasesFile("dom", fname)
 	if err != nil {
 		t.Fatalf("failed to add file: %v", err)
+	}
+
+	if n != 11 {
+		t.Fatalf("expected 11 aliases, got %d", n)
 	}
 
 	cases := Cases{
@@ -539,7 +543,7 @@ func TestManyFiles(t *testing.T) {
 
 	resolver := NewResolver(allUsersExist)
 	for domain, fname := range files {
-		err := resolver.AddAliasesFile(domain, fname)
+		_, err := resolver.AddAliasesFile(domain, fname)
 		if err != nil {
 			t.Fatalf("failed to add file: %v", err)
 		}

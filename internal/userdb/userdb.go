@@ -207,6 +207,13 @@ func (db *DB) Exists(name string) bool {
 	return present
 }
 
+// Len returns the number of users in the database.
+func (db *DB) Len() int {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	return len(db.db.Users)
+}
+
 ///////////////////////////////////////////////////////////
 // Encryption schemes
 //

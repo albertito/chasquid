@@ -282,30 +282,31 @@ func loadCert(name, dir string, s *smtpsrv.Server) {
 
 // Helper to load a single domain configuration into the server.
 func loadDomain(name, dir string, s *smtpsrv.Server) {
-	log.Infof("  %s", name)
 	s.AddDomain(name)
 
-	err := s.AddUserDB(name, dir+"/users")
+	nu, err := s.AddUserDB(name, dir+"/users")
 	if err != nil {
 		// If there is an error loading users, fail hard to make sure this is
 		// noticed and fixed as soon as it happens.
-		log.Fatalf("    users file error: %v", err)
+		log.Fatalf("  %s: users file error: %v", name, err)
 	}
 
-	err = s.AddAliasesFile(name, dir+"/aliases")
+	na, err := s.AddAliasesFile(name, dir+"/aliases")
 	if err != nil {
 		// If there's an error loading aliases, fail hard to make sure this is
 		// noticed and fixed as soon as it happens.
-		log.Fatalf("    aliases file error: %v", err)
+		log.Fatalf("  %s: aliases file error: %v", name, err)
 	}
 
-	err = loadDKIM(name, dir, s)
+	nd, err := loadDKIM(name, dir, s)
 	if err != nil {
 		// DKIM errors are fatal because if the user set DKIM up, then we
 		// don't want it to be failing silently, as that could cause
 		// deliverability issues.
-		log.Fatalf("    DKIM loading error: %v", err)
+		log.Fatalf("  %s: DKIM loading error: %v", name, err)
 	}
+
+	log.Infof("  %s (%d users, %d aliases, %d DKIM keys)", name, nu, na, nd)
 }
 
 func loadDovecot(s *smtpsrv.Server, userdb, client string) {
@@ -318,11 +319,11 @@ func loadDovecot(s *smtpsrv.Server, userdb, client string) {
 	}
 }
 
-func loadDKIM(domain, dir string, s *smtpsrv.Server) error {
+func loadDKIM(domain, dir string, s *smtpsrv.Server) (int, error) {
 	glob := path.Clean(dir + "/dkim:*.pem")
 	pems, err := filepath.Glob(glob)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	for _, pem := range pems {
@@ -332,10 +333,10 @@ func loadDKIM(domain, dir string, s *smtpsrv.Server) error {
 
 		err = s.AddDKIMSigner(domain, selector, pem)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
-	return nil
+	return len(pems), nil
 }
 
 // Read a directory, which must have at least some entries.
