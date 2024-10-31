@@ -1,6 +1,10 @@
 package normalize
 
-import "testing"
+import (
+	"bytes"
+	"strings"
+	"testing"
+)
 
 func TestUser(t *testing.T) {
 	valid := []struct{ user, norm string }{
@@ -134,8 +138,19 @@ func TestToCRLF(t *testing.T) {
 		in, out string
 	}{
 		{"", ""},
+		{"a", "a"},
+
+		// Does not end in newline.
+		{"a\n", "a\r\n"},
 		{"a\nb", "a\r\nb"},
 		{"a\r\nb", "a\r\nb"},
+
+		// Ends in newline.
+		{"a\nb\n", "a\r\nb\r\n"},
+		{"a\r\nb\n", "a\r\nb\r\n"},
+		{"a\r\nb\r\n", "a\r\nb\r\n"},
+		{"a\r\nb\n\n", "a\r\nb\r\n\r\n"},
+		{"a\r\nb\r\n\r\n", "a\r\nb\r\n\r\n"},
 	}
 	for _, c := range cases {
 		got := string(ToCRLF([]byte(c.in)))
@@ -172,4 +187,32 @@ func FuzzDomainToUnicode(f *testing.F) {
 	f.Fuzz(func(t *testing.T, addr string) {
 		DomainToUnicode(addr)
 	})
+}
+
+func BenchmarkToCRLF(b *testing.B) {
+	// Generate a 1000-line message.
+	bb := bytes.Buffer{}
+	for i := 0; i < 1000; i++ {
+		bb.WriteString("this is a very pretty line 🐅\n")
+	}
+	buf := bb.Bytes()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ToCRLF(buf)
+	}
+}
+
+func BenchmarkStringToCRLF(b *testing.B) {
+	// Generate a 1000-line message.
+	sb := strings.Builder{}
+	for i := 0; i < 1000; i++ {
+		sb.WriteString("this is a very pretty line 🐅\n")
+	}
+	s := sb.String()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		StringToCRLF(s)
+	}
 }

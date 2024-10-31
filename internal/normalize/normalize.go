@@ -78,23 +78,63 @@ func DomainToUnicode(addr string) (string, error) {
 // preexisting CRLF, it leaves it be. It assumes that CR is never used on its
 // own.
 func ToCRLF(in []byte) []byte {
-	b := bytes.NewBuffer(nil)
+	b := bytes.Buffer{}
 	b.Grow(len(in))
-	for _, c := range in {
-		switch c {
-		case '\r':
-			// Ignore CR, we'll add it back later. It should never appear
-			// alone in the contexts where this function is used.
-		case '\n':
-			b.Write([]byte("\r\n"))
-		default:
-			b.WriteByte(c)
+
+	// We go line by line, but beware:
+	//   Split("a\nb", "\n") -> ["a", "b"]
+	//   Split("a\nb\n", "\n") -> ["a", "b", ""]
+	// So we handle the last line separately.
+	lines := bytes.Split(in, []byte("\n"))
+	for i, line := range lines {
+		b.Write(line)
+		if i == len(lines)-1 {
+			// Do not add newline to the last line:
+			//  - If the string ends with a newline, we already added it in
+			//    the previous-to-last line, and this line is "".
+			//  - If the string does NOT end with a newline, this preserves
+			//    that property.
+			break
 		}
+		if !bytes.HasSuffix(line, []byte("\r")) {
+			// Missing the CR.
+			b.WriteByte('\r')
+		}
+		b.WriteByte('\n')
 	}
+
 	return b.Bytes()
 }
 
 // StringToCRLF is like ToCRLF, but operates on strings.
 func StringToCRLF(in string) string {
-	return string(ToCRLF([]byte(in)))
+	// We implement it the same way as ToCRLF, but with string versions.
+	// This is significantly faster than converting the string to a byte
+	// slice, calling ToCRLF, and converting it back.
+	b := strings.Builder{}
+	b.Grow(len(in))
+
+	// We go line by line, but beware:
+	//   Split("a\nb", "\n") -> ["a", "b"]
+	//   Split("a\nb\n", "\n") -> ["a", "b", ""]
+	// So we handle the last line separately.
+	lines := strings.Split(in, "\n")
+	for i, line := range lines {
+		b.WriteString(line)
+		if i == len(lines)-1 {
+			// Do not add newline to the last line:
+			//  - If the string ends with a newline, we already added it in
+			//    the previous-to-last line, and this line is "".
+			//  - If the string does NOT end with a newline, this preserves
+			//    that property.
+			break
+		}
+		if !strings.HasSuffix(line, "\r") {
+			// Missing the CR.
+			b.WriteByte('\r')
+		}
+		b.WriteByte('\n')
+	}
+
+	return b.String()
 }
