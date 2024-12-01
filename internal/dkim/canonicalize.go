@@ -8,8 +8,6 @@ import (
 )
 
 var (
-	errNoBody = errors.New("no body found")
-
 	errUnknownCanonicalization = errors.New("unknown canonicalization")
 )
 

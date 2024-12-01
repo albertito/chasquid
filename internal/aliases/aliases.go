@@ -178,11 +178,7 @@ func (v *Resolver) Exists(tr *trace.Trace, addr string) bool {
 
 	domain := envelope.DomainOf(addr)
 	catchAll, _ := v.lookup("*@"+domain, tr)
-	if len(catchAll) > 0 {
-		return true
-	}
-
-	return false
+	return len(catchAll) > 0
 }
 
 func (v *Resolver) lookup(addr string, tr *trace.Trace) ([]Recipient, error) {
