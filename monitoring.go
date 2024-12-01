@@ -226,7 +226,7 @@ func exitHandler(srv *http.Server) http.HandlerFunc {
 	}
 }
 
-func debugFlagsHandler(w http.ResponseWriter, r *http.Request) {
+func debugFlagsHandler(w http.ResponseWriter, _ *http.Request) {
 	visited := make(map[string]bool)
 
 	// Print set flags first, then the rest.
@@ -245,7 +245,7 @@ func debugFlagsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func debugConfigHandler(conf *config.Config) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(prototext.Format(conf)))
 	}
 }
