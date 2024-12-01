@@ -8,7 +8,7 @@ import urllib.request
 import sys
 
 # Where to get the TLS parameters from.
-# See http://www.iana.org/assignments/tls-parameters/tls-parameters.xml.
+# See https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml.
 URL = "https://www.iana.org/assignments/tls-parameters/tls-parameters-4.csv"
 
 
