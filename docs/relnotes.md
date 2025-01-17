@@ -4,6 +4,14 @@
 This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
+
+## 1.15.0 (2025-01-17)
+
+- Exit if there's an error reading users/aliases files on startup.
+- Log how many things were loaded for each domain.
+- Add fail2ban filter configuration example.
+
+
 ## 1.14.0 (2024-04-21)
 
 - Add built-in [DKIM](dkim.md) signing and verification.
