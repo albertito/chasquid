@@ -208,7 +208,7 @@ func dkimKeygen() {
 
 func keyPathFor(domain, selector string) string {
 	return path.Clean(fmt.Sprintf("%s/domains/%s/dkim:%s.pem",
-		configDir, domain, selector))
+		*configDir, domain, selector))
 }
 
 func getDomainFromMsg(msg []byte) string {
@@ -226,7 +226,7 @@ func getDomainFromMsg(msg []byte) string {
 }
 
 func findSelectorForDomain(domain string) string {
-	glob := path.Clean(configDir + "/domains/" + domain + "/dkim:*.pem")
+	glob := path.Clean(*configDir + "/domains/" + domain + "/dkim:*.pem")
 	ms, err := filepath.Glob(glob)
 	if err != nil {
 		Fatalf("Error finding DKIM keys: %v", err)

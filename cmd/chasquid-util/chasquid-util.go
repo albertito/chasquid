@@ -3,6 +3,7 @@
 package main
 
 import (
+	"flag"
 	"bytes"
 	"fmt"
 	"os"
@@ -60,23 +61,18 @@ var args map[string]string
 
 // Globals, loaded from top-level options.
 var (
-	configDir = "/etc/chasquid"
+	configDir = flag.String("config_dir", "/etc/chasquid",
+		"configuration directory")
 )
 
 func main() {
+	flag.Parse()
+
 	args = parseArgs(usage)
 
 	if _, ok := args["--help"]; ok {
 		fmt.Print(usage)
 		return
-	}
-
-	// Load globals.
-	if d, ok := args["--configdir"]; ok {
-		configDir = d
-	}
-	if d, ok := args["-C"]; ok {
-		configDir = d
 	}
 
 	commands := map[string]func(){
@@ -116,7 +112,7 @@ func userDBForDomain(domain string) string {
 	if domain == "" {
 		domain = args["$2"]
 	}
-	return configDir + "/domains/" + domain + "/users"
+	return *configDir + "/domains/" + domain + "/users"
 }
 
 func userDBFromArgs(create bool) (string, string, *userdb.DB) {
@@ -254,7 +250,7 @@ func userRemove() {
 
 // chasquid-util aliases-resolve <address>
 func aliasesResolve() {
-	conf, err := config.Load(configDir+"/chasquid.conf", "")
+	conf, err := config.Load(*configDir+"/chasquid.conf", "")
 	if err != nil {
 		Fatalf("Error loading config: %v", err)
 	}
@@ -282,7 +278,7 @@ func aliasesResolve() {
 
 // chasquid-util print-config
 func printConfig() {
-	conf, err := config.Load(configDir+"/chasquid.conf", "")
+	conf, err := config.Load(*configDir+"/chasquid.conf", "")
 	if err != nil {
 		Fatalf("Error loading config: %v", err)
 	}
@@ -292,7 +288,7 @@ func printConfig() {
 
 // chasquid-util domaininfo-remove <domain>
 func domaininfoRemove() {
-	conf, err := config.Load(configDir+"/chasquid.conf", "")
+	conf, err := config.Load(*configDir+"/chasquid.conf", "")
 	if err != nil {
 		Fatalf("Error loading config: %v", err)
 	}
