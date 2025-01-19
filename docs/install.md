@@ -30,6 +30,20 @@ pacaur -S chasquid
 courtesy of [foxcpp](https://github.com/foxcpp/).
 
 
+### Alpine
+
+If you're using
+[Alpine](https://pkgs.alpinelinux.org/package/edge/testing/x86_64/chasquid)
+(testing repo), chasquid can be installed by running:
+
+```shell
+apk add chasquid
+```
+
+Thanks to [raspbeguy](https://github.com/raspbeguy) for maintaining the Alpine
+package.
+
+
 ### From source
 
 To get, build and install from source, you will need a working

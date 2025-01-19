@@ -24,7 +24,7 @@ It's written in [Go](https://golang.org), and distributed under the
       relay, or clear-text authentication).
     * [Monitoring] HTTP server, with exported variables and tracing to help
       debugging.
-    * Integrated with [Debian], [Ubuntu], and [Arch].
+    * Integrated with [Debian], [Ubuntu], [Arch], and [Alpine].
     * Supports using [Dovecot] for authentication.
 * Useful
     * Multiple/virtual domains, with per-domain users and aliases.
@@ -40,6 +40,7 @@ It's written in [Go](https://golang.org), and distributed under the
 
 
 [Arch]: https://blitiri.com.ar/p/chasquid/install/#arch
+[Alpine]: https://blitiri.com.ar/p/chasquid/install/#alpine
 [DKIM]: https://en.wikipedia.org/wiki/DomainKeys_Identified_Mail
 [Debian]: https://blitiri.com.ar/p/chasquid/install/#debianubuntu
 [Dovecot]: https://blitiri.com.ar/p/chasquid/dovecot/
