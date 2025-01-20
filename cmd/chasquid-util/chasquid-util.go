@@ -4,7 +4,9 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -126,17 +128,20 @@ func userDBFromArgs(create bool) (string, string, *userdb.DB) {
 		Fatalf("Domain missing, username should be of the form 'user@domain'")
 	}
 
-	db, err := userdb.Load(userDBForDomain(domain))
-	if err != nil {
-		if create && os.IsNotExist(err) {
+	if create {
+		dbDir := filepath.Dir(userDBForDomain(domain))
+		if _, err := os.Stat(dbDir); errors.Is(err, fs.ErrNotExist) {
 			fmt.Println("Creating database")
-			err = os.MkdirAll(filepath.Dir(userDBForDomain(domain)), 0755)
+			err = os.MkdirAll(dbDir, 0755)
 			if err != nil {
 				Fatalf("Error creating database dir: %v", err)
 			}
-		} else {
-			Fatalf("Error loading database: %v", err)
 		}
+	}
+
+	db, err := userdb.Load(userDBForDomain(domain))
+	if err != nil {
+		Fatalf("Error loading database: %v", err)
 	}
 
 	user, err = normalize.User(user)

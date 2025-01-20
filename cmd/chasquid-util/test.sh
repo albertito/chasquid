@@ -25,13 +25,15 @@ function check_userdb() {
 
 
 rm -rf .config/
-mkdir -p .config/domains/domain/ .data/domaininfo
+mkdir -p .config/ .data/domaininfo
 echo 'data_dir: ".data"' >> .config/chasquid.conf
 
 if ! r print-config > /dev/null; then
 	fail print-config
 fi
 
+# We intentionally run this when the domain directory doesn't exist, as we
+# want to confirm it creates it.
 if ! r user-add interactive@domain --password=passwd > /dev/null; then
 	fail user-add
 fi
