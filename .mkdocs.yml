@@ -16,6 +16,10 @@ markdown_extensions:
 
 theme: readthedocs
 
+exclude_docs: |
+  man/*.1
+  man/*.5
+
 nav:
 - Home: index.md
 - How-to: howto.md
@@ -35,4 +39,9 @@ nav:
     - tests.md
     - relnotes.md
     - knownissues.md
+    - contributing.md
+
+not_in_nav: |
+  security.md
+  man/*
 
