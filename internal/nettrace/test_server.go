@@ -5,7 +5,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"time"
 
@@ -48,23 +48,23 @@ func RandomEvents(family string) {
 func randomTrace(family string, tr nettrace.Trace) {
 	tr.Printf("this is a random event")
 	tr.Printf("and it has a random delay")
-	delay := time.Duration(rand.Intn(1000)) * time.Millisecond
+	delay := rand.N(1000 * time.Millisecond)
 	tr.Printf("sleeping %v", delay)
 	time.Sleep(delay)
 
-	if rand.Intn(100) < 1 {
+	if rand.IntN(100) < 1 {
 		tr.Printf("this unlucky one is an error")
 		tr.SetError()
 	}
 
-	if rand.Intn(100) < 10 {
+	if rand.IntN(100) < 10 {
 		tr.Printf("this one got super verbose!")
 		for j := 0; j < 100; j++ {
 			tr.Printf("message %d", j)
 		}
 	}
 
-	if rand.Intn(100) < 30 {
+	if rand.IntN(100) < 30 {
 		tr.Printf("this one had a child")
 		c := tr.NewChild(family, "achild")
 		go randomTrace(family, c)
@@ -78,7 +78,7 @@ func RandomLongEvent(family, title string) {
 	tr := nettrace.New(family, title)
 	tr.Printf("this is a random long event")
 	for i := 0; ; i++ {
-		delay := time.Duration(rand.Intn(100)) * time.Millisecond
+		delay := rand.N(100 * time.Millisecond)
 		time.Sleep(delay)
 		tr.Printf("message %d, slept %v", i, delay)
 	}
@@ -90,16 +90,16 @@ func RandomBunny(family, title string) {
 	tr.SetMaxEvents(100)
 	tr.Printf("this is the top 🐇")
 	for i := 0; ; i++ {
-		delay := time.Duration(rand.Intn(100)) * time.Millisecond
+		delay := rand.N(100 * time.Millisecond)
 		time.Sleep(delay)
 		tr.Printf("message %d, slept %v", i, delay)
 
-		if rand.Intn(100) < 40 {
+		if rand.IntN(100) < 40 {
 			c := tr.NewChild(family, fmt.Sprintf("child-%d", i))
 			go randomTrace(family, c)
 		}
 
-		if rand.Intn(100) < 40 {
+		if rand.IntN(100) < 40 {
 			n := nettrace.New(family, fmt.Sprintf("linked-%d", i))
 			go randomTrace(family, n)
 			tr.Link(n, "linking with this guy")
@@ -114,7 +114,7 @@ func randomNested(family string, depth int, parent nettrace.Trace) {
 
 	tr.Printf("I am a spoiled child")
 
-	delay := time.Duration(rand.Intn(100)) * time.Millisecond
+	delay := rand.N(100 * time.Millisecond)
 	time.Sleep(delay)
 	tr.Printf("slept %v", delay)
 
@@ -124,12 +124,12 @@ func randomNested(family string, depth int, parent nettrace.Trace) {
 	}
 
 	// If we make this < 50, then it grows forever.
-	if rand.Intn(100) < 75 {
+	if rand.IntN(100) < 75 {
 		tr.Printf("I sang really well")
 		return
 	}
 
-	max := rand.Intn(5)
+	max := rand.IntN(5)
 	for i := 0; i < max; i++ {
 		tr.Printf("spawning %d", i)
 		go randomNested(family, depth+1, tr)

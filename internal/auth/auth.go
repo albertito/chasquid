@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strings"
 	"time"
 
@@ -76,7 +76,7 @@ func (a *Authenticator) Authenticate(tr *trace.Trace, user, domain, password str
 		delay := a.AuthDuration - elapsed
 		if delay > 0 {
 			maxDelta := int64(float64(delay) * 0.2)
-			delay += time.Duration(rand.Int63n(maxDelta))
+			delay += time.Duration(rand.Int64N(maxDelta))
 			time.Sleep(delay)
 		}
 	}(time.Now())

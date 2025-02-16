@@ -8,7 +8,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"math/rand"
 	"net"
 	"os"
 	"os/signal"
@@ -51,9 +50,6 @@ func main() {
 	}
 
 	log.Infof("chasquid starting (version %s)", version)
-
-	// Seed the PRNG, just to prevent for it to be totally predictable.
-	rand.Seed(time.Now().UnixNano())
 
 	conf, err := config.Load(*configDir+"/chasquid.conf", *configOverrides)
 	if err != nil {

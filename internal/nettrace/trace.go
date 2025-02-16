@@ -5,7 +5,7 @@ package nettrace
 import (
 	"container/ring"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sort"
 	"strconv"
 	"strings"
