@@ -46,8 +46,8 @@ Usage:
     private key.
 
 Options:
-  -C=<path>, --configdir=<path>  Configuration directory
-  -v                             Verbose mode
+  -C=<path>, --config_dir=<path>  Configuration directory
+  -v                              Verbose mode
 `
 
 // Command-line arguments.
@@ -72,11 +72,15 @@ func main() {
 	}
 
 	// Load globals.
-	if d, ok := args["--configdir"]; ok {
+	if d, ok := args["--config_dir"]; ok {
 		configDir = d
 	}
 	if d, ok := args["-C"]; ok {
 		configDir = d
+	}
+	if d, ok := args["--configdir"]; ok {
+		configDir = d
+		Warnf("Option --configdir is deprecated, use --config_dir instead")
 	}
 
 	commands := map[string]func(){
@@ -110,6 +114,11 @@ func main() {
 func Fatalf(s string, arg ...interface{}) {
 	fmt.Fprintf(os.Stderr, s+"\n", arg...)
 	os.Exit(1)
+}
+
+// Warnf prints the given message to stderr, but does not exit the program.
+func Warnf(s string, arg ...interface{}) {
+	fmt.Fprintf(os.Stderr, s+"\n", arg...)
 }
 
 func userDBForDomain(domain string) string {

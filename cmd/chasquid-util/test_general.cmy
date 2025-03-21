@@ -1,5 +1,5 @@
 # --help
-c = ./chasquid-util --configdir=.config --help
+c = ./chasquid-util --config_dir=.config --help
 c <-
 c <- Usage:
 c wait 0
