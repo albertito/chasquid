@@ -60,9 +60,13 @@ security level downgrade. Talks to the running chasquid instance.
 
 Parse and print the configuration in a human-readable way.
 
-=item B<-C> or B<--configdir=<path>>
+=item B<-C> or B<--config_dir=<path>>
 
 Configuration directory.
+
+=item B<--configdir=<path>>
+
+Deprecated alias for B<--config_dir=<path>>.
 
 =back
 

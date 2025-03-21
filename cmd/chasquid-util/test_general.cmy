@@ -1,5 +1,5 @@
 # --help
-c = ./chasquid-util --configdir=.config --help
+c = ./chasquid-util --config_dir=.config --help
 c <-
 c <- Usage:
 c wait 0
@@ -22,3 +22,8 @@ c <~ drop_characters: +"\."
 c <~ mail_log_path: +"<syslog>"
 c wait 0
 
+# Deprecated --configdir.
+c = ./chasquid-util --configdir=.config print-config
+c <- Option --configdir is deprecated, use --config_dir instead
+c <~ hostname: +".*"
+c wait 0
