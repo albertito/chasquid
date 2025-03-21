@@ -56,9 +56,13 @@ chasquid-util is a command-line utility for [chasquid(1)](chasquid.1.md) operati
 
     Parse and print the configuration in a human-readable way.
 
-- **-C** or **--configdir=&lt;path**>
+- **-C** or **--config\_dir=&lt;path**>
 
     Configuration directory.
+
+- **--configdir=&lt;path**>
+
+    Deprecated alias for **--config\_dir=&lt;path**>.
 
 # SEE ALSO
 

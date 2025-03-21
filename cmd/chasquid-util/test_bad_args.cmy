@@ -1,21 +1,21 @@
 # Unknown argument.
-c = ./chasquid-util --configdir=.config blahrarghar
+c = ./chasquid-util --config_dir=.config blahrarghar
 c <- Unknown argument "blahrarghar"
 c wait 1
 
-c = ./chasquid-util --configdir=.nonono check-userdb
+c = ./chasquid-util --config_dir=.nonono check-userdb
 c <- Error: file ".nonono/domains//users" does not exist
 c wait 1
 
-c = ./chasquid-util --configdir=.nonono print-config
+c = ./chasquid-util --config_dir=.nonono print-config
 c <- Error loading config: failed to read config at ".nonono/chasquid.conf": open .nonono/chasquid.conf: no such file or directory
 c wait 1
 
-c = ./chasquid-util --configdir=.nonono aliases-resolve email@addr
+c = ./chasquid-util --config_dir=.nonono aliases-resolve email@addr
 c <- Error loading config: failed to read config at ".nonono/chasquid.conf": open .nonono/chasquid.conf: no such file or directory
 c wait 1
 
-c = ./chasquid-util --configdir=.nonono domaininfo-remove domain
+c = ./chasquid-util --config_dir=.nonono domaininfo-remove domain
 c <- Error loading config: failed to read config at ".nonono/chasquid.conf": open .nonono/chasquid.conf: no such file or directory
 c wait 1
 
