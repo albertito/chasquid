@@ -286,6 +286,16 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 			continue
 		}
 
+		// If the user of the destination is "*", then we replace it with the
+		// original user.
+		// This allows for catch-all aliases that forward using the original
+		// user, like "*: *@otherdomain".
+		if envelope.UserOf(r.Addr) == "*" {
+			newAddr := user + "@" + envelope.DomainOf(r.Addr)
+			tr.Debugf("%d| replacing %q with %q", rcount, r.Addr, newAddr)
+			r.Addr = newAddr
+		}
+
 		ar, err := v.resolve(rcount+1, r.Addr, tr)
 		if err != nil {
 			tr.Debugf("%d| resolve(%q) returned error: %v", rcount, r.Addr, err)

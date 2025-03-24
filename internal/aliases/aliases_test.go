@@ -62,6 +62,10 @@ func allUsersExist(tr *trace.Trace, user, domain string) (bool, error) {
 	return true, nil
 }
 
+func noUsersExist(tr *trace.Trace, user, domain string) (bool, error) {
+	return false, nil
+}
+
 func usersWithXDontExist(tr *trace.Trace, user, domain string) (bool, error) {
 	if strings.HasPrefix(user, "x") {
 		return false, nil
@@ -104,6 +108,8 @@ func TestBasic(t *testing.T) {
 
 func TestCatchAll(t *testing.T) {
 	resolver := NewResolver(usersWithXDontExist)
+	resolver.DropChars = "."
+	resolver.SuffixSep = "+"
 	resolver.AddDomain("dom")
 	resolver.aliases = map[string][]Recipient{
 		"a@dom": {{"a@remote", EMAIL}},
@@ -114,6 +120,8 @@ func TestCatchAll(t *testing.T) {
 
 	cases := Cases{
 		{"a@dom", []Recipient{{"a@remote", EMAIL}}, nil},
+		{"a+z@dom", []Recipient{{"a@remote", EMAIL}}, nil},
+		{"a.@dom", []Recipient{{"a@remote", EMAIL}}, nil},
 		{"b@dom", []Recipient{{"cmd", PIPE}}, nil},
 		{"c@dom", []Recipient{{"cmd", PIPE}}, nil},
 		{"x@dom", []Recipient{{"cmd", PIPE}}, nil},
@@ -130,6 +138,80 @@ func TestCatchAll(t *testing.T) {
 
 		// Do not exist as users, but catch-all saves them.
 		"x@dom", "x1@dom")
+}
+
+func TestRightSideAsterisk(t *testing.T) {
+	resolver := NewResolver(noUsersExist)
+	resolver.DropChars = "."
+	resolver.SuffixSep = "+"
+	resolver.AddDomain("dom1")
+	resolver.AddDomain("dom2")
+	resolver.AddDomain("dom3")
+	resolver.AddDomain("dom4")
+	resolver.AddDomain("dom5")
+	resolver.aliases = map[string][]Recipient{
+		"a@dom1": {{"aaa@remote", EMAIL}},
+
+		// Note this goes to dom2 which is local too, and will be resolved
+		// recursively.
+		"*@dom1": {{"*@dom2", EMAIL}},
+
+		"b@dom2": {{"bbb@remote", EMAIL}},
+		"*@dom2": {{"*@remote", EMAIL}},
+
+		// A right hand asterisk on a specific address isn't very useful, but
+		// it is supported.
+		"z@dom1": {{"*@remote", EMAIL}},
+
+		// Asterisk to asterisk creates an infinite loop.
+		"*@dom3": {{"*@dom3", EMAIL}},
+
+		// A right-side asterisk as part of multiple addresses, some of which
+		// are fixed.
+		"*@dom4": {{"*@remote1", EMAIL}, {"*@remote2", EMAIL},
+			{"fixed@remote3", EMAIL}},
+
+		// A chain of a -> b -> * -> *@remote.
+		// This checks which one is used as the "original" user.
+		"a@dom5": {{"b@dom5", EMAIL}},
+		"*@dom5": {{"*@remote", EMAIL}},
+	}
+
+	cases := Cases{
+		{"a@dom1", []Recipient{{"aaa@remote", EMAIL}}, nil},
+		{"b@dom1", []Recipient{{"bbb@remote", EMAIL}}, nil},
+		{"xyz@dom1", []Recipient{{"xyz@remote", EMAIL}}, nil},
+		{"xyz@dom2", []Recipient{{"xyz@remote", EMAIL}}, nil},
+		{"z@dom1", []Recipient{{"z@remote", EMAIL}}, nil},
+
+		// Check that we match after dropping the characters as needed.
+		// This is not specific to the right side asterisk, but serve to
+		// confirm we're not matching against it by accident.
+		{"a+lala@dom1", []Recipient{{"aaa@remote", EMAIL}}, nil},
+		{"a..@dom1", []Recipient{{"aaa@remote", EMAIL}}, nil},
+
+		// Check we don't remove drop characters or suffixes when doing the
+		// rewrite: we expect to pass addresses as they come if they didn't
+		// match previously.
+		{"xyz+abcd@dom1", []Recipient{{"xyz+abcd@remote", EMAIL}}, nil},
+		{"x.y.z@dom1", []Recipient{{"x.y.z@remote", EMAIL}}, nil},
+
+		// This one should fail because it creates an infinite loop.
+		{"x@dom3", nil, ErrRecursionLimitExceeded},
+
+		// Check the multiple addresses case.
+		{"abc@dom4", []Recipient{
+			{"abc@remote1", EMAIL},
+			{"abc@remote2", EMAIL},
+			{"fixed@remote3", EMAIL},
+		}, nil},
+
+		// Check the chain case: a -> b -> * -> remote.
+		{"a@dom5", []Recipient{{"b@remote", EMAIL}}, nil},
+		{"b@dom5", []Recipient{{"b@remote", EMAIL}}, nil},
+		{"c@dom5", []Recipient{{"c@remote", EMAIL}}, nil},
+	}
+	cases.check(t, resolver)
 }
 
 func TestUserLookupErrors(t *testing.T) {
