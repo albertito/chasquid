@@ -271,8 +271,8 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 			// aliases).
 			// The queue will attempt delivery against this local (but
 			// evidently non-existing) address, and the courier will emit a
-			// clearer failure, re-using the existing codepaths and
-			// simplifying the logic.
+			// clearer failure, reusing the existing codepaths and simplifying
+			// the logic.
 			tr.Debugf("%d| no catch-all, returning %q", rcount, addr)
 			return []Recipient{{addr, EMAIL}}, nil
 		}

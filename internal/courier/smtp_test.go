@@ -58,7 +58,7 @@ func TestSMTP(t *testing.T) {
 	// Put a non-existing host first, so we check that if the first host
 	// doesn't work, we try with the rest.
 	// The host we use is invalid, to avoid having to do an actual network
-	// lookup whick makes the test more hermetic. This is a hack, ideally we
+	// lookup which makes the test more hermetic. This is a hack, ideally we
 	// would be able to override the default resolver, but Go does not
 	// implement that yet.
 	testMX["to"] = []*net.MX{

@@ -13,10 +13,10 @@ func TestString(t *testing.T) {
 	s1.Add("a")
 	s1.Add("b", "ccc")
 
-	expectStrings(s1, []string{"a", "b", "ccc"}, []string{"notin"}, t)
+	expectStrings(s1, []string{"a", "b", "ccc"}, []string{"not-in"}, t)
 
 	s2 := NewString("a", "b", "c")
-	expectStrings(s2, []string{"a", "b", "c"}, []string{"notin"}, t)
+	expectStrings(s2, []string{"a", "b", "c"}, []string{"not-in"}, t)
 
 	// Test that Has works (and not panics) on a nil set.
 	var s3 *String

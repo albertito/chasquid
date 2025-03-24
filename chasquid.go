@@ -280,21 +280,21 @@ func loadCert(name, dir string, s *smtpsrv.Server) {
 func loadDomain(name, dir string, s *smtpsrv.Server) {
 	s.AddDomain(name)
 
-	nu, err := s.AddUserDB(name, dir+"/users")
+	nusers, err := s.AddUserDB(name, dir+"/users")
 	if err != nil {
 		// If there is an error loading users, fail hard to make sure this is
 		// noticed and fixed as soon as it happens.
 		log.Fatalf("  %s: users file error: %v", name, err)
 	}
 
-	na, err := s.AddAliasesFile(name, dir+"/aliases")
+	naliases, err := s.AddAliasesFile(name, dir+"/aliases")
 	if err != nil {
 		// If there's an error loading aliases, fail hard to make sure this is
 		// noticed and fixed as soon as it happens.
 		log.Fatalf("  %s: aliases file error: %v", name, err)
 	}
 
-	nd, err := loadDKIM(name, dir, s)
+	ndkim, err := loadDKIM(name, dir, s)
 	if err != nil {
 		// DKIM errors are fatal because if the user set DKIM up, then we
 		// don't want it to be failing silently, as that could cause
@@ -302,7 +302,8 @@ func loadDomain(name, dir string, s *smtpsrv.Server) {
 		log.Fatalf("  %s: DKIM loading error: %v", name, err)
 	}
 
-	log.Infof("  %s (%d users, %d aliases, %d DKIM keys)", name, nu, na, nd)
+	log.Infof("  %s (%d users, %d aliases, %d DKIM keys)",
+		name, nusers, naliases, ndkim)
 }
 
 func loadDovecot(s *smtpsrv.Server, userdb, client string) {
