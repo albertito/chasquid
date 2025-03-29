@@ -11,6 +11,16 @@ noting backward-incompatible changes or known security issues.
 - Log how many things were loaded for each domain.
 - Add fail2ban filter configuration example.
 
+### 1.15.1 (2025-03-30)
+
+Implement a workaround for a Microsoft bug in TLS session ticket handling,
+that is causing deliverability issues, and they are being too slow at fixing.
+
+See this [chasquid issue](https://github.com/albertito/chasquid/issues/64),
+this [Go issue](https://github.com/golang/go/issues/70232) and this
+[Postfix thread](https://www.mail-archive.com/postfix-users@postfix.org/msg104308.html)
+for more details.
+
 
 ## 1.14.0 (2024-04-21)
 
