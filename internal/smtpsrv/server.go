@@ -94,9 +94,28 @@ func NewServer() *Server {
 	authr := auth.NewAuthenticator()
 	aliasesR := aliases.NewResolver(authr.Exists)
 	return &Server{
-		addrs:          map[SocketMode][]string{},
-		listeners:      map[SocketMode][]net.Listener{},
-		tlsConfig:      &tls.Config{},
+		addrs:     map[SocketMode][]string{},
+		listeners: map[SocketMode][]net.Listener{},
+
+		// Disable session tickets for now, to workaround a Microsoft bug
+		// causing deliverability issues.
+		//
+		// See https://github.com/golang/go/issues/70232 for more details.
+		//
+		// This doesn't impact security, it just makes the re-establishment of
+		// TLS sessions a bit slower, but for a server like chasquid it's not
+		// going to be significant.
+		//
+		// Note this is not a Go-specific problem, and affects other servers
+		// too (like Postfix/OpenSSL). This is a Microsoft problem that they
+		// need to fix. Unfortunately, because they're quite a big provider
+		// and are not very responsive in fixing their problems, we have to do
+		// a workaround here.
+		// TODO: Remove this once Microsoft fixes their servers.
+		tlsConfig: &tls.Config{
+			SessionTicketsDisabled: true,
+		},
+
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
 		localDomains:   &set.String{},
