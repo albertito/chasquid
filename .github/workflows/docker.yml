@@ -57,7 +57,7 @@ jobs:
   public-image:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [integration, coverage]
+    needs: [integration]
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
