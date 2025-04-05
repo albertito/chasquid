@@ -486,16 +486,14 @@ func TestAddFile(t *testing.T) {
 		contents string
 		expected []Recipient
 	}{
-		{"\n", []Recipient{{"a@dom", EMAIL}}},
+		{"", []Recipient{{"a@dom", EMAIL}}},
+		{"\n\n", []Recipient{{"a@dom", EMAIL}}},
 		{" # Comment\n", []Recipient{{"a@dom", EMAIL}}},
-		{":\n", []Recipient{{"a@dom", EMAIL}}},
-		{"a: \n", []Recipient{{"a@dom", EMAIL}}},
-		{"a@dom: b@c \n", []Recipient{{"a@dom", EMAIL}}},
 
 		{"a: b\n", []Recipient{{"b@dom", EMAIL}}},
 		{"a:b\n", []Recipient{{"b@dom", EMAIL}}},
 		{"a : b \n", []Recipient{{"b@dom", EMAIL}}},
-		{"a : b, \n", []Recipient{{"b@dom", EMAIL}}},
+		{"a:b,\n", []Recipient{{"b@dom", EMAIL}}},
 
 		{"a: |cmd\n", []Recipient{{"cmd", PIPE}}},
 		{"a:|cmd\n", []Recipient{{"cmd", PIPE}}},
@@ -505,10 +503,6 @@ func TestAddFile(t *testing.T) {
 
 		{"a: c@d, e@f, g\n",
 			[]Recipient{{"c@d", EMAIL}, {"e@f", EMAIL}, {"g@dom", EMAIL}}},
-
-		// Invalid pipe aliases, should be ignored.
-		{"a:|\n", []Recipient{{"a@dom", EMAIL}}},
-		{"a:| \n", []Recipient{{"a@dom", EMAIL}}},
 	}
 
 	tr := trace.New("test", "TestAddFile")
@@ -521,7 +515,7 @@ func TestAddFile(t *testing.T) {
 		resolver := NewResolver(allUsersExist)
 		_, err := resolver.AddAliasesFile("dom", fname)
 		if err != nil {
-			t.Fatalf("error adding file: %v", err)
+			t.Fatalf("case %q, error adding file: %v", c.contents, err)
 		}
 
 		got, err := resolver.Resolve(tr, "a@dom")
@@ -531,6 +525,35 @@ func TestAddFile(t *testing.T) {
 		}
 		if !reflect.DeepEqual(got, c.expected) {
 			t.Errorf("case %q, got %v, expected %v", c.contents, got, c.expected)
+		}
+	}
+
+	// Error cases.
+	errcases := []struct {
+		contents string
+		expected string
+	}{
+		{":\n", "line 1: missing address or alias"},
+		{"a: \n", "line 1: missing address or alias"},
+		{"a:|\n", "right-side: the pipe alias is missing a command"},
+		{"a:| \n", "right-side: the pipe alias is missing a command"},
+		{"a@dom: b@c \n", "left-side: cannot contain @"},
+		{"a", "line 1: missing ':' in line"},
+		{"a: x y z\n", "disallowed rune encountered"},
+	}
+
+	for _, c := range errcases {
+		fname := mustWriteFile(t, c.contents)
+		defer os.Remove(fname)
+
+		resolver := NewResolver(allUsersExist)
+		_, err := resolver.AddAliasesFile("dom", fname)
+		if err == nil {
+			t.Errorf("case %q, expected error, got nil (aliases: %v)",
+				c.contents, resolver.aliases)
+		} else if !strings.Contains(err.Error(), c.expected) {
+			t.Errorf("case %q, got error %q, expected it to contain %q",
+				c.contents, err.Error(), c.expected)
 		}
 	}
 }
@@ -543,9 +566,6 @@ const richFileContents = `
 a: b
 c: d@e, f,
 x: | command
-
-# The following is invalid, should be ignored.
-a@dom: x@dom
 
 # Overrides.
 o1: a
@@ -651,12 +671,24 @@ func TestManyFiles(t *testing.T) {
 	if err := resolver.Reload(); err != nil {
 		t.Fatalf("failed to reload: %v", err)
 	}
+	check()
 
+	// Make one of the files invalid, then reload. Reload should return an
+	// error, and leave the resolver unchanged.
+	if err := os.WriteFile(files["d1"], []byte("invalid\n"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+	err := resolver.Reload()
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	} else if !strings.Contains(err.Error(), "line 1: missing ':' in line") {
+		t.Fatalf("expected error to contain 'missing :', got %v", err)
+	}
 	check()
 }
 
-func TestHookError(t *testing.T) {
-	tr := trace.New("TestHookError", "test")
+func TestHook(t *testing.T) {
+	tr := trace.New("TestHook", "test")
 	defer tr.Finish()
 
 	resolver := NewResolver(allUsersExist)
@@ -671,12 +703,49 @@ func TestHookError(t *testing.T) {
 		{"a@localA", []Recipient{{"c@d", EMAIL}}, nil},
 	}.check(t, resolver)
 
+	// Test that the empty hook is run correctly.
+	resolver.ResolveHook = "testdata/empty-hook.sh"
+	mustExist(t, resolver, "a@localA")
+	Cases{
+		{"a@localA", []Recipient{{"c@d", EMAIL}}, nil},
+	}.check(t, resolver)
+
+	// Test that a normal hook is run correctly.
+	resolver.ResolveHook = "testdata/normal-hook.sh"
+	mustExist(t, resolver, "a@localA")
+	Cases{
+		{"a@localA", []Recipient{
+			{"c@d", EMAIL}, // From the internal aliases.
+			{"p@q", EMAIL}, // From the hook.
+			{"x@y", EMAIL}, // From the hook.
+		}, nil},
+	}.check(t, resolver)
+
+	// Test that a non-existent hook is ignored.
+	resolver.ResolveHook = "testdata/doesnotexist"
+	mustExist(t, resolver, "a@localA")
+	Cases{
+		{"a@localA", []Recipient{{"c@d", EMAIL}}, nil},
+	}.check(t, resolver)
+
+	// Test a hook that returns an invalid alias.
+	resolver.ResolveHook = "testdata/invalid-hook.sh"
+	mustNotExist(t, resolver, "a@localA")
+
+	rcpts, err := resolver.Resolve(tr, "a@localA")
+	if len(rcpts) != 0 {
+		t.Errorf("expected no recipients, got %v", rcpts)
+	}
+	if !strings.Contains(err.Error(), "the pipe alias is missing a command") {
+		t.Errorf("expected 'the pipe alias is missing a command', got: %v", err)
+	}
+
 	// Now use a resolver that exits with an error.
 	resolver.ResolveHook = "testdata/erroring-hook.sh"
 
 	// Check that the hook is run and the error is propagated.
 	mustNotExist(t, resolver, "a@localA")
-	rcpts, err := resolver.Resolve(tr, "a@localA")
+	rcpts, err = resolver.Resolve(tr, "a@localA")
 	if len(rcpts) != 0 {
 		t.Errorf("expected no recipients, got %v", rcpts)
 	}

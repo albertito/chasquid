@@ -399,7 +399,7 @@ func (v *Resolver) Reload() error {
 				continue
 			}
 			if err != nil {
-				return fmt.Errorf("error parsing %q: %v", path, err)
+				return err
 			}
 
 			// Add the aliases to the resolver, overriding any previous values.
@@ -425,7 +425,7 @@ func (v *Resolver) parseFile(domain, path string) (map[string][]Recipient, error
 
 	aliases, err := v.parseReader(domain, f)
 	if err != nil {
-		return nil, fmt.Errorf("reading %q: %v", path, err)
+		return nil, fmt.Errorf("%q %w", path, err)
 	}
 	return aliases, nil
 }
@@ -436,23 +436,23 @@ func (v *Resolver) parseReader(domain string, r io.Reader) (map[string][]Recipie
 	scanner := bufio.NewScanner(r)
 	for i := 1; scanner.Scan(); i++ {
 		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "#") {
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 
 		sp := strings.SplitN(line, ":", 2)
 		if len(sp) != 2 {
-			continue
+			return nil, newParseError(i, "missing ':' in line")
 		}
 
 		addr, rawalias := strings.TrimSpace(sp[0]), strings.TrimSpace(sp[1])
 		if len(addr) == 0 || len(rawalias) == 0 {
-			continue
+			return nil, newParseError(i, "missing address or alias")
 		}
 
 		if strings.Contains(addr, "@") {
 			// It's invalid for lhs addresses to contain @ (for now).
-			continue
+			return nil, newParseError(i, "left-side: cannot contain @")
 		}
 
 		// We remove DropChars from the address, but leave the suffixes (if
@@ -462,41 +462,53 @@ func (v *Resolver) parseReader(domain string, r io.Reader) (map[string][]Recipie
 		addr = v.RemoveDropCharacters(addr)
 		addr, _ = normalize.Addr(addr)
 
-		rs := parseRHS(rawalias, domain)
+		rs, err := parseRHS(rawalias, domain)
+		if err != nil {
+			return nil, newParseError(i, "right-side: %w", err)
+		}
 		aliases[addr] = rs
 	}
 
 	return aliases, scanner.Err()
 }
 
-func parseRHS(rawalias, domain string) []Recipient {
+func parseRHS(rawalias, domain string) ([]Recipient, error) {
 	if len(rawalias) == 0 {
-		return nil
+		// Explicitly allow empty rawalias strings at this point: the file
+		// parsing will prevent this at the upper level, and when we parse the
+		// RHS for the hook invocation, an empty string is valid.
+		return nil, nil
 	}
 	if rawalias[0] == '|' {
 		cmd := strings.TrimSpace(rawalias[1:])
 		if cmd == "" {
 			// A pipe alias without a command is invalid.
-			return nil
+			return nil, fmt.Errorf("the pipe alias is missing a command")
 		}
-		return []Recipient{{cmd, PIPE}}
+		return []Recipient{{cmd, PIPE}}, nil
 	}
 
 	rs := []Recipient{}
 	for _, a := range strings.Split(rawalias, ",") {
 		a = strings.TrimSpace(a)
 		if a == "" {
+			// Ignore empty aliases. This is out of convenience, so we allow
+			// things like "a: b,".
 			continue
 		}
+
 		// Addresses with no domain get the current one added, so it's
 		// easier to share alias files.
 		if !strings.Contains(a, "@") {
 			a = a + "@" + domain
 		}
-		a, _ = normalize.Addr(a)
+		a, err := normalize.Addr(a)
+		if err != nil {
+			return nil, fmt.Errorf("normalizing address %q: %w", a, err)
+		}
 		rs = append(rs, Recipient{a, EMAIL})
 	}
-	return rs
+	return rs, nil
 }
 
 // removeAllAfter removes everything from s that comes after the separators,
@@ -559,9 +571,30 @@ func (v *Resolver) runResolveHook(tr *trace.Trace, addr string) ([]Recipient, er
 	// Same format as the right hand side of aliases file, see parseRHS.
 	domain := envelope.DomainOf(addr)
 	raw := strings.TrimSpace(out)
-	rs := parseRHS(raw, domain)
+	rs, err := parseRHS(raw, domain)
+	if err != nil {
+		hookResults.Add("resolve:parse_err", 1)
+		tr.Errorf("error parsing hook output: %v", err)
+		return nil, err
+	}
 
 	tr.Debugf("recipients: %v", rs)
 	hookResults.Add("resolve:success", 1)
 	return rs, nil
+}
+
+type parseError struct {
+	line int
+	err  error
+}
+
+func (e *parseError) Error() string {
+	return fmt.Sprintf("line %d: %v", e.line, e.err)
+}
+
+func newParseError(line int, f string, args ...interface{}) error {
+	return &parseError{
+		line: line,
+		err:  fmt.Errorf(f, args...),
+	}
 }
