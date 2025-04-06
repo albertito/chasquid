@@ -83,6 +83,7 @@ var (
 // anyway.
 type Recipient struct {
 	Addr string
+	Via  []string // Used when Type == FORWARD.
 	Type RType
 }
 
@@ -91,8 +92,9 @@ type RType string
 
 // Valid recipient types.
 const (
-	EMAIL RType = "(email)"
-	PIPE  RType = "(pipe)"
+	EMAIL   RType = "(email)"
+	PIPE    RType = "(pipe)"
+	FORWARD RType = "(forward)"
 )
 
 var (
@@ -215,7 +217,7 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 	user, domain := envelope.Split(addr)
 	if _, ok := v.domains[domain]; !ok {
 		tr.Debugf("%d| non-local domain, returning %q", rcount, addr)
-		return []Recipient{{addr, EMAIL}}, nil
+		return []Recipient{{addr, nil, EMAIL}}, nil
 	}
 
 	// First, see if there's an exact match in the database.
@@ -250,7 +252,7 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 		}
 		if ok {
 			tr.Debugf("%d| user exists, returning %q", rcount, addr)
-			return []Recipient{{addr, EMAIL}}, nil
+			return []Recipient{{addr, nil, EMAIL}}, nil
 		}
 
 		catchAll, err := v.lookup("*@"+domain, tr)
@@ -274,14 +276,14 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 			// clearer failure, reusing the existing codepaths and simplifying
 			// the logic.
 			tr.Debugf("%d| no catch-all, returning %q", rcount, addr)
-			return []Recipient{{addr, EMAIL}}, nil
+			return []Recipient{{addr, nil, EMAIL}}, nil
 		}
 	}
 
 	ret := []Recipient{}
 	for _, r := range rcpts {
-		// Only recurse for email recipients.
-		if r.Type != EMAIL {
+		// PIPE recipients get added as-is. No modification, and no recursion.
+		if r.Type == PIPE {
 			ret = append(ret, r)
 			continue
 		}
@@ -294,6 +296,14 @@ func (v *Resolver) resolve(rcount int, addr string, tr *trace.Trace) ([]Recipien
 			newAddr := user + "@" + envelope.DomainOf(r.Addr)
 			tr.Debugf("%d| replacing %q with %q", rcount, r.Addr, newAddr)
 			r.Addr = newAddr
+		}
+
+		// Don't recurse FORWARD recipients, since we explicitly want them to
+		// be sent through the given servers.
+		// Note we do this here and not above so we support the right-side *.
+		if r.Type == FORWARD {
+			ret = append(ret, r)
+			continue
 		}
 
 		ar, err := v.resolve(rcount+1, r.Addr, tr)
@@ -384,8 +394,8 @@ func (v *Resolver) AddAliasesFile(domain, path string) (int, error) {
 
 // AddAliasForTesting adds an alias to the resolver, for testing purposes.
 // Not for use in production code.
-func (v *Resolver) AddAliasForTesting(addr, rcpt string, rType RType) {
-	v.aliases[addr] = append(v.aliases[addr], Recipient{rcpt, rType})
+func (v *Resolver) AddAliasForTesting(addr, rcpt string, via []string, rType RType) {
+	v.aliases[addr] = append(v.aliases[addr], Recipient{rcpt, via, rType})
 }
 
 // Reload aliases files for all known domains.
@@ -473,6 +483,7 @@ func (v *Resolver) parseReader(domain string, r io.Reader) (map[string][]Recipie
 }
 
 func parseRHS(rawalias, domain string) ([]Recipient, error) {
+	var err error
 	if len(rawalias) == 0 {
 		// Explicitly allow empty rawalias strings at this point: the file
 		// parsing will prevent this at the upper level, and when we parse the
@@ -485,7 +496,7 @@ func parseRHS(rawalias, domain string) ([]Recipient, error) {
 			// A pipe alias without a command is invalid.
 			return nil, fmt.Errorf("the pipe alias is missing a command")
 		}
-		return []Recipient{{cmd, PIPE}}, nil
+		return []Recipient{{cmd, nil, PIPE}}, nil
 	}
 
 	rs := []Recipient{}
@@ -497,18 +508,65 @@ func parseRHS(rawalias, domain string) ([]Recipient, error) {
 			continue
 		}
 
-		// Addresses with no domain get the current one added, so it's
-		// easier to share alias files.
-		if !strings.Contains(a, "@") {
-			a = a + "@" + domain
+		r := Recipient{
+			Addr: a,
+			Via:  nil,
+			Type: EMAIL,
 		}
-		a, err := normalize.Addr(a)
+		if strings.Contains(a, " via ") {
+			// It's a FORWARD, so extract the Via part and continue.
+			r.Type = FORWARD
+			r.Addr, r.Via, err = parseForward(a)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// Addresses with no domain get the current one added, so it's
+		// easier to share alias files. Note we also do this for FORWARD
+		// aliases.
+		if !strings.Contains(r.Addr, "@") {
+			r.Addr = r.Addr + "@" + domain
+		}
+
+		r.Addr, err = normalize.Addr(r.Addr)
 		if err != nil {
 			return nil, fmt.Errorf("normalizing address %q: %w", a, err)
 		}
-		rs = append(rs, Recipient{a, EMAIL})
+
+		rs = append(rs, r)
 	}
 	return rs, nil
+}
+
+// Parse a raw FORWARD alias, returning the address and the via part.
+// Expected format is "address via server1/server2/server3".
+func parseForward(rawalias string) (string, []string, error) {
+	// Split the alias into the address and the via part.
+	addr, viaS, found := strings.Cut(rawalias, " via ")
+	if !found {
+		return "", nil, fmt.Errorf("via separator not found")
+	}
+
+	// No need to normalize the address, the caller will do it.
+	// We only trim it, and enforce that there is one.
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return "", nil, fmt.Errorf("forwarding alias is missing the address")
+	}
+
+	// The via part is a list of servers, separated by "/". Split it up.
+	// For now we don't validate the servers, but we may in the future.
+	via := []string{}
+	for _, v := range strings.Split(viaS, "/") {
+		server := strings.TrimSpace(v)
+		if server == "" {
+			return "", nil, fmt.Errorf("empty server in via list")
+		}
+		via = append(via, server)
+	}
+
+	return addr, via, nil
 }
 
 // removeAllAfter removes everything from s that comes after the separators,

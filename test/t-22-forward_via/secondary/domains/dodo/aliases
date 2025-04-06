@@ -1,0 +1,8 @@
+# Part 1 of chain-1 (see run.sh for the full structure).
+chain-1-1: chain-1-2@dodo via primary
+
+# Part 4 chain-1 (see run.sh for the full structure).
+chain-1-4: chain-1-5@dodo via primary
+
+# Forward all email to the primary server.
+*: * via primary

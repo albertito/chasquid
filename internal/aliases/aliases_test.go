@@ -86,11 +86,15 @@ func usersWithXErrorYDontExist(tr *trace.Trace, user, domain string) (bool, erro
 }
 
 func email(addr string) Recipient {
-	return Recipient{addr, EMAIL}
+	return Recipient{addr, nil, EMAIL}
 }
 
 func pipe(addr string) Recipient {
-	return Recipient{addr, PIPE}
+	return Recipient{addr, nil, PIPE}
+}
+
+func forward(addr string, via []string) Recipient {
+	return Recipient{addr, via, FORWARD}
 }
 
 func TestBasic(t *testing.T) {
@@ -101,17 +105,20 @@ func TestBasic(t *testing.T) {
 		"a@localA":   {email("c@d"), email("e@localB")},
 		"e@localB":   {pipe("cmd")},
 		"cmd@localA": {email("x@y")},
+		"x@localA":   {forward("z@localA", []string{"serverX"})},
 	}
 
 	cases := Cases{
 		{"a@localA", []Recipient{email("c@d"), pipe("cmd")}, nil},
 		{"e@localB", []Recipient{pipe("cmd")}, nil},
 		{"x@y", []Recipient{email("x@y")}, nil},
+		{"x@localA", []Recipient{
+			forward("z@localA", []string{"serverX"})}, nil},
 	}
 	cases.check(t, resolver)
 
-	mustExist(t, resolver, "a@localA", "e@localB", "cmd@localA")
-	mustNotExist(t, resolver, "x@y")
+	mustExist(t, resolver, "a@localA", "e@localB", "cmd@localA", "x@localA")
+	mustNotExist(t, resolver, "x@y", "z@localA")
 }
 
 func TestCatchAll(t *testing.T) {
@@ -157,6 +164,7 @@ func TestRightSideAsterisk(t *testing.T) {
 	resolver.AddDomain("dom3")
 	resolver.AddDomain("dom4")
 	resolver.AddDomain("dom5")
+	resolver.AddDomain("dom6")
 	resolver.aliases = map[string][]Recipient{
 		"a@dom1": {email("aaa@remote")},
 
@@ -183,6 +191,10 @@ func TestRightSideAsterisk(t *testing.T) {
 		// This checks which one is used as the "original" user.
 		"a@dom5": {email("b@dom5")},
 		"*@dom5": {email("*@remote")},
+
+		// A forward on the right side.
+		// It forwards to a local domain also check that there's no recursion.
+		"*@dom6": {forward("*@dom1", []string{"server"})},
 	}
 
 	cases := Cases{
@@ -218,6 +230,10 @@ func TestRightSideAsterisk(t *testing.T) {
 		{"a@dom5", []Recipient{email("b@remote")}, nil},
 		{"b@dom5", []Recipient{email("b@remote")}, nil},
 		{"c@dom5", []Recipient{email("c@remote")}, nil},
+
+		// Forwarding case.
+		{"a@dom6", []Recipient{forward("a@dom1", []string{"server"})}, nil},
+		{"b@dom6", []Recipient{forward("b@dom1", []string{"server"})}, nil},
 	}
 	cases.check(t, resolver)
 }
@@ -527,6 +543,11 @@ func TestAddFile(t *testing.T) {
 
 		{"a: c@d, e@f, g\n",
 			[]Recipient{email("c@d"), email("e@f"), email("g@dom")}},
+
+		{"a: b@c, b via sA/sB, d\n", []Recipient{
+			email("b@c"),
+			forward("b@dom", []string{"sA", "sB"}),
+			email("d@dom")}},
 	}
 
 	tr := trace.New("test", "TestAddFile")
@@ -564,6 +585,7 @@ func TestAddFile(t *testing.T) {
 		{"a@dom: b@c \n", "left-side: cannot contain @"},
 		{"a", "line 1: missing ':' in line"},
 		{"a: x y z\n", "disallowed rune encountered"},
+		{"a: f via sA//sB\n", "empty server in via list"},
 	}
 
 	for _, c := range errcases {
@@ -607,6 +629,9 @@ ppp1: p.q+r
 ppp2: p.q
 ppp3: ppp2
 
+# Test some forwarding cases.
+f1: f2 via server1, f3 via server2/server3, c
+
 # Finally one to make the file NOT end in \n:
 y: z`
 
@@ -622,8 +647,8 @@ func TestRichFile(t *testing.T) {
 		t.Fatalf("failed to add file: %v", err)
 	}
 
-	if n != 11 {
-		t.Fatalf("expected 11 aliases, got %d", n)
+	if n != 12 {
+		t.Fatalf("expected 12 aliases, got %d", n)
 	}
 
 	cases := Cases{
@@ -646,6 +671,12 @@ func TestRichFile(t *testing.T) {
 		{"ppp1@dom", []Recipient{email("pd@dom")}, nil},
 		{"ppp2@dom", []Recipient{email("pb@dom")}, nil},
 		{"ppp3@dom", []Recipient{email("pb@dom")}, nil},
+
+		{"f1@dom", []Recipient{
+			forward("f2@dom", []string{"server1"}),
+			forward("f3@dom", []string{"server2", "server3"}),
+			email("d@e"), email("f@dom"),
+		}, nil},
 
 		{"y@dom", []Recipient{email("z@dom")}, nil},
 	}
@@ -776,6 +807,48 @@ func TestHook(t *testing.T) {
 	execErr := &exec.ExitError{}
 	if !errors.As(err, &execErr) {
 		t.Errorf("expected *exec.ExitError, got %T - %v", err, err)
+	}
+}
+
+func TestParseForward(t *testing.T) {
+	cases := []struct {
+		raw  string
+		addr string
+		via  []string
+		err  string
+	}{
+		{"", "", nil, "via separator not found"},
+		{"via", "", nil, "via separator not found"},
+		{"via ", "", nil, "via separator not found"},
+		{" via ", "", nil, "forwarding alias is missing the address"},
+		{" via S1", "", nil, "forwarding alias is missing the address"},
+		{"a via ", "", nil, "empty server in via list"},
+		{"a via S1", "a", []string{"S1"}, ""},
+		{"a via S1/S2", "a", []string{"S1", "S2"}, ""},
+		{"a via  S1 / S2 ", "a", []string{"S1", "S2"}, ""},
+		{"a via S1/S2/", "", nil, "empty server in via list"},
+		{"a via S1/S2/ ", "", nil, "empty server in via list"},
+		{"a via S1//S2", "", nil, "empty server in via list"},
+	}
+	for _, c := range cases {
+		addr, via, err := parseForward(c.raw)
+
+		if err != nil && !strings.Contains(err.Error(), c.err) {
+			t.Errorf("case %q: got error %v, expected to contain %q",
+				c.raw, err, c.err)
+			continue
+		} else if err == nil && c.err != "" {
+			t.Errorf("case %q: got nil error, expected %q", c.raw, c.err)
+			t.Logf("  got addr: %q, via: %q", addr, via)
+			continue
+		}
+
+		if addr != c.addr {
+			t.Errorf("case %q: got addr %q, expected %q", c.raw, addr, c.addr)
+		}
+		if !reflect.DeepEqual(via, c.via) {
+			t.Errorf("case %q: got via %q, expected %q", c.raw, via, c.via)
+		}
 	}
 }
 

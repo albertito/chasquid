@@ -8,4 +8,9 @@ type Courier interface {
 	// Deliver mail to a recipient. Return the error (if any), and whether it
 	// is permanent (true) or transient (false).
 	Deliver(from string, to string, data []byte) (error, bool)
+
+	// Forward mail using the given servers.
+	// Return the error (if any), and whether it is permanent (true) or
+	// transient (false).
+	Forward(from string, to string, data []byte, servers []string) (error, bool)
 }

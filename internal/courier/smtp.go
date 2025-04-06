@@ -63,7 +63,7 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 		to:       to,
 		toDomain: envelope.DomainOf(to),
 		data:     data,
-		tr:       trace.New("Courier.SMTP", to),
+		tr:       trace.New("Courier.SMTP.Deliver", to),
 	}
 	defer a.tr.Finish()
 	a.tr.Debugf("%s  ->  %s", from, to)
@@ -103,6 +103,42 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 
 	// We exhausted all MXs failed to deliver, try again later.
 	return a.tr.Errorf("all MXs returned transient failures (last: %v)", err), false
+}
+
+// Forward an email. On failures, returns an error, and whether or not it is
+// permanent.
+func (s *SMTP) Forward(from string, to string, data []byte, servers []string) (error, bool) {
+	a := &attempt{
+		courier:  s,
+		from:     from,
+		to:       to,
+		toDomain: envelope.DomainOf(to),
+		data:     data,
+		tr:       trace.New("Courier.SMTP.Forward", to),
+	}
+	defer a.tr.Finish()
+	a.tr.Debugf("%s  ->  %s", from, to)
+
+	// smtp.Client.Mail will add the <> for us when the address is empty.
+	if a.from == "<>" {
+		a.from = ""
+	}
+
+	var err error
+	for _, server := range servers {
+		var permanent bool
+		err, permanent = a.deliver(server)
+		if err == nil {
+			return nil, false
+		}
+		if permanent {
+			return err, true
+		}
+		a.tr.Errorf("%q returned transient error: %v", server, err)
+	}
+
+	// We exhausted all servers, try again later.
+	return a.tr.Errorf("all servers returned transient failures (last: %v)", err), false
 }
 
 type attempt struct {

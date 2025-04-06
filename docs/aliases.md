@@ -47,6 +47,7 @@ a tradeoff between flexibility and keeping the file format easy to edit for
 people. User names will be normalized internally to lower-case. UTF-8 is
 allowed and fully supported.
 
+
 ### Pipe aliases
 
 A pipe alias is of the form `user: | command`, and causes mail to be sent as
@@ -63,6 +64,29 @@ user: | /usr/bin/email-handler --work
 
 # Mail to null@ will be piped to "cat", effectively discarding the email.
 null: | cat
+```
+
+### "Via" aliases (experimental)
+
+!!! warning
+
+    This feature is experimental as of chasquid 1.16.0, and subject to change.
+
+An email alias can specify which server(s) to use when delivering that email.
+For example:
+
+```
+pepe: jose via server
+```
+
+In that case, emails sent to `pepe@` will be forwarded to `jose`
+using the `server` (regardless of the MX of the domain).
+
+This can be useful to implement forwarding secondary MX servers, for example
+by combining it with a catch-all alias (described below):
+
+```
+*: * via primary
 ```
 
 ### Catch-all

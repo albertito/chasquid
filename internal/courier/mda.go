@@ -3,6 +3,7 @@ package courier
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -107,4 +108,12 @@ func sanitizeForMDA(s string) string {
 		}
 	}
 	return strings.Map(valid, s)
+}
+
+var errForwardNotSupported = errors.New(
+	"forwarding not supported by the MDA courier")
+
+// Forward is not supported by the MDA courier.
+func (p *MDA) Forward(from string, to string, data []byte, servers []string) (error, bool) {
+	return errForwardNotSupported, true
 }

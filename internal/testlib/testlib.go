@@ -89,6 +89,7 @@ type deliverRequest struct {
 	From string
 	To   string
 	Data []byte
+	Via  []string
 }
 
 // TestCourier never fails, and always remembers everything.
@@ -102,7 +103,17 @@ type TestCourier struct {
 // Deliver the given mail (saving it in tc.Requests).
 func (tc *TestCourier) Deliver(from string, to string, data []byte) (error, bool) {
 	defer tc.wg.Done()
-	dr := &deliverRequest{from, to, data}
+	dr := &deliverRequest{from, to, data, nil}
+	tc.Lock()
+	tc.Requests = append(tc.Requests, dr)
+	tc.ReqFor[to] = dr
+	tc.Unlock()
+	return nil, false
+}
+
+func (tc *TestCourier) Forward(from string, to string, data []byte, servers []string) (error, bool) {
+	defer tc.wg.Done()
+	dr := &deliverRequest{from, to, data, servers}
 	tc.Lock()
 	tc.Requests = append(tc.Requests, dr)
 	tc.ReqFor[to] = dr
@@ -130,6 +141,10 @@ func NewTestCourier() *TestCourier {
 type dumbCourier struct{}
 
 func (c dumbCourier) Deliver(from string, to string, data []byte) (error, bool) {
+	return nil, false
+}
+
+func (c dumbCourier) Forward(from string, to string, data []byte, servers []string) (error, bool) {
 	return nil, false
 }
 

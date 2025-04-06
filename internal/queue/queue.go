@@ -191,6 +191,9 @@ func (q *Queue) Put(tr *trace.Trace, from string, to []string, data []byte) (str
 				r.Type = Recipient_EMAIL
 			case aliases.PIPE:
 				r.Type = Recipient_PIPE
+			case aliases.FORWARD:
+				r.Type = Recipient_FORWARD
+				r.Via = aliasRcpt.Via
 			default:
 				log.Errorf("unknown alias type %v when resolving %q",
 					aliasRcpt.Type, t)
@@ -387,6 +390,21 @@ func (item *Item) deliver(q *Queue, rcpt *Recipient) (err error, permanent bool)
 		return cmd.Run(), true
 	}
 
+	// Recipient type is FORWARD: we always use the remote courier, and pass
+	// the list of servers that was given to us.
+	if rcpt.Type == Recipient_FORWARD {
+		deliverAttempts.Add("forward", 1)
+
+		// When forwarding with an explicit list of servers, we use SRS if
+		// we're sending from a non-local domain (regardless of the
+		// destination).
+		from := item.From
+		if !envelope.DomainIn(item.From, q.localDomains) {
+			from = rewriteSender(item.From, rcpt.OriginalAddress)
+		}
+		return q.remoteC.Forward(from, rcpt.Address, item.Data, rcpt.Via)
+	}
+
 	// Recipient type is EMAIL.
 	if envelope.DomainIn(rcpt.Address, q.localDomains) {
 		deliverAttempts.Add("email:local", 1)
@@ -396,22 +414,30 @@ func (item *Item) deliver(q *Queue, rcpt *Recipient) (err error, permanent bool)
 	deliverAttempts.Add("email:remote", 1)
 	from := item.From
 	if !envelope.DomainIn(item.From, q.localDomains) {
-		// We're sending from a non-local to a non-local. This should
-		// happen only when there's an alias to forward email to a
-		// non-local domain.  In this case, using the original From is
-		// problematic, as we may not be an authorized sender for this.
-		// Some MTAs (like Exim) will do it anyway, others (like
-		// gmail) will construct a special address based on the
-		// original address.  We go with the latter.
-		// Note this assumes "+" is an alias suffix separator.
-		// We use the IDNA version of the domain if possible, because
-		// we can't know if the other side will support SMTPUTF8.
-		from = fmt.Sprintf("%s+fwd_from=%s@%s",
-			envelope.UserOf(rcpt.OriginalAddress),
-			strings.Replace(from, "@", "=", -1),
-			mustIDNAToASCII(envelope.DomainOf(rcpt.OriginalAddress)))
+		// We're sending from a non-local to a non-local, need to do SRS.
+		from = rewriteSender(item.From, rcpt.OriginalAddress)
 	}
 	return q.remoteC.Deliver(from, rcpt.Address, item.Data)
+}
+
+func rewriteSender(from, originalAddr string) string {
+	// Apply a send-only Sender Rewriting Scheme (SRS).
+	// This is used when we are sending from a (potentially) non-local domain,
+	// to a non-local domain.
+	// This should happen only when there's an alias to forward email to a
+	// non-local domain (either a normal "email" alias with a remote
+	// destination, or a "forward" alias with a list of servers).
+	// In this case, using the original From is problematic, as we may not be
+	// an authorized sender for this.
+	// To do this, we use a sender rewriting scheme, similar to what other
+	// MTAs do (e.g. gmail or postfix).
+	// Note this assumes "+" is an alias suffix separator.
+	// We use the IDNA version of the domain if possible, because
+	// we can't know if the other side will support SMTPUTF8.
+	return fmt.Sprintf("%s+fwd_from=%s@%s",
+		envelope.UserOf(originalAddr),
+		strings.Replace(from, "@", "=", -1),
+		mustIDNAToASCII(envelope.DomainOf(originalAddr)))
 }
 
 // countRcpt counts how many recipients are in the given status.

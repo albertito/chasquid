@@ -1,0 +1,27 @@
+Authentication-Results: primary
+	;spf=pass (matched mx)
+	;dkim=pass  header.b=????????????  header.d=dodo
+Received-SPF: pass (matched mx)
+Received: from *
+	by primary (chasquid) with ESMTPS
+	tls TLS_*
+	(over SMTP, TLS-1.3, envelope from "user222@dodo")
+	; *
+Received: from localhost
+	by secondary (chasquid) with ESMTPSA
+	tls TLS_*
+	(over submission+TLS, TLS-1.3, envelope from "user222@dodo")
+	; *
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed;
+	d=dodo; s=sel-secondary-1; t=*
+	h=subject:from:subject:date:to:cc:message-id;
+	bh=*
+	b=*
+	  *
+Subject: Los espejos
+
+Yo que sentí el horror de los espejos
+no sólo ante el cristal impenetrable
+donde acaba y empieza, inhabitable,
+un imposible espacio de reflejos
+
