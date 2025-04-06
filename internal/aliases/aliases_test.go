@@ -85,20 +85,28 @@ func usersWithXErrorYDontExist(tr *trace.Trace, user, domain string) (bool, erro
 	return true, nil
 }
 
+func email(addr string) Recipient {
+	return Recipient{addr, EMAIL}
+}
+
+func pipe(addr string) Recipient {
+	return Recipient{addr, PIPE}
+}
+
 func TestBasic(t *testing.T) {
 	resolver := NewResolver(allUsersExist)
 	resolver.AddDomain("localA")
 	resolver.AddDomain("localB")
 	resolver.aliases = map[string][]Recipient{
-		"a@localA":   {{"c@d", EMAIL}, {"e@localB", EMAIL}},
-		"e@localB":   {{"cmd", PIPE}},
-		"cmd@localA": {{"x@y", EMAIL}},
+		"a@localA":   {email("c@d"), email("e@localB")},
+		"e@localB":   {pipe("cmd")},
+		"cmd@localA": {email("x@y")},
 	}
 
 	cases := Cases{
-		{"a@localA", []Recipient{{"c@d", EMAIL}, {"cmd", PIPE}}, nil},
-		{"e@localB", []Recipient{{"cmd", PIPE}}, nil},
-		{"x@y", []Recipient{{"x@y", EMAIL}}, nil},
+		{"a@localA", []Recipient{email("c@d"), pipe("cmd")}, nil},
+		{"e@localB", []Recipient{pipe("cmd")}, nil},
+		{"x@y", []Recipient{email("x@y")}, nil},
 	}
 	cases.check(t, resolver)
 
@@ -112,23 +120,23 @@ func TestCatchAll(t *testing.T) {
 	resolver.SuffixSep = "+"
 	resolver.AddDomain("dom")
 	resolver.aliases = map[string][]Recipient{
-		"a@dom": {{"a@remote", EMAIL}},
-		"b@dom": {{"c@dom", EMAIL}},
-		"c@dom": {{"cmd", PIPE}},
-		"*@dom": {{"c@dom", EMAIL}},
+		"a@dom": {email("a@remote")},
+		"b@dom": {email("c@dom")},
+		"c@dom": {pipe("cmd")},
+		"*@dom": {email("c@dom")},
 	}
 
 	cases := Cases{
-		{"a@dom", []Recipient{{"a@remote", EMAIL}}, nil},
-		{"a+z@dom", []Recipient{{"a@remote", EMAIL}}, nil},
-		{"a.@dom", []Recipient{{"a@remote", EMAIL}}, nil},
-		{"b@dom", []Recipient{{"cmd", PIPE}}, nil},
-		{"c@dom", []Recipient{{"cmd", PIPE}}, nil},
-		{"x@dom", []Recipient{{"cmd", PIPE}}, nil},
+		{"a@dom", []Recipient{email("a@remote")}, nil},
+		{"a+z@dom", []Recipient{email("a@remote")}, nil},
+		{"a.@dom", []Recipient{email("a@remote")}, nil},
+		{"b@dom", []Recipient{pipe("cmd")}, nil},
+		{"c@dom", []Recipient{pipe("cmd")}, nil},
+		{"x@dom", []Recipient{pipe("cmd")}, nil},
 
 		// Remote should be returned as-is regardless.
-		{"a@remote", []Recipient{{"a@remote", EMAIL}}, nil},
-		{"x@remote", []Recipient{{"x@remote", EMAIL}}, nil},
+		{"a@remote", []Recipient{email("a@remote")}, nil},
+		{"x@remote", []Recipient{email("x@remote")}, nil},
 	}
 	cases.check(t, resolver)
 
@@ -150,66 +158,66 @@ func TestRightSideAsterisk(t *testing.T) {
 	resolver.AddDomain("dom4")
 	resolver.AddDomain("dom5")
 	resolver.aliases = map[string][]Recipient{
-		"a@dom1": {{"aaa@remote", EMAIL}},
+		"a@dom1": {email("aaa@remote")},
 
 		// Note this goes to dom2 which is local too, and will be resolved
 		// recursively.
-		"*@dom1": {{"*@dom2", EMAIL}},
+		"*@dom1": {email("*@dom2")},
 
-		"b@dom2": {{"bbb@remote", EMAIL}},
-		"*@dom2": {{"*@remote", EMAIL}},
+		"b@dom2": {email("bbb@remote")},
+		"*@dom2": {email("*@remote")},
 
 		// A right hand asterisk on a specific address isn't very useful, but
 		// it is supported.
-		"z@dom1": {{"*@remote", EMAIL}},
+		"z@dom1": {email("*@remote")},
 
 		// Asterisk to asterisk creates an infinite loop.
-		"*@dom3": {{"*@dom3", EMAIL}},
+		"*@dom3": {email("*@dom3")},
 
 		// A right-side asterisk as part of multiple addresses, some of which
 		// are fixed.
-		"*@dom4": {{"*@remote1", EMAIL}, {"*@remote2", EMAIL},
-			{"fixed@remote3", EMAIL}},
+		"*@dom4": {email("*@remote1"), email("*@remote2"),
+			email("fixed@remote3")},
 
 		// A chain of a -> b -> * -> *@remote.
 		// This checks which one is used as the "original" user.
-		"a@dom5": {{"b@dom5", EMAIL}},
-		"*@dom5": {{"*@remote", EMAIL}},
+		"a@dom5": {email("b@dom5")},
+		"*@dom5": {email("*@remote")},
 	}
 
 	cases := Cases{
-		{"a@dom1", []Recipient{{"aaa@remote", EMAIL}}, nil},
-		{"b@dom1", []Recipient{{"bbb@remote", EMAIL}}, nil},
-		{"xyz@dom1", []Recipient{{"xyz@remote", EMAIL}}, nil},
-		{"xyz@dom2", []Recipient{{"xyz@remote", EMAIL}}, nil},
-		{"z@dom1", []Recipient{{"z@remote", EMAIL}}, nil},
+		{"a@dom1", []Recipient{email("aaa@remote")}, nil},
+		{"b@dom1", []Recipient{email("bbb@remote")}, nil},
+		{"xyz@dom1", []Recipient{email("xyz@remote")}, nil},
+		{"xyz@dom2", []Recipient{email("xyz@remote")}, nil},
+		{"z@dom1", []Recipient{email("z@remote")}, nil},
 
 		// Check that we match after dropping the characters as needed.
 		// This is not specific to the right side asterisk, but serve to
 		// confirm we're not matching against it by accident.
-		{"a+lala@dom1", []Recipient{{"aaa@remote", EMAIL}}, nil},
-		{"a..@dom1", []Recipient{{"aaa@remote", EMAIL}}, nil},
+		{"a+lala@dom1", []Recipient{email("aaa@remote")}, nil},
+		{"a..@dom1", []Recipient{email("aaa@remote")}, nil},
 
 		// Check we don't remove drop characters or suffixes when doing the
 		// rewrite: we expect to pass addresses as they come if they didn't
 		// match previously.
-		{"xyz+abcd@dom1", []Recipient{{"xyz+abcd@remote", EMAIL}}, nil},
-		{"x.y.z@dom1", []Recipient{{"x.y.z@remote", EMAIL}}, nil},
+		{"xyz+abcd@dom1", []Recipient{email("xyz+abcd@remote")}, nil},
+		{"x.y.z@dom1", []Recipient{email("x.y.z@remote")}, nil},
 
 		// This one should fail because it creates an infinite loop.
 		{"x@dom3", nil, ErrRecursionLimitExceeded},
 
 		// Check the multiple addresses case.
 		{"abc@dom4", []Recipient{
-			{"abc@remote1", EMAIL},
-			{"abc@remote2", EMAIL},
-			{"fixed@remote3", EMAIL},
+			email("abc@remote1"),
+			email("abc@remote2"),
+			email("fixed@remote3"),
 		}, nil},
 
 		// Check the chain case: a -> b -> * -> remote.
-		{"a@dom5", []Recipient{{"b@remote", EMAIL}}, nil},
-		{"b@dom5", []Recipient{{"b@remote", EMAIL}}, nil},
-		{"c@dom5", []Recipient{{"c@remote", EMAIL}}, nil},
+		{"a@dom5", []Recipient{email("b@remote")}, nil},
+		{"b@dom5", []Recipient{email("b@remote")}, nil},
+		{"c@dom5", []Recipient{email("c@remote")}, nil},
 	}
 	cases.check(t, resolver)
 }
@@ -218,15 +226,15 @@ func TestUserLookupErrors(t *testing.T) {
 	resolver := NewResolver(usersWithXErrorYDontExist)
 	resolver.AddDomain("dom")
 	resolver.aliases = map[string][]Recipient{
-		"a@dom": {{"a@remote", EMAIL}},
-		"b@dom": {{"x@dom", EMAIL}},
-		"*@dom": {{"x@dom", EMAIL}},
+		"a@dom": {email("a@remote")},
+		"b@dom": {email("x@dom")},
+		"*@dom": {email("x@dom")},
 	}
 
 	cases := Cases{
-		{"a@dom", []Recipient{{"a@remote", EMAIL}}, nil},
+		{"a@dom", []Recipient{email("a@remote")}, nil},
 		{"b@dom", nil, errUserLookup},
-		{"c@dom", []Recipient{{"c@dom", EMAIL}}, nil},
+		{"c@dom", []Recipient{email("c@dom")}, nil},
 		{"x@dom", nil, errUserLookup},
 
 		// This one goes through the catch-all.
@@ -240,56 +248,56 @@ func TestAddrRewrite(t *testing.T) {
 	resolver.AddDomain("def")
 	resolver.AddDomain("p-q.com")
 	resolver.aliases = map[string][]Recipient{
-		"abc@def":  {{"x@y", EMAIL}},
-		"ñoño@def": {{"x@y", EMAIL}},
-		"recu@def": {{"ab+cd@p-q.com", EMAIL}},
-		"remo@def": {{"x-@y-z.com", EMAIL}},
+		"abc@def":  {email("x@y")},
+		"ñoño@def": {email("x@y")},
+		"recu@def": {email("ab+cd@p-q.com")},
+		"remo@def": {email("x-@y-z.com")},
 
 		// Aliases with a suffix, to make sure we handle them correctly.
 		// Note we don't allow aliases with drop characters, they get
 		// normalized at parsing time.
-		"recu-zzz@def": {{"z@z", EMAIL}},
+		"recu-zzz@def": {email("z@z")},
 	}
 	resolver.DropChars = ".~"
 	resolver.SuffixSep = "-+"
 
 	cases := Cases{
-		{"abc@def", []Recipient{{"x@y", EMAIL}}, nil},
-		{"a.b.c@def", []Recipient{{"x@y", EMAIL}}, nil},
-		{"a~b~c@def", []Recipient{{"x@y", EMAIL}}, nil},
-		{"a.b~c@def", []Recipient{{"x@y", EMAIL}}, nil},
-		{"abc-ñaca@def", []Recipient{{"x@y", EMAIL}}, nil},
-		{"abc-ñaca@def", []Recipient{{"x@y", EMAIL}}, nil},
-		{"abc-xyz@def", []Recipient{{"x@y", EMAIL}}, nil},
-		{"abc+xyz@def", []Recipient{{"x@y", EMAIL}}, nil},
-		{"abc-x.y+z@def", []Recipient{{"x@y", EMAIL}}, nil},
+		{"abc@def", []Recipient{email("x@y")}, nil},
+		{"a.b.c@def", []Recipient{email("x@y")}, nil},
+		{"a~b~c@def", []Recipient{email("x@y")}, nil},
+		{"a.b~c@def", []Recipient{email("x@y")}, nil},
+		{"abc-ñaca@def", []Recipient{email("x@y")}, nil},
+		{"abc-ñaca@def", []Recipient{email("x@y")}, nil},
+		{"abc-xyz@def", []Recipient{email("x@y")}, nil},
+		{"abc+xyz@def", []Recipient{email("x@y")}, nil},
+		{"abc-x.y+z@def", []Recipient{email("x@y")}, nil},
 
-		{"ñ.o~ño-ñaca@def", []Recipient{{"x@y", EMAIL}}, nil},
+		{"ñ.o~ño-ñaca@def", []Recipient{email("x@y")}, nil},
 
 		// Don't mess with the domain, even if it's known.
-		{"a.bc-ñaca@p-q.com", []Recipient{{"abc@p-q.com", EMAIL}}, nil},
+		{"a.bc-ñaca@p-q.com", []Recipient{email("abc@p-q.com")}, nil},
 
 		// Clean the right hand side too (if it's a local domain).
-		{"recu+blah@def", []Recipient{{"ab@p-q.com", EMAIL}}, nil},
+		{"recu+blah@def", []Recipient{email("ab@p-q.com")}, nil},
 
 		// Requests for "recu" and variants, because it has an alias with a
 		// suffix.
-		{"re-cu@def", []Recipient{{"re@def", EMAIL}}, nil},
-		{"re.cu@def", []Recipient{{"ab@p-q.com", EMAIL}}, nil},
-		{"re.cu-zzz@def", []Recipient{{"z@z", EMAIL}}, nil},
+		{"re-cu@def", []Recipient{email("re@def")}, nil},
+		{"re.cu@def", []Recipient{email("ab@p-q.com")}, nil},
+		{"re.cu-zzz@def", []Recipient{email("z@z")}, nil},
 
 		// Check that because we have an alias with a suffix, we do not
 		// accidentally use it for their "clean" versions.
-		{"re@def", []Recipient{{"re@def", EMAIL}}, nil},
-		{"r.e.c.u@def", []Recipient{{"ab@p-q.com", EMAIL}}, nil},
-		{"re.cu-yyy@def", []Recipient{{"ab@p-q.com", EMAIL}}, nil},
+		{"re@def", []Recipient{email("re@def")}, nil},
+		{"r.e.c.u@def", []Recipient{email("ab@p-q.com")}, nil},
+		{"re.cu-yyy@def", []Recipient{email("ab@p-q.com")}, nil},
 
 		// We should not mess with emails for domains we don't know.
-		{"xy@z.com", []Recipient{{"xy@z.com", EMAIL}}, nil},
-		{"x.y@z.com", []Recipient{{"x.y@z.com", EMAIL}}, nil},
-		{"x-@y-z.com", []Recipient{{"x-@y-z.com", EMAIL}}, nil},
-		{"x+blah@y", []Recipient{{"x+blah@y", EMAIL}}, nil},
-		{"remo@def", []Recipient{{"x-@y-z.com", EMAIL}}, nil},
+		{"xy@z.com", []Recipient{email("xy@z.com")}, nil},
+		{"x.y@z.com", []Recipient{email("x.y@z.com")}, nil},
+		{"x-@y-z.com", []Recipient{email("x-@y-z.com")}, nil},
+		{"x+blah@y", []Recipient{email("x+blah@y")}, nil},
+		{"remo@def", []Recipient{email("x-@y-z.com")}, nil},
 	}
 	cases.check(t, resolver)
 }
@@ -299,14 +307,14 @@ func TestExists(t *testing.T) {
 	resolver.AddDomain("def")
 	resolver.AddDomain("p-q.com")
 	resolver.aliases = map[string][]Recipient{
-		"abc@def":  {{"x@y", EMAIL}},
-		"ñoño@def": {{"x@y", EMAIL}},
-		"recu@def": {{"ab+cd@p-q.com", EMAIL}},
+		"abc@def":  {email("x@y")},
+		"ñoño@def": {email("x@y")},
+		"recu@def": {email("ab+cd@p-q.com")},
 
 		// Aliases with a suffix, to make sure we handle them correctly.
 		// Note we don't allow aliases with drop characters, they get
 		// normalized at parsing time.
-		"ex-act@def": {{"x@y", EMAIL}},
+		"ex-act@def": {email("x@y")},
 	}
 	resolver.DropChars = ".~"
 	resolver.SuffixSep = "-+"
@@ -341,9 +349,9 @@ func TestRemoveDropsAndSuffix(t *testing.T) {
 	resolver.AddDomain("def")
 	resolver.AddDomain("p-q.com")
 	resolver.aliases = map[string][]Recipient{
-		"abc@def":  {{"x@y", EMAIL}},
-		"ñoño@def": {{"x@y", EMAIL}},
-		"recu@def": {{"ab+cd@p-q.com", EMAIL}},
+		"abc@def":  {email("x@y")},
+		"ñoño@def": {email("x@y")},
+		"recu@def": {email("ab+cd@p-q.com")},
 	}
 	resolver.DropChars = ".~"
 	resolver.SuffixSep = "-+"
@@ -418,8 +426,8 @@ func TestTooMuchRecursion(t *testing.T) {
 	resolver.AddDomain("b")
 	resolver.AddDomain("d")
 	resolver.aliases = map[string][]Recipient{
-		"a@b": {{"c@d", EMAIL}},
-		"c@d": {{"a@b", EMAIL}},
+		"a@b": {email("c@d")},
+		"c@d": {email("a@b")},
 	}
 
 	tr := trace.New("test", "TestTooMuchRecursion")
@@ -439,16 +447,16 @@ func TestTooMuchRecursionOnCatchAll(t *testing.T) {
 	resolver := NewResolver(usersWithXDontExist)
 	resolver.AddDomain("dom")
 	resolver.aliases = map[string][]Recipient{
-		"a@dom": {{"x@dom", EMAIL}},
-		"*@dom": {{"a@dom", EMAIL}},
+		"a@dom": {email("x@dom")},
+		"*@dom": {email("a@dom")},
 	}
 
 	cases := Cases{
 		// b@dom is local and exists.
-		{"b@dom", []Recipient{{"b@dom", EMAIL}}, nil},
+		{"b@dom", []Recipient{email("b@dom")}, nil},
 
 		// a@remote is remote.
-		{"a@remote", []Recipient{{"a@remote", EMAIL}}, nil},
+		{"a@remote", []Recipient{email("a@remote")}, nil},
 	}
 	cases.check(t, resolver)
 
@@ -486,23 +494,23 @@ func TestAddFile(t *testing.T) {
 		contents string
 		expected []Recipient
 	}{
-		{"", []Recipient{{"a@dom", EMAIL}}},
-		{"\n\n", []Recipient{{"a@dom", EMAIL}}},
-		{" # Comment\n", []Recipient{{"a@dom", EMAIL}}},
+		{"", []Recipient{email("a@dom")}},
+		{"\n\n", []Recipient{email("a@dom")}},
+		{" # Comment\n", []Recipient{email("a@dom")}},
 
-		{"a: b\n", []Recipient{{"b@dom", EMAIL}}},
-		{"a:b\n", []Recipient{{"b@dom", EMAIL}}},
-		{"a : b \n", []Recipient{{"b@dom", EMAIL}}},
-		{"a:b,\n", []Recipient{{"b@dom", EMAIL}}},
+		{"a: b\n", []Recipient{email("b@dom")}},
+		{"a:b\n", []Recipient{email("b@dom")}},
+		{"a : b \n", []Recipient{email("b@dom")}},
+		{"a:b,\n", []Recipient{email("b@dom")}},
 
-		{"a: |cmd\n", []Recipient{{"cmd", PIPE}}},
-		{"a:|cmd\n", []Recipient{{"cmd", PIPE}}},
-		{"a:| cmd \n", []Recipient{{"cmd", PIPE}}},
-		{"a  :| cmd \n", []Recipient{{"cmd", PIPE}}},
-		{"a: | cmd  arg1 arg2\n", []Recipient{{"cmd  arg1 arg2", PIPE}}},
+		{"a: |cmd\n", []Recipient{pipe("cmd")}},
+		{"a:|cmd\n", []Recipient{pipe("cmd")}},
+		{"a:| cmd \n", []Recipient{pipe("cmd")}},
+		{"a  :| cmd \n", []Recipient{pipe("cmd")}},
+		{"a: | cmd  arg1 arg2\n", []Recipient{pipe("cmd  arg1 arg2")}},
 
 		{"a: c@d, e@f, g\n",
-			[]Recipient{{"c@d", EMAIL}, {"e@f", EMAIL}, {"g@dom", EMAIL}}},
+			[]Recipient{email("c@d"), email("e@f"), email("g@dom")}},
 	}
 
 	tr := trace.New("test", "TestAddFile")
@@ -603,27 +611,27 @@ func TestRichFile(t *testing.T) {
 	}
 
 	cases := Cases{
-		{"a@dom", []Recipient{{"b@dom", EMAIL}}, nil},
-		{"c@dom", []Recipient{{"d@e", EMAIL}, {"f@dom", EMAIL}}, nil},
-		{"x@dom", []Recipient{{"command", PIPE}}, nil},
+		{"a@dom", []Recipient{email("b@dom")}, nil},
+		{"c@dom", []Recipient{email("d@e"), email("f@dom")}, nil},
+		{"x@dom", []Recipient{pipe("command")}, nil},
 
-		{"o1@dom", []Recipient{{"b@dom", EMAIL}}, nil},
+		{"o1@dom", []Recipient{email("b@dom")}, nil},
 
-		{"aA@dom", []Recipient{{"bb@dom-b", EMAIL}}, nil},
-		{"aa@dom", []Recipient{{"bb@dom-b", EMAIL}}, nil},
+		{"aA@dom", []Recipient{email("bb@dom-b")}, nil},
+		{"aa@dom", []Recipient{email("bb@dom-b")}, nil},
 
-		{"pq@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
-		{"p.q@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
-		{"p.q+r@dom", []Recipient{{"pd@dom", EMAIL}}, nil},
-		{"pq+r@dom", []Recipient{{"pd@dom", EMAIL}}, nil},
-		{"pq+z@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
-		{"p..q@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
-		{"p..q+r@dom", []Recipient{{"pd@dom", EMAIL}}, nil},
-		{"ppp1@dom", []Recipient{{"pd@dom", EMAIL}}, nil},
-		{"ppp2@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
-		{"ppp3@dom", []Recipient{{"pb@dom", EMAIL}}, nil},
+		{"pq@dom", []Recipient{email("pb@dom")}, nil},
+		{"p.q@dom", []Recipient{email("pb@dom")}, nil},
+		{"p.q+r@dom", []Recipient{email("pd@dom")}, nil},
+		{"pq+r@dom", []Recipient{email("pd@dom")}, nil},
+		{"pq+z@dom", []Recipient{email("pb@dom")}, nil},
+		{"p..q@dom", []Recipient{email("pb@dom")}, nil},
+		{"p..q+r@dom", []Recipient{email("pd@dom")}, nil},
+		{"ppp1@dom", []Recipient{email("pd@dom")}, nil},
+		{"ppp2@dom", []Recipient{email("pb@dom")}, nil},
+		{"ppp3@dom", []Recipient{email("pb@dom")}, nil},
 
-		{"y@dom", []Recipient{{"z@dom", EMAIL}}, nil},
+		{"y@dom", []Recipient{email("z@dom")}, nil},
 	}
 	cases.check(t, resolver)
 }
@@ -653,14 +661,14 @@ func TestManyFiles(t *testing.T) {
 
 	check := func() {
 		cases := Cases{
-			{"a@d1", []Recipient{{"b@d1", EMAIL}}, nil},
-			{"c@d1", []Recipient{{"d@e", EMAIL}}, nil},
-			{"x@d1", []Recipient{{"x@d1", EMAIL}}, nil},
-			{"a@domain2", []Recipient{{"b@domain2", EMAIL}}, nil},
-			{"c@domain2", []Recipient{{"d@e", EMAIL}}, nil},
-			{"x@dom3", []Recipient{{"y@dom3", EMAIL}, {"z@dom3", EMAIL}}, nil},
-			{"a@dom4", []Recipient{{"cmd", PIPE}}, nil},
-			{"a@xd1", []Recipient{{"cmd", PIPE}}, nil},
+			{"a@d1", []Recipient{email("b@d1")}, nil},
+			{"c@d1", []Recipient{email("d@e")}, nil},
+			{"x@d1", []Recipient{email("x@d1")}, nil},
+			{"a@domain2", []Recipient{email("b@domain2")}, nil},
+			{"c@domain2", []Recipient{email("d@e")}, nil},
+			{"x@dom3", []Recipient{email("y@dom3"), email("z@dom3")}, nil},
+			{"a@dom4", []Recipient{pipe("cmd")}, nil},
+			{"a@xd1", []Recipient{pipe("cmd")}, nil},
 		}
 		cases.check(t, resolver)
 	}
@@ -694,20 +702,20 @@ func TestHook(t *testing.T) {
 	resolver := NewResolver(allUsersExist)
 	resolver.AddDomain("localA")
 	resolver.aliases = map[string][]Recipient{
-		"a@localA": {{"c@d", EMAIL}},
+		"a@localA": {email("c@d")},
 	}
 
 	// First check that the test is set up reasonably.
 	mustExist(t, resolver, "a@localA")
 	Cases{
-		{"a@localA", []Recipient{{"c@d", EMAIL}}, nil},
+		{"a@localA", []Recipient{email("c@d")}, nil},
 	}.check(t, resolver)
 
 	// Test that the empty hook is run correctly.
 	resolver.ResolveHook = "testdata/empty-hook.sh"
 	mustExist(t, resolver, "a@localA")
 	Cases{
-		{"a@localA", []Recipient{{"c@d", EMAIL}}, nil},
+		{"a@localA", []Recipient{email("c@d")}, nil},
 	}.check(t, resolver)
 
 	// Test that a normal hook is run correctly.
@@ -715,9 +723,9 @@ func TestHook(t *testing.T) {
 	mustExist(t, resolver, "a@localA")
 	Cases{
 		{"a@localA", []Recipient{
-			{"c@d", EMAIL}, // From the internal aliases.
-			{"p@q", EMAIL}, // From the hook.
-			{"x@y", EMAIL}, // From the hook.
+			email("c@d"), // From the internal aliases.
+			email("p@q"), // From the hook.
+			email("x@y"), // From the hook.
 		}, nil},
 	}.check(t, resolver)
 
@@ -725,7 +733,7 @@ func TestHook(t *testing.T) {
 	resolver.ResolveHook = "testdata/doesnotexist"
 	mustExist(t, resolver, "a@localA")
 	Cases{
-		{"a@localA", []Recipient{{"c@d", EMAIL}}, nil},
+		{"a@localA", []Recipient{email("c@d")}, nil},
 	}.check(t, resolver)
 
 	// Test a hook that returns an invalid alias.
