@@ -57,11 +57,27 @@ def msg_equals(expected, msg):
         if expected[h] == "*":
             continue
 
-        if not flexible_eq(val, msg[h]):
-            print("Header %r differs:" % h)
-            print("Exp: %r" % val)
-            print("Got: %r" % msg[h])
-            diff = True
+        msg_hdr_vals = msg.get_all(h, [])
+        if len(msg_hdr_vals) == 1:
+            if not flexible_eq(val, msg[h]):
+                print("Header %r differs:" % h)
+                print("Exp: %r" % val)
+                print("Got: %r" % msg[h])
+                diff = True
+        else:
+            # We have multiple values for this header, so we need to check each
+            # one, and only return a diff if none of them match.
+            # Note this will result in a false positive if two headers match
+            # the same expected one, but this is good enough for now.
+            for msg_hdr_val in msg_hdr_vals:
+                if flexible_eq(val, msg_hdr_val):
+                    break
+            else:
+                print("Header %r differs, no matching header found" % h)
+                print("Exp: %r" % val)
+                for i, msg_hdr_val in enumerate(msg_hdr_vals):
+                    print("Got %d: %r" % (i, msg_hdr_val))
+                diff = True
 
     if diff:
         return False

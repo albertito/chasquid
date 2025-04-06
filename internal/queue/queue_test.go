@@ -127,28 +127,52 @@ func TestAliases(t *testing.T) {
 	defer tr.Finish()
 
 	q.aliases.AddDomain("loco")
-	q.aliases.AddAliasForTesting("ab@loco", "pq@loco", aliases.EMAIL)
-	q.aliases.AddAliasForTesting("ab@loco", "rs@loco", aliases.EMAIL)
-	q.aliases.AddAliasForTesting("cd@loco", "ata@hualpa", aliases.EMAIL)
+	q.aliases.AddAliasForTesting("ab@loco", "pq@loco", nil, aliases.EMAIL)
+	q.aliases.AddAliasForTesting("ab@loco", "rs@loco", nil, aliases.EMAIL)
+	q.aliases.AddAliasForTesting("cd@loco", "ata@hualpa", nil, aliases.EMAIL)
+	q.aliases.AddAliasForTesting(
+		"fwd@loco", "fwd@loco", []string{"server"}, aliases.FORWARD)
+	q.aliases.AddAliasForTesting(
+		"remote@loco", "remote@rana", []string{"server"}, aliases.FORWARD)
 	// Note the pipe aliases are tested below, as they don't use the couriers
 	// and it can be quite inconvenient to test them in this way.
 
 	localC.Expect(2)
-	remoteC.Expect(1)
-	_, err := q.Put(tr, "from", []string{"ab@loco", "cd@loco"}, []byte("data"))
+	remoteC.Expect(3)
+
+	// One email from a local domain: from@loco -> ab@loco, cd@loco, fwd@loco.
+	_, err := q.Put(tr, "from@loco",
+		[]string{"ab@loco", "cd@loco", "fwd@loco"},
+		[]byte("data"))
 	if err != nil {
 		t.Fatalf("Put: %v", err)
 	}
+
+	// And another from a remote domain: from@rana -> remote@loco
+	_, err = q.Put(tr, "from@rana",
+		[]string{"remote@loco"},
+		[]byte("data"))
+	if err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+
 	localC.Wait()
 	remoteC.Wait()
 
 	cases := []struct {
-		courier    *testlib.TestCourier
-		expectedTo string
+		courier      *testlib.TestCourier
+		expectedFrom string
+		expectedTo   string
 	}{
-		{localC, "pq@loco"},
-		{localC, "rs@loco"},
-		{remoteC, "ata@hualpa"},
+		// From the local domain: from@loco
+		{localC, "from@loco", "pq@loco"},
+		{localC, "from@loco", "rs@loco"},
+		{remoteC, "from@loco", "ata@hualpa"},
+		{remoteC, "from@loco", "fwd@loco"},
+
+		// From the remote domain: from@rana.
+		// Note the SRS in the remoteC.
+		{remoteC, "remote+fwd_from=from=rana@loco", "remote@rana"},
 	}
 	for _, c := range cases {
 		req := c.courier.ReqFor[c.expectedTo]
@@ -157,9 +181,9 @@ func TestAliases(t *testing.T) {
 			continue
 		}
 
-		if req.From != "from" || req.To != c.expectedTo ||
+		if req.From != c.expectedFrom || req.To != c.expectedTo ||
 			!bytes.Equal(req.Data, []byte("data")) {
-			t.Errorf("wrong request for %q: %v", c.expectedTo, req)
+			t.Errorf("wrong request for %q: %v", c.expectedTo, *req)
 		}
 	}
 }

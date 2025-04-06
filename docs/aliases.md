@@ -86,6 +86,38 @@ pepe: jose
 
     This is experimental as of chasquid 1.16.0, and subject to change.
 
+### "Via" aliases (experimental)
+
+!!! warning
+
+    This feature is experimental as of chasquid 1.16.0, and subject to change.
+
+A "via" alias is like an email alias, but it explicitly specifies which
+server(s) to use when delivering that email. The servers are used to attempt
+delivery in the given order.
+
+This can be useful in scenarios such as secondary MX servers that forward all
+email to the primary server, or send-only servers.
+
+The syntax is `user: address via server1[/server2/...]`.
+
+Examples:
+
+```
+# Emails sent to pepe@domain will be forwarded to jose@domain using
+# mail.example.com (instead of the MX records of the domain).
+pepe: jose via mail1.example.com
+
+# Same as above, but with multiple servers. They will be tried in order.
+flowers: lilly@pond via mail1.pond/mail2.pond
+
+# Forward all email (that does not match other users or aliases) using
+# mail1.example.com.
+# This is a typical setup for a secondary MX server that forwards email to
+# the primary.
+*: * via mail1.example.com
+```
+
 
 ### Overrides
 

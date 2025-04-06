@@ -123,3 +123,15 @@ func TestSanitize(t *testing.T) {
 		}
 	}
 }
+
+func TestForward(t *testing.T) {
+	p := MDA{"thisdoesnotexist", nil, 1 * time.Minute}
+	err, permanent := p.Forward(
+		"from", "to", []byte("data"), []string{"server"})
+	if err != errForwardNotSupported {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if !permanent {
+		t.Errorf("expected permanent, got transient")
+	}
+}

@@ -1,0 +1,15 @@
+primary    A     127.0.0.10
+secondary  A     127.0.0.11
+external   A     127.0.0.20
+
+dodo       MX 10 primary
+dodo       MX 20 secondary
+
+# We need to use mx/8 because the source address will usually be 127.0.0.1,
+# not 127.0.0.10 or 127.0.0.11.
+# TODO: Once we support specifying a sender IP address, we should use that
+# and remove the /8.
+dodo       TXT v=spf1 mx/8 -all
+
+kiwi       MX 10 external
+kiwi       TXT v=spf1 mx/8 -all

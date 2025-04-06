@@ -671,7 +671,7 @@ func realMain(m *testing.M) int {
 		udb := userdb.New("/dev/null")
 		udb.AddUser("testuser", "testpasswd")
 		s.aliasesR.AddAliasForTesting(
-			"to@localhost", "testuser@localhost", aliases.EMAIL)
+			"to@localhost", "testuser@localhost", nil, aliases.EMAIL)
 		s.authr.Register("localhost", auth.WrapNoErrorBackend(udb))
 		s.AddDomain("localhost")
 
