@@ -366,6 +366,22 @@ func TestRemoveDropsAndSuffix(t *testing.T) {
 		{"a.bc+blah@def", "abc@def"},
 		{"x.yz@def", "xyz@def"},
 		{"x.yz@d.ef", "xyz@d.ef"},
+
+		// Cases with tricky mixes of suffix separators, to make sure we
+		// handle them correctly.
+		{"ab-xy@def", "ab@def"},  // Normal.
+		{"ab-+xy@def", "ab@def"}, // The two together, in different order.
+		{"ab+-xy@def", "ab@def"},
+		{"ab-@def", "ab@def"}, // Ending in a separator.
+		{"ab+@def", "ab@def"},
+		{"ab-+@def", "ab@def"},
+		{"ab-xy-z@def", "ab@def"}, // Multiple in different places.
+		{"ab+xy-z@def", "ab@def"},
+		{"ab-xy+z@def", "ab@def"},
+		{"ab--xy@def", "ab@def"}, // Repeated separators.
+		{"ab++xy@def", "ab@def"},
+		{"ab+-xy@def", "ab@def"},
+		{"ab-+xy@def", "ab@def"},
 	}
 	for _, c := range cases {
 		addr := resolver.RemoveDropsAndSuffix(c.addr)
