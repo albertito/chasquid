@@ -10,7 +10,7 @@
 // For example:
 //
 //	blah A  1.2.3.4
-//	blah MX mx1
+//	blah MX 10 mx1
 //
 // Supported types: A, AAAA, MX, TXT.
 //
@@ -26,6 +26,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -280,13 +281,23 @@ func (m *miniDNS) loadZones(f *os.File) {
 			body = aaaa
 		case "mx":
 			qType = dnsmessage.TypeMX
-			if !strings.HasPrefix(value, ".") {
+			if !strings.HasSuffix(value, ".") {
 				value += "."
 			}
 
+			// MX records value are in the form of "<preference> <host>".
+			prefS, host, ok := strings.Cut(value, " ")
+			if !ok {
+				log.Fatalf("line %d: invalid MX value %q", lineno, value)
+			}
+			pref, err := strconv.ParseUint(prefS, 10, 16)
+			if err != nil {
+				log.Fatalf("line %d: invalid MX preference %q", lineno, prefS)
+			}
+
 			body = &dnsmessage.MXResource{
-				Pref: 10,
-				MX:   dnsmessage.MustNewName(value),
+				Pref: uint16(pref),
+				MX:   dnsmessage.MustNewName(host),
 			}
 		case "txt":
 			qType = dnsmessage.TypeTXT
