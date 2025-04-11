@@ -21,15 +21,15 @@ import time
 
 # Command-line flags.
 ap = argparse.ArgumentParser()
-ap.add_argument("script", type=argparse.FileType('r', encoding='utf8'))
+ap.add_argument("script", type=argparse.FileType("r", encoding="utf8"))
 args = ap.parse_args()
 
 # Make sure stdout is open in utf8 mode, as we will print our input, which is
 # utf8, and want it to work regardless of the environment.
-sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
+sys.stdout = open(sys.stdout.fileno(), mode="w", encoding="utf8", buffering=1)
 
 
-class Process (object):
+class Process(object):
     def __init__(self, cmd, **kwargs):
         self.cmd = subprocess.Popen(cmd, **kwargs)
 
@@ -45,13 +45,15 @@ class Process (object):
     def close(self):
         return self.cmd.stdin.close()
 
-class Sock (object):
+
+class Sock(object):
     """A (generic) socket.
 
     This class implements the common code for socket support.
     Subclasses will implement the behaviour specific to different socket
     types.
     """
+
     def __init__(self, addr):
         self.addr = addr
         self.sock = NotImplemented
@@ -84,7 +86,8 @@ class Sock (object):
         self.connw.close()
         self.sock.close()
 
-class UnixSock (Sock):
+
+class UnixSock(Sock):
     def __init__(self, addr):
         Sock.__init__(self, addr)
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -95,7 +98,7 @@ class UnixSock (Sock):
         Sock.listen(self)
 
 
-class TCPSock (Sock):
+class TCPSock(Sock):
     def __init__(self, addr):
         host, port = addr.rsplit(":", 1)
         Sock.__init__(self, (host, int(port)))
@@ -108,7 +111,7 @@ class TCPSock (Sock):
         self.has_conn.set()
 
 
-class TLSSock (Sock):
+class TLSSock(Sock):
     def __init__(self, addr):
         host, port = addr.rsplit(":", 1)
         Sock.__init__(self, (host, int(port)))
@@ -125,8 +128,9 @@ class TLSSock (Sock):
         self.has_conn.set()
 
 
-class Interpreter (object):
+class Interpreter(object):
     """Interpreter for chamuyero scripts."""
+
     def __init__(self):
         # Processes and sockets we have spawn. Indexed by the id provided by
         # the user.
@@ -176,9 +180,14 @@ class Interpreter (object):
 
             # =   Launch a process.
             if op == "=":
-                cmd = Process(params, shell=True, universal_newlines=True,
-                        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT)
+                cmd = Process(
+                    params,
+                    shell=True,
+                    universal_newlines=True,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
                 self.procs[proc] = cmd
 
             # |=   Launch a process, do not capture stdout.
@@ -224,16 +233,20 @@ class Interpreter (object):
             elif op == "<-":
                 read = self.procs[proc].readline()
                 if read != params + "\n":
-                    self.runtime_error("data different that expected:\n"
-                            + "  expected: %s\n" % repr(params)
-                            + "       got: %s" % repr(read))
+                    self.runtime_error(
+                        "data different that expected:\n"
+                        + "  expected: %s\n" % repr(params)
+                        + "       got: %s" % repr(read)
+                    )
             elif op == "<~":
                 read = self.procs[proc].readline()
                 m = re.match(params, read)
                 if m is None:
-                    self.runtime_error("data did not match regexp:\n"
-                            + "  regexp: %s\n" % repr(params)
-                            + "     got: %s" % repr(read))
+                    self.runtime_error(
+                        "data did not match regexp:\n"
+                        + "  regexp: %s\n" % repr(params)
+                        + "     got: %s" % repr(read)
+                    )
             elif op == "<...":
                 while True:
                     read = self.procs[proc].readline()
@@ -249,8 +262,10 @@ class Interpreter (object):
             elif op == "wait":
                 retcode = self.procs[proc].wait()
                 if params and retcode != int(params):
-                    self.runtime_error("return code did not match:\n"
-                            + "  expected %s, got %d" % (params, retcode))
+                    self.runtime_error(
+                        "return code did not match:\n"
+                        + "  expected %s, got %d" % (params, retcode)
+                    )
 
             # close  Close the process.
             elif op == "close":
