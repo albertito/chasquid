@@ -158,8 +158,6 @@ overridden using the \f(CW\*(C`dovecot_userdb_path\*(C'\fR and \f(CW\*(C`dovecot
 needed.
 .IP "\fBhaproxy_incoming\fR (bool):" 8
 .IX Item "haproxy_incoming (bool):"
-\&\fBEXPERIMENTAL\fR, might change in backwards-incompatible ways.
-.Sp
 If true, expect incoming SMTP connections to use the HAProxy protocol.
 This allows deploying chasquid behind a HAProxy server, as the address
 information is preserved, and SPF checks can be performed properly.

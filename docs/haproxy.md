@@ -4,9 +4,6 @@
 As of version 1.6, [chasquid] supports being deployed behind a [HAProxy]
 instance.
 
-**This is EXPERIMENTAL for now, and can change in backwards-incompatible
-ways.**
-
 
 ## Configuring HAProxy
 
