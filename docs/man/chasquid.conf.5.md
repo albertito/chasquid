@@ -111,8 +111,6 @@ Some values might be repeated, for example the listening addresses.
 
 - **haproxy\_incoming** (bool):
 
-    **EXPERIMENTAL**, might change in backwards-incompatible ways.
-
     If true, expect incoming SMTP connections to use the HAProxy protocol.
     This allows deploying chasquid behind a HAProxy server, as the address
     information is preserved, and SPF checks can be performed properly.
