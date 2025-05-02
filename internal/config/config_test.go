@@ -58,6 +58,7 @@ func TestFullConfig(t *testing.T) {
 		monitoring_address: ":1111"
 		max_data_size_mb: 26
 		suffix_separators: ""
+		max_queue_items: 345
 	`
 
 	tmpDir, path := mustCreateConfig(t, confStr)
@@ -68,6 +69,7 @@ func TestFullConfig(t *testing.T) {
 		submission_address: ":999"
 		dovecot_auth: true
 		drop_characters: ""
+		give_up_send_after: "7h"
 	`
 
 	expected := &Config{
@@ -90,6 +92,9 @@ func TestFullConfig(t *testing.T) {
 		MailLogPath: "<syslog>",
 
 		DovecotAuth: true,
+
+		MaxQueueItems:   345,
+		GiveUpSendAfter: "7h",
 	}
 
 	c, err := Load(path, overrideStr)
@@ -129,6 +134,17 @@ func TestBrokenOverride(t *testing.T) {
 	defer testlib.RemoveIfOk(t, tmpDir)
 
 	c, err := Load(path, "broken override")
+	if err == nil {
+		t.Fatalf("loaded an invalid config: %v", c)
+	}
+}
+
+func TestInvalidGiveUpSendingAfter(t *testing.T) {
+	tmpDir, path := mustCreateConfig(
+		t, `give_up_send_after: "10"`)
+	defer testlib.RemoveIfOk(t, tmpDir)
+
+	c, err := Load(path, "")
 	if err == nil {
 		t.Fatalf("loaded an invalid config: %v", c)
 	}

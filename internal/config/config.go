@@ -7,6 +7,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"blitiri.com.ar/go/log"
 
@@ -30,6 +31,9 @@ var defaultConfig = &Config{
 	DropCharacters:   proto.String("."),
 
 	MailLogPath: "<syslog>",
+
+	MaxQueueItems:   200,
+	GiveUpSendAfter: "20h",
 }
 
 // Load the config from the given file, with the given overrides.
@@ -65,6 +69,12 @@ func Load(path, overrides string) (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("could not get hostname: %v", err)
 		}
+	}
+
+	// Validate the GiveUpSendAfter value.
+	if _, err := time.ParseDuration(c.GiveUpSendAfter); err != nil {
+		return nil, fmt.Errorf(
+			"invalid give_up_send_after value %q: %v", c.GiveUpSendAfter, err)
 	}
 
 	return c, nil
@@ -126,6 +136,13 @@ func override(c, o *Config) {
 	if o.HaproxyIncoming {
 		c.HaproxyIncoming = true
 	}
+
+	if o.MaxQueueItems > 0 {
+		c.MaxQueueItems = o.MaxQueueItems
+	}
+	if o.GiveUpSendAfter != "" {
+		c.GiveUpSendAfter = o.GiveUpSendAfter
+	}
 }
 
 // LogConfig logs the given configuration, in a human-friendly way.
@@ -153,4 +170,13 @@ func LogConfig(c *Config) {
 	log.Infof("  Dovecot auth: %v (%q, %q)",
 		c.DovecotAuth, c.DovecotUserdbPath, c.DovecotClientPath)
 	log.Infof("  HAProxy incoming: %v", c.HaproxyIncoming)
+	log.Infof("  Max queue items: %d", c.MaxQueueItems)
+	log.Infof("  Give up send after: %s", c.GiveUpSendAfterDuration())
+}
+
+func (c *Config) GiveUpSendAfterDuration() time.Duration {
+	// We validate the string value at config load time, so we know it is well
+	// formed.
+	d, _ := time.ParseDuration(c.GiveUpSendAfter)
+	return d
 }

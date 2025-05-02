@@ -33,12 +33,6 @@ import (
 )
 
 const (
-	// Maximum size of the queue; we reject emails when we hit this.
-	maxQueueSize = 200
-
-	// Give up sending attempts after this duration.
-	giveUpAfter = 20 * time.Hour
-
 	// Prefix for item file names.
 	// This is for convenience, versioning, and to be able to tell them apart
 	// temporary files and other cruft.
@@ -83,12 +77,6 @@ func init() {
 
 // Queue that keeps mail waiting for delivery.
 type Queue struct {
-	// Items in the queue. Map of id -> Item.
-	q map[string]*Item
-
-	// Mutex protecting q.
-	mu sync.RWMutex
-
 	// Couriers to use to deliver mail.
 	localC  courier.Courier
 	remoteC courier.Courier
@@ -101,6 +89,18 @@ type Queue struct {
 
 	// Aliases resolver.
 	aliases *aliases.Resolver
+
+	// The maximum number of items in the queue.
+	MaxItems int
+
+	// Give up sending attempts after this long.
+	GiveUpAfter time.Duration
+
+	// Mutex protecting q.
+	mu sync.RWMutex
+
+	// Items in the queue. Map of id -> Item.
+	q map[string]*Item
 }
 
 // New creates a new Queue instance.
@@ -115,6 +115,16 @@ func New(path string, localDomains *set.String, aliases *aliases.Resolver,
 		localDomains: localDomains,
 		path:         path,
 		aliases:      aliases,
+
+		// We reject emails when we hit this.
+		// Note the actual default used in the daemon is set in the config. We
+		// put a non-zero value here just to be safe.
+		MaxItems: 100,
+
+		// We give up sending (and return a DSN) after this long.
+		// Note the actual default used in the daemon is set in the config. We
+		// put a non-zero value here just to be safe.
+		GiveUpAfter: 20 * time.Hour,
 	}
 	return q, err
 }
@@ -155,8 +165,8 @@ func (q *Queue) Put(tr *trace.Trace, from string, to []string, data []byte) (str
 	tr = tr.NewChild("Queue.Put", from)
 	defer tr.Finish()
 
-	if q.Len() >= maxQueueSize {
-		tr.Errorf("queue full")
+	if nItems := q.Len(); nItems >= q.MaxItems {
+		tr.Errorf("queue full (%d items)", nItems)
 		return "", errQueueFull
 	}
 	putCount.Add(1)
@@ -305,7 +315,7 @@ func (item *Item) SendLoop(q *Queue) {
 	defer tr.Finish()
 	tr.Printf("from %s", item.From)
 
-	for time.Since(item.CreatedAt) < giveUpAfter {
+	for time.Since(item.CreatedAt) < q.GiveUpAfter {
 		// Send to all recipients that are still pending.
 		var wg sync.WaitGroup
 		for _, rcpt := range item.Rcpt {
