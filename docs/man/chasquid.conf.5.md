@@ -118,6 +118,26 @@ Some values might be repeated, for example the listening addresses.
     information is preserved, and SPF checks can be performed properly.
     Default: `false`.
 
+- **max\_queue\_items** (int):
+
+    **EXPERIMENTAL**, might change in backwards-incompatible ways.
+
+    Maximum number of items in the queue.
+
+    If we have this many items in the queue, we reject new incoming email. Be
+    careful when increasing this, as we keep all items in memory.
+    Default: `200` (but may change in the future).
+
+- **give\_up\_send\_after** (string):
+
+    **EXPERIMENTAL**, might change in backwards-incompatible ways.
+
+    How long do we keep retrying sending an email before we give up.  Once we give
+    up, a DSN will be sent back to the sender.
+
+    The format is a Go duration string (e.g. "48h" or "360m"; note days are not a
+    supported unit). Default: `"20h"` (but may change in the future).
+
 # SEE ALSO
 
 [chasquid(1)](chasquid.1.md)

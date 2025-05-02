@@ -243,6 +243,15 @@ func (s *Server) InitQueue(path string, localC, remoteC courier.Courier) {
 		})
 }
 
+func (s *Server) SetQueueLimits(maxItems uint32, giveUpAfter time.Duration) {
+	if maxItems > 0 {
+		s.queue.MaxItems = int(maxItems)
+	}
+	if giveUpAfter > 0 {
+		s.queue.GiveUpAfter = giveUpAfter
+	}
+}
+
 func (s *Server) aliasResolveRPC(tr *trace.Trace, req url.Values) (url.Values, error) {
 	rcpts, err := s.aliasesR.Resolve(tr, req.Get("Address"))
 	if err != nil {

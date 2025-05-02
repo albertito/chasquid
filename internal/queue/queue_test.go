@@ -197,9 +197,9 @@ func TestFullQueue(t *testing.T) {
 	tr := trace.New("test", "TestFullQueue")
 	defer tr.Finish()
 
-	// Force-insert maxQueueSize items in the queue.
+	// Force-insert as many items in the queue as it supports.
 	oneID := ""
-	for i := 0; i < maxQueueSize; i++ {
+	for i := 0; i < q.MaxItems; i++ {
 		item := &Item{
 			Message: Message{
 				ID:   <-newID,

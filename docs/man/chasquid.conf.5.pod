@@ -122,6 +122,26 @@ This allows deploying chasquid behind a HAProxy server, as the address
 information is preserved, and SPF checks can be performed properly.
 Default: C<false>.
 
+=item B<max_queue_items> (int):
+
+B<EXPERIMENTAL>, might change in backwards-incompatible ways.
+
+Maximum number of items in the queue.
+
+If we have this many items in the queue, we reject new incoming email. Be
+careful when increasing this, as we keep all items in memory.
+Default: C<200> (but may change in the future).
+
+=item B<give_up_send_after> (string):
+
+B<EXPERIMENTAL>, might change in backwards-incompatible ways.
+
+How long do we keep retrying sending an email before we give up.  Once we give
+up, a DSN will be sent back to the sender.
+
+The format is a Go duration string (e.g. "48h" or "360m"; note days are not a
+supported unit). Default: C<"20h"> (but may change in the future).
+
 =back
 
 =head1 SEE ALSO
