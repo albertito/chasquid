@@ -1,0 +1,48 @@
+dovecot_config_version = 2.4.0
+dovecot_storage_version = 2.4.0
+
+base_dir = $ROOT/run/
+state_dir = $ROOT/lib/
+log_path = $ROOT/dovecot.log
+ssl = no
+
+default_internal_user = $USER
+default_internal_group = $USER
+default_login_user = $USER
+
+
+# Disable authentication penalty, since we intentionally make failed requests
+# and it just slows down tests.
+auth_failure_delay = 0
+
+passdb passwd-file {
+	passwd_file_path = $ROOT/passwd
+
+	# Before auth checks, rename "u@d" to "u-x". This exercises that chasquid
+	# handles well the case where the returned user information does not match the
+	# requested user.
+	# We drop the domain, to exercise "naked" auth handling.
+	auth_username_format = "%{user | username}-x"
+}
+
+userdb passwd-file {
+	passwd_file_path = $ROOT/passwd
+
+	# Same as for passdb applies here.
+	# Note we can't change the _global_ variant of this setting, because
+	# that influences the top-level lookups.
+	auth_username_format = "%{user | username}-x"
+}
+
+service auth {
+	unix_listener auth {
+		mode = 0666
+	}
+}
+
+# Turn on debugging information, to help troubleshooting issues.
+auth_verbose = yes
+log_debug = category=auth
+auth_debug_passwords = yes
+auth_verbose_passwords = yes
+mail_debug = yes

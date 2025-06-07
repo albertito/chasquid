@@ -25,8 +25,24 @@ export ROOT="/tmp/chasquid-dovecot-test"
 mkdir -p $ROOT $ROOT/run $ROOT/lib
 rm -f $ROOT/dovecot.log
 
+# Dovecot 2.4 config is not backwards compatible with 2.3.
+# Since for now both are popular, we support testing against either.
+# TODO: Remove 2.3 support once 2.4 becomes more common.
+case "$(dovecot --version | cut -d . -f 1-2)" in
+2.3)
+	DOVE_VER=2.3
+	;;
+2.4)
+	DOVE_VER=2.4
+	;;
+*)
+	skip "unknown dovecot version $(dovecot --version)"
+	;;
+esac
+
+
 GROUP=$(id -g -n) envsubst \
-	< config/dovecot.conf.in > $ROOT/dovecot.conf
+	< config/dovecot.conf-$DOVE_VER.in > $ROOT/dovecot.conf
 cp -f config/passwd $ROOT/passwd
 
 dovecot -F -c $ROOT/dovecot.conf &
