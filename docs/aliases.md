@@ -86,7 +86,7 @@ pepe: jose
 
     This is experimental as of chasquid 1.16.0, and subject to change.
 
-### "Via" aliases (experimental)
+### "Via" aliases (experimental) {#via}
 
 !!! warning
 

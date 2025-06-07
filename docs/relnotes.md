@@ -5,6 +5,17 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.16.0 (2025-06-08)
+
+- Minor bug fixes to `chasquid-util`.
+- Return error on invalid aliases lines.
+- Support [`*` as an alias destination user](aliases.md#catch-all)
+  *(experimental)*.
+- Implement ["via" aliases](aliases.md#via) *(experimental)*.
+- Make the max queue size and give up time
+  [configurable](man/chasquid.conf.5.md) *(experimental)*.
+
+
 ## 1.15.0 (2025-01-17)
 
 - Exit if there's an error reading users/aliases files on startup.
