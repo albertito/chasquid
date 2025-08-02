@@ -6,6 +6,7 @@
 # Exceptions to the rules above: files we care about that would otherwise be
 # excluded.
 !.gitignore
+!.gitattributes
 !.clang-format
 !.github/
 

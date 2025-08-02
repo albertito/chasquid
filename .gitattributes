@@ -1,0 +1,2 @@
+# Force Unix style line endings for files that will be copied into the Docker image
+docker/* text eol=lf
