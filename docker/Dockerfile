@@ -17,13 +17,12 @@ RUN go get -d ./... && \
 # Create the image.
 FROM debian:stable
 
-# Make debconf/frontend non-interactive, to avoid distracting output about the
-# lack of $TERM.
-ENV DEBIAN_FRONTEND=noninteractive
-
 # Install the packages we need.
 # This includes chasquid, which sets up good defaults.
-RUN apt-get update -q && \
+# Make debconf/frontend non-interactive, to avoid distracting output about the
+# lack of $TERM.
+RUN DEBIAN_FRONTEND=noninteractive \
+	apt-get update -q && \
 	apt-get install -y -q \
 		chasquid \
 		dovecot-lmtpd dovecot-imapd dovecot-pop3d \
