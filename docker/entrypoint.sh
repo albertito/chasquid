@@ -107,4 +107,4 @@ start-stop-daemon --start --quiet --pidfile /run/dovecot.pid \
 	--exec /usr/sbin/dovecot -- -c /etc/dovecot/dovecot.conf
 
 # shellcheck disable=SC2086
-sudo -u chasquid -g chasquid  /usr/bin/chasquid  $CHASQUID_FLAGS
+exec sudo -u chasquid -g chasquid /usr/bin/chasquid $CHASQUID_FLAGS
