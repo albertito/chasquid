@@ -28,7 +28,10 @@ RUN apt-get update -q && \
 		chasquid \
 		dovecot-lmtpd dovecot-imapd dovecot-pop3d \
 		dovecot-sieve dovecot-managesieved \
-		acl libcap2-bin sudo certbot
+		acl libcap2-bin sudo certbot && \
+	apt-get autoremove --purge -y -q && \
+	apt-get autoclean -y -q && \
+	rm -rf /var/lib/apt/lists/*
 
 # Copy the binaries. This overrides the debian packages with the ones we just
 # built above.
