@@ -75,6 +75,7 @@ RUN rmdir /etc/chasquid/domains/ && \
 # ToS by setting this variable, so please review them carefully.
 # CERTS_EMAIL should be set to your email address so letsencrypt can send you
 # critical notifications.
+ENV AUTO_CERTS=""
 
 # Custom entry point that does some configuration checks and ensures
 # letsencrypt is properly set up.
