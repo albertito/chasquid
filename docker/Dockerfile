@@ -11,8 +11,8 @@
 FROM golang:latest AS build
 WORKDIR /go/src/blitiri.com.ar/go/chasquid
 COPY . .
-RUN go get -d ./...
-RUN go install ./...
+RUN go get -d ./... && \
+	go install ./...
 
 # Create the image.
 FROM debian:stable
@@ -23,19 +23,16 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install the packages we need.
 # This includes chasquid, which sets up good defaults.
-RUN apt-get update -q
-RUN apt-get install -y -q \
-	chasquid \
-	dovecot-lmtpd dovecot-imapd dovecot-pop3d \
-	dovecot-sieve dovecot-managesieved \
-	acl libcap2-bin sudo certbot
+RUN apt-get update -q && \
+	apt-get install -y -q \
+		chasquid \
+		dovecot-lmtpd dovecot-imapd dovecot-pop3d \
+		dovecot-sieve dovecot-managesieved \
+		acl libcap2-bin sudo certbot
 
 # Copy the binaries. This overrides the debian packages with the ones we just
 # built above.
-COPY --from=build /go/bin/chasquid /usr/bin/
-COPY --from=build /go/bin/chasquid-util /usr/bin/
-COPY --from=build /go/bin/smtp-check /usr/bin/
-COPY --from=build /go/bin/mda-lmtp /usr/bin/
+COPY --from=build /go/bin/chasquid /go/bin/chasquid-util /go/bin/smtp-check /go/bin/mda-lmtp /usr/bin/
 
 # Let chasquid bind privileged ports, so we can run it as its own user.
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/bin/chasquid
@@ -45,8 +42,7 @@ COPY docker/dovecot.conf /etc/dovecot/dovecot.conf
 COPY docker/chasquid.conf /etc/chasquid/chasquid.conf
 
 # Copy utility scripts.
-COPY docker/add-user.sh /
-COPY docker/entrypoint.sh /
+COPY docker/add-user.sh docker/entrypoint.sh /
 
 # chasquid: SMTP, submission, submission+tls.
 EXPOSE 25 465 587
@@ -62,15 +58,14 @@ EXPOSE 80 443
 VOLUME /data
 
 # Put some directories where we expect persistent user data into /data.
-RUN rmdir /etc/chasquid/domains/
-RUN ln -sf /data/chasquid/domains/ /etc/chasquid/domains
-RUN rm -rf /etc/letsencrypt/
-RUN ln -sf /data/letsencrypt/ /etc/letsencrypt
-
+RUN rmdir /etc/chasquid/domains/ && \
+	ln -sf /data/chasquid/domains/ /etc/chasquid/domains && \
+	rm -rf /etc/letsencrypt/ && \
+	ln -sf /data/letsencrypt/ /etc/letsencrypt && \
 # Give the chasquid user access to the necessary configuration.
-RUN setfacl -R -m u:chasquid:rX /etc/chasquid/
-RUN mv /etc/chasquid/certs/ /etc/chasquid/certs-orig
-RUN ln -s /etc/letsencrypt/live/ /etc/chasquid/certs
+	setfacl -R -m u:chasquid:rX /etc/chasquid/ && \
+	mv /etc/chasquid/certs/ /etc/chasquid/certs-orig && \
+	ln -s /etc/letsencrypt/live/ /etc/chasquid/certs
 
 
 # NOTE: Set AUTO_CERTS="example.com example.org" to automatically obtain and
