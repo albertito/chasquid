@@ -47,7 +47,7 @@ To add your first user to the image:
 ```
 $ docker run \
 	--mount source=chasquid-data,target=/data \
-	-it --entrypoint=/add-user.sh \
+	--rm -it --entrypoint=/add-user.sh \
 	registry.gitlab.com/albertito/chasquid:main
 Email (full user@domain format): pepe@example.com
 Password:
