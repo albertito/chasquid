@@ -26,6 +26,11 @@ If, instead, you want to build the image yourself, just run:
 $ docker build -t chasquid -f docker/Dockerfile .
 ```
 
+Or, if you are cross-compiling for a different architecture, e.g. `arm64`:
+
+```sh
+$ docker build --platform=linux/arm64 -t chasquid -f docker/Dockerfile .
+```
 
 ## Running
 
