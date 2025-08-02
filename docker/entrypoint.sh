@@ -89,8 +89,8 @@ ssl_key = </etc/letsencrypt/live/$ONE_DOMAIN/privkey.pem
 EOF
 for DOMAIN in $CERT_DOMAINS; do
 	echo "local_name $DOMAIN {"
-        echo "  ssl_cert = </etc/letsencrypt/live/$DOMAIN/fullchain.pem"
-        echo "  ssl_key = </etc/letsencrypt/live/$DOMAIN/privkey.pem"
+		echo "  ssl_cert = </etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+		echo "  ssl_key = </etc/letsencrypt/live/$DOMAIN/privkey.pem"
 	echo "}"
 done >> /etc/dovecot/auto-ssl.conf
 
