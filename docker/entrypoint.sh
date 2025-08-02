@@ -105,6 +105,4 @@ echo "hostname: '$ONE_DOMAIN'" >> /etc/chasquid/chasquid.conf
 # Start the services: dovecot in background, chasquid in foreground.
 start-stop-daemon --start --quiet --pidfile /run/dovecot.pid \
 	--exec /usr/sbin/dovecot -- -c /etc/dovecot/dovecot.conf
-
-# shellcheck disable=SC2086
-exec gosu chasquid:chasquid /usr/bin/chasquid $CHASQUID_FLAGS
+exec gosu chasquid:chasquid /usr/bin/chasquid "$@"
