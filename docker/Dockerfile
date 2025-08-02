@@ -8,7 +8,7 @@
 # See the README.md file for more details.
 
 # Build the binaries.
-FROM golang:latest as build
+FROM golang:latest AS build
 WORKDIR /go/src/blitiri.com.ar/go/chasquid
 COPY . .
 RUN go get -d ./...
@@ -19,7 +19,7 @@ FROM debian:stable
 
 # Make debconf/frontend non-interactive, to avoid distracting output about the
 # lack of $TERM.
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install the packages we need.
 # This includes chasquid, which sets up good defaults.
