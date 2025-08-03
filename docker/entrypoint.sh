@@ -6,8 +6,8 @@
 set -e
 
 if ! grep -q data /proc/mounts; then
-	echo "/data is not mounted."
-	echo "Check that the /data volume is set up correctly."
+	echo 1>&2 "/data is not mounted."
+	echo 1>&2 "Check that the /data volume is set up correctly."
 	exit 1
 fi
 
@@ -66,9 +66,9 @@ ONE_DOMAIN=$D
 
 # Check that there's at least once certificate at this point.
 if [ "$CERT_DOMAINS" == "" ]; then
-	echo "No certificates found."
-	echo
-	echo "Set AUTO_CERTS='example.com' to automatically get one."
+	echo 1>&2 "No certificates found."
+	echo 1>&2
+	echo 1>&2 "Set AUTO_CERTS='example.com' to automatically get one."
 	exit 1
 fi
 
@@ -104,7 +104,7 @@ echo "hostname: '$ONE_DOMAIN'" >> /etc/chasquid/chasquid.conf
 
 # Warn if the old variable CHASQUID_FLAGS is used for passing args
 if [ "$CHASQUID_FLAGS" != "" ]; then
-	echo 'CHASQUID_FLAGS environmental variable is deprecated. Use the command key instead: https://docs.docker.com/reference/compose-file/services/#command'
+	echo 1>&2 'CHASQUID_FLAGS environmental variable is deprecated. Use the command key instead: https://docs.docker.com/reference/compose-file/services/#command'
 fi
 
 # Start the services: dovecot in background, chasquid in foreground.
