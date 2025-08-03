@@ -150,8 +150,20 @@ start_chasquid() {
 }
 start_dovecot; start_chasquid
 
+# Sleep for the total duration in small intervals to allow the response to signals.
+half_sleep() {
+	local total_sleep_time=$1
+	local sleep_interval=${2:-1}
+	local elapsed_time=0
+
+	while [[ $elapsed_time -lt $total_sleep_time ]]; do
+		sleep $sleep_interval
+		elapsed_time=$((elapsed_time + sleep_interval))
+	done
+}
+
 # Wait for the daemons to start.
-sleep 10
+half_sleep 10
 
 # Keep waiting for the SIGTERM/SIGINT signal while monitoring for the daemon
 # statuses and restarting them if necessary.
@@ -170,5 +182,5 @@ while true; do
 		INTERVAL=10
 	fi
 
-	sleep $INTERVAL
+	half_sleep $INTERVAL
 done
