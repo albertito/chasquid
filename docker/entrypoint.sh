@@ -107,9 +107,48 @@ if [ "$CHASQUID_FLAGS" != "" ]; then
 	echo 1>&2 'CHASQUID_FLAGS environmental variable is deprecated. Use the command key instead: https://docs.docker.com/reference/compose-file/services/#command'
 fi
 
-# Start the services: dovecot in background, chasquid in foreground.
-start-stop-daemon --start --quiet --pidfile /run/dovecot.pid \
+# Stop the sercives: dovecot and chasquid.
+stop_daemons() {
+	echo "Stopping daemons..."
+	local exit_code=0
+	local result=0
+
+	# Send the SIGTERM signal to the services.
+	start-stop-daemon --stop --quiet --pidfile /run/dovecot.pid --signal TERM &
+	dovecot_pid=$!
+	start-stop-daemon --stop --quiet --pidfile /run/chasquid.pid --signal TERM &
+	chasquid_pid=$!
+
+	# Wait for the services to exit and check the exit codes.
+	wait "$dovecot_pid"; result=$?
+	if [ $result -ne 0 ]; then
+		echo 1>&2 "Error: dovecot exited with non-zero status ($result)."
+		exit_code=$result
+	fi
+	wait "$chasquid_pid"; result=$?
+	if [ $result -ne 0 ]; then
+		echo 1>&2 "Error: chasquid exited with non-zero status ($result)."
+		exit_code=$result
+	fi
+
+	echo "Daemons stopped."
+	exit $exit_code
+}
+trap 'stop_daemons' SIGTERM SIGINT
+
+# Start the services: dovecot and chasquid.
+start-stop-daemon --start --quiet --background \
+	--chuid dovecot:dovecot --output /proc/self/fd/1 \
+	--pidfile /run/dovecot.pid --make-pidfile \
 	--exec /usr/sbin/dovecot -- -c /etc/dovecot/dovecot.conf
 
 # shellcheck disable=SC2086
-exec gosu chasquid:chasquid /usr/bin/chasquid "$@" $CHASQUID_FLAGS
+start-stop-daemon --start --quiet --background \
+	--chuid chasquid:chasquid --output /proc/self/fd/1 \
+	--pidfile /run/chasquid.pid --make-pidfile \
+	--exec /usr/bin/chasquid "$@" $CHASQUID_FLAGS
+
+# Keep waiting for the SIGTERM/SIGINT signal.
+while true; do
+	tail -f /dev/null & wait ${!}
+done
