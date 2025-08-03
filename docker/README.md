@@ -1,4 +1,3 @@
-
 # Docker
 
 chasquid comes with a Dockerfile to create a container running [chasquid],
@@ -10,7 +9,6 @@ which is the recommended way to use chasquid.
 [chasquid]: https://blitiri.com.ar/p/chasquid
 [dovecot]: https://dovecot.org
 [Let's Encrypt]: https://letsencrypt.org
-
 
 ## Images
 
@@ -50,9 +48,9 @@ $ docker volume create chasquid-data
 To add your first user to the image:
 
 ```
-$ docker run \
-	--mount source=chasquid-data,target=/data \
-	--rm -it --entrypoint=/add-user.sh \
+$ docker run --rm -it \
+	-v chasquid_data:/data \
+	--entrypoint=/add-user.sh \
 	registry.gitlab.com/albertito/chasquid:main
 Email (full user@domain format): pepe@example.com
 Password:
@@ -74,11 +72,10 @@ Finally, start the container:
 
 ```sh
 $ docker run -e AUTO_CERTS=mail.yourdomain.com \
-	--mount source=chasquid-data,target=/data \
+	-v chasquid_data:/data \
 	--network host \
 	registry.gitlab.com/albertito/chasquid:main
 ```
-
 
 ## Debugging
 
