@@ -55,6 +55,9 @@ EXPOSE 993 995 4190
 # http for letsencrypt/certbot.
 EXPOSE 80 443
 
+# http for monitoring.
+EXPOSE 1099
+
 # Store emails and chasquid databases in an external volume, to be mounted at
 # /data, so they're independent from the image itself.
 VOLUME /data
