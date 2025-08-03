@@ -114,7 +114,7 @@ stop_daemons() {
 	local result=0
 
 	# Send the SIGTERM signal to the services.
-	start-stop-daemon --stop --quiet --pidfile /run/dovecot.pid --signal TERM &
+	start-stop-daemon --stop --quiet --name dovecot --signal TERM &
 	dovecot_pid=$!
 	start-stop-daemon --stop --quiet --pidfile /run/chasquid.pid --signal TERM &
 	chasquid_pid=$!
@@ -138,9 +138,7 @@ trap 'stop_daemons' SIGTERM SIGINT
 
 # Start the services: dovecot and chasquid.
 start_dovecot() {
-	start-stop-daemon --start --quiet --background \
-		--chuid dovecot:dovecot --output /proc/self/fd/1 \
-		--pidfile /run/dovecot.pid --make-pidfile \
+	start-stop-daemon --start --quiet --name dovecot \
 		--exec /usr/sbin/dovecot -- -c /etc/dovecot/dovecot.conf
 }
 start_chasquid() {
@@ -160,7 +158,7 @@ sleep 10
 while true; do
 	INTERVAL=60
 
-	if ! start-stop-daemon --status --quiet --pidfile /run/dovecot.pid; then
+	if ! start-stop-daemon --status --quiet --name dovecot; then
 		echo 1>&2 "Error: dovecot stopped unexpectedly ($?)"
 		start_dovecot
 		INTERVAL=10
