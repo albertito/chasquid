@@ -108,7 +108,10 @@ if [ "$CHASQUID_FLAGS" != "" ]; then
 fi
 
 # Stop the sercives: dovecot and chasquid.
+STOP_INITIATED=0
 stop_daemons() {
+	STOP_INITIATED=1
+
 	echo "Stopping daemons..."
 	local exit_code=0
 	local result=0
@@ -170,16 +173,17 @@ half_sleep 10
 while true; do
 	INTERVAL=60
 
-	if ! start-stop-daemon --status --quiet --name dovecot; then
-		echo 1>&2 "Error: dovecot stopped unexpectedly ($?)"
-		start_dovecot
-		INTERVAL=10
-	fi
-
-	if ! start-stop-daemon --status --quiet --pidfile /run/chasquid.pid; then
-		echo 1>&2 "Error: chasquid stopped unexpectedly ($?)"
-		start_chasquid
-		INTERVAL=10
+	if [ $STOP_INITIATED -eq 0 ]; then
+		if ! start-stop-daemon --status --quiet --name dovecot; then
+			echo 1>&2 "Error: dovecot stopped unexpectedly ($?)"
+			start_dovecot
+			INTERVAL=10
+		fi
+		if ! start-stop-daemon --status --quiet --pidfile /run/chasquid.pid; then
+			echo 1>&2 "Error: chasquid stopped unexpectedly ($?)"
+			start_chasquid
+			INTERVAL=10
+		fi
 	fi
 
 	half_sleep $INTERVAL
