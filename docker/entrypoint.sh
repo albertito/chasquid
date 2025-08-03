@@ -102,7 +102,14 @@ done >> /etc/dovecot/auto-ssl.conf
 sed -i '/^hostname:/d' /etc/chasquid/chasquid.conf
 echo "hostname: '$ONE_DOMAIN'" >> /etc/chasquid/chasquid.conf
 
+# Warn if the old variable CHASQUID_FLAGS is used for passing args
+if [ "$CHASQUID_FLAGS" != "" ]; then
+	echo 'CHASQUID_FLAGS environmental variable is deprecated. Use the command key instead: https://docs.docker.com/reference/compose-file/services/#command'
+fi
+
 # Start the services: dovecot in background, chasquid in foreground.
 start-stop-daemon --start --quiet --pidfile /run/dovecot.pid \
 	--exec /usr/sbin/dovecot -- -c /etc/dovecot/dovecot.conf
-exec gosu chasquid:chasquid /usr/bin/chasquid "$@"
+
+# shellcheck disable=SC2086
+exec gosu chasquid:chasquid /usr/bin/chasquid "$@" $CHASQUID_FLAGS
