@@ -137,18 +137,40 @@ stop_daemons() {
 trap 'stop_daemons' SIGTERM SIGINT
 
 # Start the services: dovecot and chasquid.
-start-stop-daemon --start --quiet --background \
-	--chuid dovecot:dovecot --output /proc/self/fd/1 \
-	--pidfile /run/dovecot.pid --make-pidfile \
-	--exec /usr/sbin/dovecot -- -c /etc/dovecot/dovecot.conf
+start_dovecot() {
+	start-stop-daemon --start --quiet --background \
+		--chuid dovecot:dovecot --output /proc/self/fd/1 \
+		--pidfile /run/dovecot.pid --make-pidfile \
+		--exec /usr/sbin/dovecot -- -c /etc/dovecot/dovecot.conf
+}
+start_chasquid() {
+	# shellcheck disable=SC2086
+	start-stop-daemon --start --quiet --background \
+		--chuid chasquid:chasquid --output /proc/self/fd/1 \
+		--pidfile /run/chasquid.pid --make-pidfile \
+		--exec /usr/bin/chasquid "$@" $CHASQUID_FLAGS
+}
+start_dovecot; start_chasquid
 
-# shellcheck disable=SC2086
-start-stop-daemon --start --quiet --background \
-	--chuid chasquid:chasquid --output /proc/self/fd/1 \
-	--pidfile /run/chasquid.pid --make-pidfile \
-	--exec /usr/bin/chasquid "$@" $CHASQUID_FLAGS
+# Wait for the daemons to start.
+sleep 10
 
-# Keep waiting for the SIGTERM/SIGINT signal.
+# Keep waiting for the SIGTERM/SIGINT signal while monitoring for the daemon
+# statuses and restarting them if necessary.
 while true; do
-	tail -f /dev/null & wait ${!}
+	INTERVAL=60
+
+	if ! start-stop-daemon --status --quiet --pidfile /run/dovecot.pid; then
+		echo 1>&2 "Error: dovecot stopped unexpectedly ($?)"
+		start_dovecot
+		INTERVAL=10
+	fi
+
+	if ! start-stop-daemon --status --quiet --pidfile /run/chasquid.pid; then
+		echo 1>&2 "Error: chasquid stopped unexpectedly ($?)"
+		start_chasquid
+		INTERVAL=10
+	fi
+
+	sleep $INTERVAL
 done
