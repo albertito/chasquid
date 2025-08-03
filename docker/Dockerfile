@@ -15,7 +15,7 @@ RUN go get -d ./... && \
 	go install ./...
 
 # Create the image.
-FROM debian:stable
+FROM debian:stable-slim
 
 # Install the packages we need.
 # This includes chasquid, which sets up good defaults.
