@@ -80,6 +80,9 @@ RUN rmdir /etc/chasquid/domains/ && \
 # critical notifications.
 ENV AUTO_CERTS=""
 
+# Enable monitoring HTTP server.
+ENV ENABLE_MONITORING=""
+
 # Custom entry point that does some configuration checks and ensures
 # letsencrypt is properly set up.
 ENTRYPOINT ["/entrypoint.sh"]
