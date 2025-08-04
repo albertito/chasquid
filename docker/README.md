@@ -74,8 +74,8 @@ Finally, start the container:
 $ docker run -d --name chasquid \
 	-e AUTO_CERTS=mail.yourdomain.com \
 	-v chasquid_data:/data \
-	-p 25:25 -p 465:465 -p 587:587 \
-	-p 993:993 -p 995:995 -p 4190:4190 \
+	-p 25:1025 -p 465:1465 -p 587:1587 \
+	-p 993:1993 -p 995:1995 -p 4190:4190 \
 	-p 80:80 -p 443:443 \
 	-p 127.0.0.1:1099:1099 \
 	registry.gitlab.com/albertito/chasquid:main
