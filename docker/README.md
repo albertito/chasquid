@@ -71,7 +71,7 @@ and not proxying.
 Finally, start the container:
 
 ```sh
-$ docker run --name chasquid \
+$ docker run -d --name chasquid \
 	-e AUTO_CERTS=mail.yourdomain.com \
 	-v chasquid_data:/data \
 	-p 25:25 -p 465:465 -p 587:587 \
@@ -81,11 +81,25 @@ $ docker run --name chasquid \
 	registry.gitlab.com/albertito/chasquid:main
 ```
 
+To view the status of the container:
+
+```sh
+docker ps -f name=chasquid
+```
+
+To stop the container:
+
+```sh
+docker stop chasquid
+```
+
 ## Debugging
 
 - To enable the monitoring HTTP server (on port `1099`), you can define the
 `ENABLE_MONITORING` environmental variable and give it any non-empty value,
 for example, `docker run -e ENABLE_MONITORING=true ...`.
+
+- To view container logs, use can use `docker logs -t -f --details chasquid`.
 
 - To get a shell on the running container for debugging,
 `docker exec -it chasquid /bin/bash`.
