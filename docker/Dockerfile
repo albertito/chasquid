@@ -17,12 +17,16 @@ RUN go get -d ./... && \
 # Create the image.
 FROM debian:stable
 
+# Create the chasquid and dovecot users with fixed UID/GID.
 # Install the packages we need.
 # This includes chasquid, which sets up good defaults.
 # Make debconf/frontend non-interactive, to avoid distracting output about the
 # lack of $TERM.
-# Create the chasquid and dovecot users with fixed UID/GID.
-RUN DEBIAN_FRONTEND=noninteractive \
+RUN groupadd -g 101 chasquid && \
+	useradd -m -u 100 -g 101 -s /bin/false -d /etc/chasquid chasquid && \
+	groupadd -g 102 dovecot && \
+	useradd -m -u 101 -g 102 -s /bin/false -d /etc/dovecot dovecot && \
+	DEBIAN_FRONTEND=noninteractive \
 	apt-get update -q && \
 	apt-get install -y -q \
 		chasquid \
@@ -31,11 +35,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
 		acl libcap2-bin sudo certbot && \
 	apt-get autoremove --purge -y -q && \
 	apt-get autoclean -y -q && \
-	rm -rf /var/lib/apt/lists/* && \
-	groupadd -g 101 chasquid && \
-	useradd -m -u 100 -g 101 -s /bin/false -d /etc/chasquid chasquid && \
-	groupadd -g 102 dovecot && \
-	useradd -m -u 101 -g 102 -s /bin/false -d /etc/dovecot dovecot
+	rm -rf /var/lib/apt/lists/*
 
 # Copy the binaries. This overrides the debian packages with the ones we just
 # built above.
