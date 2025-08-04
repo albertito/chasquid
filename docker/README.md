@@ -47,7 +47,7 @@ $ docker volume create chasquid-data
 
 To add your first user to the image:
 
-```
+```sh
 $ docker run --rm -it \
 	-v chasquid_data:/data \
 	--entrypoint=/add-user.sh \
