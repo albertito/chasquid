@@ -176,13 +176,13 @@ while true; do
 	if [ $STOP_INITIATED -eq 0 ]; then
 		if ! start-stop-daemon --status --quiet --name dovecot; then
 			echo 1>&2 "Error: dovecot stopped unexpectedly ($?)"
-			start_dovecot
-			INTERVAL=10
+			start-stop-daemon --stop --quiet --pidfile /run/chasquid.pid --signal TERM/10/KILL/10
+			exit 1
 		fi
 		if ! start-stop-daemon --status --quiet --pidfile /run/chasquid.pid; then
 			echo 1>&2 "Error: chasquid stopped unexpectedly ($?)"
-			start_chasquid
-			INTERVAL=10
+			start-stop-daemon --stop --quiet --name dovecot --signal TERM/10/KILL/10
+			exit 1
 		fi
 	fi
 
