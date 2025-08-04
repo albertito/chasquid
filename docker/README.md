@@ -71,7 +71,8 @@ and not proxying.
 Finally, start the container:
 
 ```sh
-$ docker run -e AUTO_CERTS=mail.yourdomain.com \
+$ docker run --name chasquid \
+	-e AUTO_CERTS=mail.yourdomain.com \
 	-v chasquid_data:/data \
 	-p 25:25 -p 465:465 -p 587:587 \
 	-p 993:993 -p 995:995 -p 4190:4190 \
@@ -86,7 +87,6 @@ $ docker run -e AUTO_CERTS=mail.yourdomain.com \
 `ENABLE_MONITORING` environmental variable and give it any non-empty value,
 for example, `docker run -e ENABLE_MONITORING=true ...`.
 
-- To get a shell on the running container for debugging, you can use `docker ps`
-to find the container ID, and then `docker exec -it CONTAINERID /bin/bash` to
-open a shell on the running container.
+- To get a shell on the running container for debugging,
+`docker exec -it chasquid /bin/bash`.
 
