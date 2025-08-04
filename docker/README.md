@@ -104,3 +104,5 @@ for example, `docker run -e ENABLE_MONITORING=true ...`.
 - To get a shell on the running container for debugging,
 `docker exec -it chasquid /bin/bash`.
 
+- To view dovecot logs, first get a shell inside the container as described
+above, then read the `/data/dovecot/dovecot.log` file.
