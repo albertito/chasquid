@@ -36,9 +36,6 @@ RUN DEBIAN_FRONTEND=noninteractive \
 # built above.
 COPY --from=build /go/bin/chasquid /go/bin/chasquid-util /go/bin/smtp-check /go/bin/mda-lmtp /usr/bin/
 
-# Let chasquid bind privileged ports, so we can run it as its own user.
-RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/bin/chasquid
-
 # Copy docker-specific configurations.
 COPY docker/dovecot.conf /etc/dovecot/dovecot.conf
 COPY docker/chasquid.conf /etc/chasquid/chasquid.conf
@@ -46,14 +43,17 @@ COPY docker/chasquid.conf /etc/chasquid/chasquid.conf
 # Copy utility scripts.
 COPY docker/add-user.sh docker/entrypoint.sh /
 
-# chasquid: SMTP, submission, submission+tls.
-EXPOSE 25 465 587
+# chasquid: SMTP (25), submission (465), submission+tls (587).
+EXPOSE 1025 1465 1587
 
-# dovecot: POP3s, IMAPs, managesieve.
-EXPOSE 993 995 4190
+# dovecot: POP3s (993), IMAPs (995), managesieve (4190).
+EXPOSE 1993 1995 4190
 
 # http for letsencrypt/certbot.
 EXPOSE 80 443
+
+# http for monitoring.
+EXPOSE 1099
 
 # Store emails and chasquid databases in an external volume, to be mounted at
 # /data, so they're independent from the image itself.
@@ -76,6 +76,9 @@ RUN rmdir /etc/chasquid/domains/ && \
 # CERTS_EMAIL should be set to your email address so letsencrypt can send you
 # critical notifications.
 ENV AUTO_CERTS=""
+
+# Enable monitoring HTTP server.
+ENV ENABLE_MONITORING=""
 
 # Custom entry point that does some configuration checks and ensures
 # letsencrypt is properly set up.

@@ -1,4 +1,3 @@
-
 # Docker
 
 chasquid comes with a Dockerfile to create a container running [chasquid],
@@ -10,7 +9,6 @@ which is the recommended way to use chasquid.
 [chasquid]: https://blitiri.com.ar/p/chasquid
 [dovecot]: https://dovecot.org
 [Let's Encrypt]: https://letsencrypt.org
-
 
 ## Images
 
@@ -49,10 +47,10 @@ $ docker volume create chasquid-data
 
 To add your first user to the image:
 
-```
-$ docker run \
-	--mount source=chasquid-data,target=/data \
-	--rm -it --entrypoint=/add-user.sh \
+```sh
+$ docker run --rm -it \
+	-v chasquid_data:/data \
+	--entrypoint=/add-user.sh \
 	registry.gitlab.com/albertito/chasquid:main
 Email (full user@domain format): pepe@example.com
 Password:
@@ -73,16 +71,38 @@ and not proxying.
 Finally, start the container:
 
 ```sh
-$ docker run -e AUTO_CERTS=mail.yourdomain.com \
-	--mount source=chasquid-data,target=/data \
-	--network host \
+$ docker run -d --name chasquid \
+	-e AUTO_CERTS=mail.yourdomain.com \
+	-v chasquid_data:/data \
+	-p 25:1025 -p 465:1465 -p 587:1587 \
+	-p 993:1993 -p 995:1995 -p 4190:4190 \
+	-p 80:80 -p 443:443 \
+	-p 127.0.0.1:1099:1099 \
 	registry.gitlab.com/albertito/chasquid:main
 ```
 
+To view the status of the container:
+
+```sh
+docker ps -f name=chasquid
+```
+
+To stop the container:
+
+```sh
+docker stop chasquid
+```
 
 ## Debugging
 
-To get a shell on the running container for debugging, you can use `docker ps`
-to find the container ID, and then `docker exec -it CONTAINERID /bin/bash` to
-open a shell on the running container.
+- To enable the monitoring HTTP server (on port `1099`), you can define the
+`ENABLE_MONITORING` environmental variable and give it any non-empty value,
+for example, `docker run -e ENABLE_MONITORING=true ...`.
 
+- To view container logs, use can use `docker logs -t -f --details chasquid`.
+
+- To get a shell on the running container for debugging,
+`docker exec -it chasquid /bin/bash`.
+
+- To view dovecot logs, first get a shell inside the container as described
+above, then read the `/data/dovecot/dovecot.log` file.

@@ -102,6 +102,12 @@ done >> /etc/dovecot/auto-ssl.conf
 sed -i '/^hostname:/d' /etc/chasquid/chasquid.conf
 echo "hostname: '$ONE_DOMAIN'" >> /etc/chasquid/chasquid.conf
 
+# Enable/disable the monitoring http server.
+sed -i '/^monitoring_address:/d' /etc/chasquid/chasquid.conf
+if [ "$ENABLE_MONITORING" != "" ]; then
+	echo 'monitoring_address: ":1099"' >> /etc/chasquid/chasquid.conf
+fi
+
 # Start the services: dovecot in background, chasquid in foreground.
 start-stop-daemon --start --quiet --pidfile /run/dovecot.pid \
 	--exec /usr/sbin/dovecot -- -c /etc/dovecot/dovecot.conf
