@@ -45,8 +45,8 @@ dovecot_auth: true
 ```
 
 That should be it, because chasquid will "autodetect" the full path to the
-dovecot sockets, by looking in the usual places (tested in Debian, Ubuntu, and
-CentOS).
+dovecot sockets, by looking in the usual places (tested in Debian, Ubuntu,
+CentOS, and NixOS).
 
 If chasquid can't find them, the paths can be set with the
 `dovecot_userdb_path` and `dovecot_client_path` options.
