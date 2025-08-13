@@ -34,11 +34,21 @@ var (
 )
 
 var defaultUserdbPaths = []string{
+	// NixOS.
+	"/run/dovecot2/auth-chasquid-userdb",
+	"/run/dovecot2/auth-userdb",
+
+	// Debian, Ubuntu, CentOS.
 	"/var/run/dovecot/auth-chasquid-userdb",
 	"/var/run/dovecot/auth-userdb",
 }
 
 var defaultClientPaths = []string{
+	// NixOS.
+	"/run/dovecot2/auth-chasquid-client",
+	"/run/dovecot2/auth-client",
+
+	// Debian, Ubuntu, CentOS.
 	"/var/run/dovecot/auth-chasquid-client",
 	"/var/run/dovecot/auth-client",
 }
