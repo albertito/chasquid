@@ -269,16 +269,39 @@ func loadCert(name, dir string, s *smtpsrv.Server) {
 		log.Infof("    skipping: %v", err)
 		return
 	}
-	keyPath := filepath.Join(dir, "privkey.pem")
-	if _, err := os.Stat(keyPath); err != nil {
+
+	keyPath, err := findCertKey(dir)
+	if err != nil {
 		log.Infof("    skipping: %v", err)
 		return
 	}
 
-	err := s.AddCerts(certPath, keyPath)
+	err = s.AddCerts(certPath, keyPath)
 	if err != nil {
 		log.Fatalf("    %v", err)
 	}
+}
+
+func findCertKey(dir string) (string, error) {
+	keyFiles := []string{
+		// Lego (NixOS ACME module).
+		"key.pem",
+		// Letsencrypt Certbot.
+		"privkey.pem",
+	}
+
+	var err error
+
+	for _, name := range keyFiles {
+		keyPath := filepath.Join(dir, name)
+
+		_, err = os.Stat(keyPath)
+		if err == nil {
+			return keyPath, nil
+		}
+	}
+
+	return "", err
 }
 
 // Helper to load a single domain configuration into the server.
