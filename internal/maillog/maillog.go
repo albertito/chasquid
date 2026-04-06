@@ -96,7 +96,7 @@ func (l *Logger) Auth(netAddr net.Addr, user string, successful bool) {
 	if !successful {
 		res = "failed"
 	}
-	msg := fmt.Sprintf("%s auth %s for %s\n", netAddr, res, user)
+	msg := fmt.Sprintf("%s auth %s for %s", netAddr, res, user)
 	l.printf("%s", msg)
 	authLog.Debugf("%s", msg)
 }
