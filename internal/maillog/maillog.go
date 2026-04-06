@@ -87,7 +87,7 @@ func (l *Logger) Reopen() error {
 
 // Listening logs that the daemon is listening on the given address.
 func (l *Logger) Listening(a string) {
-	l.printf("daemon listening on %s\n", a)
+	l.printf("daemon listening on %s", a)
 }
 
 // Auth logs an authentication request.
@@ -110,33 +110,33 @@ func (l *Logger) Rejected(netAddr net.Addr, from string, to []string, err string
 	if len(to) > 0 {
 		toStr = fmt.Sprintf(" to=%v", to)
 	}
-	l.printf("%s rejected%s%s - %v\n", netAddr, from, toStr, err)
+	l.printf("%s rejected%s%s - %v", netAddr, from, toStr, err)
 }
 
 // Queued logs that we have queued an email.
 func (l *Logger) Queued(netAddr net.Addr, from string, to []string, id string) {
-	l.printf("%s from=%s queued ip=%s to=%v\n", id, from, netAddr, to)
+	l.printf("%s from=%s queued ip=%s to=%v", id, from, netAddr, to)
 }
 
 // SendAttempt logs that we have attempted to send an email.
 func (l *Logger) SendAttempt(id, from, to string, err error, permanent bool) {
 	if err == nil {
-		l.printf("%s from=%s to=%s sent\n", id, from, to)
+		l.printf("%s from=%s to=%s sent", id, from, to)
 	} else {
 		t := "(temporary)"
 		if permanent {
 			t = "(permanent)"
 		}
-		l.printf("%s from=%s to=%s failed %s: %v\n", id, from, to, t, err)
+		l.printf("%s from=%s to=%s failed %s: %v", id, from, to, t, err)
 	}
 }
 
 // QueueLoop logs that we have completed a queue loop.
 func (l *Logger) QueueLoop(id, from string, nextDelay time.Duration) {
 	if nextDelay > 0 {
-		l.printf("%s from=%s completed loop, next in %v\n", id, from, nextDelay)
+		l.printf("%s from=%s completed loop, next in %v", id, from, nextDelay)
 	} else {
-		l.printf("%s from=%s all done\n", id, from)
+		l.printf("%s from=%s all done", id, from)
 	}
 }
 
