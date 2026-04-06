@@ -29,4 +29,4 @@ message Plain {
 	bytes password = 1;
 }
 
-message Denied { }
+message Denied {}

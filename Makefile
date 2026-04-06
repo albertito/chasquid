@@ -59,6 +59,11 @@ fmt:
 	go vet ./...
 	gofmt -s -w .
 	clang-format -i $(shell find . -iname '*.proto')
+	black -l 79 \
+		test/util/check-hostaliases \
+		test/util/chamuyero \
+		test/util/mail_diff \
+		internal/tlsconst/generate-ciphers.py
 
 .PHONY: chasquid test \
 	chasquid-util smtp-check mda-lmtp dovecot-auth-cli \

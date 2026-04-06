@@ -27,7 +27,7 @@ message Recipient {
 	enum Type {
 		EMAIL = 0;
 		PIPE = 1;
-                FORWARD = 2;
+		FORWARD = 2;
 	}
 	Type type = 2;
 
@@ -45,8 +45,8 @@ message Recipient {
 	// cases.
 	string original_address = 5;
 
-        // The list of servers to use, for recipients of type == FORWARD.
-        repeated string via = 6;
+	// The list of servers to use, for recipients of type == FORWARD.
+	repeated string via = 6;
 }
 
 // Timestamp representation, for convenience.
