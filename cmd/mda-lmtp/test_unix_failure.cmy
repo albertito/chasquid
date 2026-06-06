@@ -26,6 +26,6 @@ nc <- .
 
 nc -> 452 Nananana
 
-mda <- Delivery failed remotely: 452 Nananana
+mda <- Delivery failed remotely: 452 "Nananana"
 mda wait 75
 

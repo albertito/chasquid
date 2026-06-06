@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/smtp"
+	"net/textproto"
 	"os"
 	"strings"
 	"testing"
@@ -141,6 +142,23 @@ func sendEmailWithAuth(tb testing.TB, c *smtp.Client, auth smtp.Auth) {
 	localC.Wait()
 }
 
+// Checks err is a textproto.Error with the given code and message.
+func expectTPErr(tb testing.TB, err error, code int, msg string) {
+	tb.Helper()
+	if err == nil {
+		tb.Fatalf("Expected error %d %q, got nil", code, msg)
+	}
+	netErr, ok := err.(*textproto.Error)
+	if !ok {
+		tb.Fatalf("Expected textproto.Error(%d %q), got %T: %v",
+			code, msg, err, err)
+	}
+	if netErr.Code != code || netErr.Msg != msg {
+		tb.Fatalf("Expected textproto.Error(%d %q), got %d %q",
+			code, msg, netErr.Code, netErr.Msg)
+	}
+}
+
 func TestSimple(t *testing.T) {
 	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()
@@ -203,11 +221,7 @@ func TestBrokenAuth(t *testing.T) {
 
 	auth := smtp.PlainAuth("", "user@broken", "passwd", "127.0.0.1")
 	err := c.Auth(auth)
-	if err == nil {
-		t.Errorf("Broken auth succeeded")
-	} else if err.Error() != "454 4.7.0 Temporary authentication failure" {
-		t.Errorf("Broken auth returned unexpected error %q", err.Error())
-	}
+	expectTPErr(t, err, 454, "4.7.0 Temporary authentication failure")
 }
 
 func TestWrongMailParsing(t *testing.T) {
@@ -300,9 +314,7 @@ func TestTooManyRecipients(t *testing.T) {
 	}
 
 	err := c.Rcpt("to102@somewhere")
-	if err == nil || err.Error() != "452 4.5.3 Too many recipients" {
-		t.Errorf("Expected too many recipients, got: %v", err)
-	}
+	expectTPErr(t, err, 452, "4.5.3 Too many recipients")
 }
 
 func TestRcptBrokenExists(t *testing.T) {
@@ -314,13 +326,7 @@ func TestRcptBrokenExists(t *testing.T) {
 	}
 
 	err := c.Rcpt("to@broken")
-	if err == nil {
-		t.Errorf("Accepted RCPT with broken Exists")
-	}
-	expect := "451 4.4.3 Temporary error checking address"
-	if err.Error() != expect {
-		t.Errorf("RCPT returned unexpected error %q", err.Error())
-	}
+	expectTPErr(t, err, 451, "4.4.3 Temporary error checking address")
 }
 
 func TestRcptUserDoesNotExist(t *testing.T) {
@@ -332,13 +338,8 @@ func TestRcptUserDoesNotExist(t *testing.T) {
 	}
 
 	err := c.Rcpt("doesnotexist@localhost")
-	if err == nil {
-		t.Errorf("Accepted RCPT for non-existent user")
-	}
-	expect := "550 5.1.1 Destination address is unknown (user does not exist)"
-	if err.Error() != expect {
-		t.Errorf("RCPT returned unexpected error %q", err.Error())
-	}
+	expectTPErr(t, err, 550,
+		"5.1.1 Destination address is unknown (user does not exist)")
 }
 
 var str1MiB string
@@ -392,9 +393,7 @@ func TestTooMuchData(t *testing.T) {
 	localC.Wait()
 
 	err = sendLargeEmail(t, c, maxDataSizeMiB+1)
-	if err == nil || err.Error() != "552 5.3.4 Message too big" {
-		t.Fatalf("Expected message too big, got: %v", err)
-	}
+	expectTPErr(t, err, 552, "5.3.4 Message too big")
 
 	// Repeat the test once again, the limit should not prevent connection
 	// from continuing.

@@ -54,7 +54,7 @@ check "SPF_PASS=0"
 if smtpc blockme@testserver < content >.logs/smtpc.log 2>&1; then
 	fail "ERROR: hook did not block email as expected"
 fi
-if ! grep -q "451 ¡No pasarán!" .logs/smtpc.log; then
+if ! grep -q '451 "¡No pasarán!"' .logs/smtpc.log; then
 	cat .logs/smtpc.log
 	fail "ERROR: transient hook error not returned correctly"
 fi
@@ -63,7 +63,7 @@ fi
 if smtpc permanent@testserver < content >.logs/smtpc.log 2>&1; then
 	fail "ERROR: hook did not block email as expected"
 fi
-if ! grep -q "554 Nos hacemos la permanente" .logs/smtpc.log; then
+if ! grep -q '554 "Nos hacemos la permanente"' .logs/smtpc.log; then
 	cat .logs/smtpc.log
 	fail "ERROR: permanent hook error not returned correctly"
 fi
