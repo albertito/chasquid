@@ -5,6 +5,14 @@ This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
 
+## 1.18.0 (2026-06-07)
+
+- Conform to the stricter OpenMetrics format in the monitoring exporter, which
+  fixes Prometheus scraping errors.
+- Fix extra newlines in the authentication log entries.
+- Docker image improvements, including updating the Dovecot config to 2.4.
+
+
 ## 1.17.0 (2025-11-30)
 
 - Fix `Received` header format when including the IP address.
