@@ -146,7 +146,7 @@ c wait 0
 c = ./chasquid-util -C=.config dkim-sign
 c -> Invalid message.
 c close
-c <- Error parsing message: malformed header line: Invalid message.
+c <- Error parsing message: malformed header line: "Invalid message."
 c wait 1
 
 c = ./chasquid-util -C=.config dkim-sign
