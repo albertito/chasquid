@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Docker info (for debugging)
         run: docker info
       - name: Build test image
@@ -31,8 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.x"
           check-latest: true
@@ -61,14 +61,14 @@ jobs:
     needs: [integration]
     if: github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build
         run: docker build -t chasquid -f docker/Dockerfile .
 
       # Push it to Dockerhub.
       - name: Dockerhub login
         if: env.HAS_DOCKER
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_REGISTRY_USER }}
           password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
@@ -86,7 +86,7 @@ jobs:
       # Push it to Gitlab.
       - name: Gitlab login
         if: env.HAS_GITLAB
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: registry.gitlab.com
           username: ${{ secrets.GITLAB_REGISTRY_USER }}
