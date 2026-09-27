@@ -81,7 +81,7 @@ structure:
 - certs/             Certificates to use, one dir per pair.
   - mx.example.com/
     - fullchain.pem  Certificate (full chain).
-    - privkey.pem    Private key.
+    - privkey.pem    Private key (can also be named key.pem).
   ...
 ```
 
@@ -91,6 +91,8 @@ The certs/ directory layout matches the one from
 [certbot](https://certbot.eff.org/),
 [letsencrypt](https://letsencrypt.org)'s
 default client, to make it easier to integrate.
+The layout from the [NixOS ACME module](https://wiki.nixos.org/wiki/ACME)
+(`/var/lib/acme`) is also supported.
 
 A convenient way to set this up is:
 

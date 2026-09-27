@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -284,24 +285,28 @@ func loadCert(name, dir string, s *smtpsrv.Server) {
 
 func findCertKey(dir string) (string, error) {
 	keyFiles := []string{
-		// Lego (NixOS ACME module).
-		"key.pem",
 		// Letsencrypt Certbot.
 		"privkey.pem",
+		// Lego (NixOS ACME module).
+		"key.pem",
 	}
-
-	var err error
 
 	for _, name := range keyFiles {
 		keyPath := filepath.Join(dir, name)
-
-		_, err = os.Stat(keyPath)
+		_, err := os.Stat(keyPath)
 		if err == nil {
 			return keyPath, nil
 		}
+		if !errors.Is(err, os.ErrNotExist) {
+			// If the file does not exist, we move on to try the next file.
+			// But if it exists but it's inaccessible, return the error so
+			// users can debug it more clearly.
+			return "", err
+		}
 	}
 
-	return "", err
+	return "", fmt.Errorf(
+		"no private key found in %q (tried %v)", dir, keyFiles)
 }
 
 // Helper to load a single domain configuration into the server.

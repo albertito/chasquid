@@ -98,13 +98,14 @@ Certificate (full chain).
 
 =item F<certs/mx.example.com/privkey.pem>
 
-Private key.
+Private key (can also be named F<key.pem>).
 
 =back
 
 Note the F<certs/> directory layout matches the one from certbot (client for
 Let's Encrypt CA), so you can just symlink F<certs/> to
 F</etc/letsencrypt/live>.
+The layout from the NixOS ACME module (F</var/lib/acme>) is also supported.
 
 Make sure the user you use to run chasquid under ("mail" in the example
 config) can access the certificates and private keys.

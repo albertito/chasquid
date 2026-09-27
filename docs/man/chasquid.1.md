@@ -90,11 +90,12 @@ Inside that directory, the daemon expects the following structure:
 
 - `certs/mx.example.com/privkey.pem`
 
-    Private key.
+    Private key (can also be named `key.pem`).
 
 Note the `certs/` directory layout matches the one from certbot (client for
 Let's Encrypt CA), so you can just symlink `certs/` to
 `/etc/letsencrypt/live`.
+The layout from the NixOS ACME module (`/var/lib/acme`) is also supported.
 
 Make sure the user you use to run chasquid under ("mail" in the example
 config) can access the certificates and private keys.

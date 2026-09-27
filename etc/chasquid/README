@@ -12,12 +12,13 @@ This directory contains chasquid's configuration.
 - certs/                 Certificates to use, one dir per pair.
   - example.com/
     - fullchain.pem  Certificate (full chain).
-    - privkey.pem    Private key.
+    - privkey.pem    Private key (can also be named key.pem).
   ...
 
 
 Note the certs/ directory matches certbot's structure, so if you use it you
 can just symlink to /etc/letsencrypt/live.
+The NixOS ACME module's layout (/var/lib/acme) is also supported.
 
 You need at least one certificate, or the server will refuse to start.
 Ideally there should be a certificate for each DNS name pointing to you.
