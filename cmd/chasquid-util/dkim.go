@@ -54,7 +54,7 @@ func dkimSign() {
 	ctx := context.Background()
 	if _, verbose := args["-v"]; verbose {
 		ctx = dkim.WithTraceFunc(ctx,
-			func(format string, args ...interface{}) {
+			func(format string, args ...any) {
 				fmt.Fprintf(os.Stderr, format+"\n", args...)
 			})
 	}
@@ -77,7 +77,7 @@ func dkimVerify() {
 	ctx := context.Background()
 	if _, verbose := args["-v"]; verbose {
 		ctx = dkim.WithTraceFunc(ctx,
-			func(format string, args ...interface{}) {
+			func(format string, args ...any) {
 				fmt.Fprintf(os.Stderr, format+"\n", args...)
 			})
 	}

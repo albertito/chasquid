@@ -16,7 +16,7 @@ func TestTraceNoCtx(t *testing.T) {
 
 func TestTrace(t *testing.T) {
 	s := ""
-	traceF := func(f string, a ...interface{}) {
+	traceF := func(f string, a ...any) {
 		s = fmt.Sprintf(f, a...)
 	}
 	ctx := WithTraceFunc(context.Background(), traceF)

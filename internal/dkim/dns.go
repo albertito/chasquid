@@ -104,8 +104,8 @@ func parsePublicKey(v string) (*publicKey, error) {
 
 	// h is a colon-separated list of hashing algorithm names.
 	if tags["h"] != "" {
-		hs := strings.Split(eatWhitespace.Replace(tags["h"]), ":")
-		for _, h := range hs {
+		hs := strings.SplitSeq(eatWhitespace.Replace(tags["h"]), ":")
+		for h := range hs {
 			x, err := hashFromString(h)
 			if err != nil {
 				// Unrecognized algorithms must be ignored.

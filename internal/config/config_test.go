@@ -86,8 +86,8 @@ func TestFullConfig(t *testing.T) {
 
 		DataDir: "/var/lib/chasquid",
 
-		SuffixSeparators: proto.String(""),
-		DropCharacters:   proto.String(""),
+		SuffixSeparators: new(""),
+		DropCharacters:   new(""),
 
 		MailLogPath: "<syslog>",
 

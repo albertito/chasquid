@@ -113,7 +113,7 @@ func loadDNS(t *testing.T, ctx context.Context, path string) context.Context {
 	// Unfold \-terminated lines.
 	c = strings.ReplaceAll(c, "\\\n", "")
 
-	for _, line := range strings.Split(c, "\n") {
+	for line := range strings.SplitSeq(c, "\n") {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}

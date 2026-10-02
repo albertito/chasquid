@@ -1,5 +1,4 @@
 //go:build !coverage
-// +build !coverage
 
 // Generate an HTML visualization of a Go coverage profile.
 // Serves a similar purpose to "go tool cover -html", but has a different
@@ -25,7 +24,7 @@ var (
 	notes  = flag.String("notes", "", "notes to add at the beginning (HTML)")
 )
 
-func errorf(f string, a ...interface{}) {
+func errorf(f string, a ...any) {
 	fmt.Printf(f, a...)
 	os.Exit(1)
 }

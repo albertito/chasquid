@@ -27,8 +27,8 @@ var defaultConfig = &Config{
 
 	DataDir: "/var/lib/chasquid",
 
-	SuffixSeparators: proto.String("+"),
-	DropCharacters:   proto.String("."),
+	SuffixSeparators: new("+"),
+	DropCharacters:   new("."),
 
 	MailLogPath: "<syslog>",
 

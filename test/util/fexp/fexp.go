@@ -1,5 +1,4 @@
 //go:build !coverage
-// +build !coverage
 
 // Fetch an URL, and check if the response matches what we expect.
 //
@@ -187,12 +186,12 @@ func mkTransport(caCert string) http.RoundTripper {
 	}
 }
 
-func fatalf(s string, a ...interface{}) {
+func fatalf(s string, a ...any) {
 	fmt.Fprintf(os.Stderr, s, a...)
 	os.Exit(1)
 }
 
-func errorf(s string, a ...interface{}) {
+func errorf(s string, a ...any) {
 	fmt.Fprintf(os.Stderr, s, a...)
 	exitCode = 1
 }

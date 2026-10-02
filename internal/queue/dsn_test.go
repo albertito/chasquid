@@ -168,14 +168,14 @@ func printDiff(print func(s string), expected, got string) {
 
 	// expected lines and map.
 	eM := map[string]int{}
-	for _, l := range strings.Split(expected, "\n") {
+	for l := range strings.SplitSeq(expected, "\n") {
 		eM[l]++
 		lines = append(lines, l)
 	}
 
 	// got lines and map.
 	gM := map[string]int{}
-	for _, l := range strings.Split(got, "\n") {
+	for l := range strings.SplitSeq(got, "\n") {
 		gM[l]++
 		lines = append(lines, l)
 	}

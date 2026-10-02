@@ -37,13 +37,13 @@ func TestLong(t *testing.T) {
 	tr.SetMaxEvents(100)
 
 	// First 90 events, no drop.
-	for i := 0; i < 90; i++ {
+	for i := range 90 {
 		tr.Printf("evt %d", i)
 	}
 	expectEvents(t, tr, 90)
 
 	// Up to 99, still no drop.
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		tr.Printf("evt %d", i)
 	}
 	expectEvents(t, tr, 99)
@@ -57,7 +57,7 @@ func TestLong(t *testing.T) {
 	expectEvents(t, tr, 101)
 
 	// Add more events, expect none of them to exceed 101.
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		tr.Printf("evt %d", i)
 		expectEvents(t, tr, 101)
 	}

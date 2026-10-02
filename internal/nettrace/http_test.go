@@ -141,7 +141,7 @@ func TestHTTP(t *testing.T) {
 func TestHTTPLong(t *testing.T) {
 	// Test a long trace.
 	tr := New("TestHTTPLong", "verbose")
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		tr.Printf("entry #%d", i)
 	}
 	tr.Finish()

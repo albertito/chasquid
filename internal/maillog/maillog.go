@@ -70,7 +70,7 @@ func NewSyslog() (*Logger, error) {
 	return &Logger{inner: inner}, nil
 }
 
-func (l *Logger) printf(format string, args ...interface{}) {
+func (l *Logger) printf(format string, args ...any) {
 	err := l.inner.Log(log.Info, 2, format, args...)
 	if err != nil {
 		l.once.Do(func() {

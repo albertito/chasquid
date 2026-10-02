@@ -53,7 +53,7 @@ func (h *histogram) Snapshot() *histSnapshot {
 	}
 
 	var cumCount uint64
-	for i := 0; i < nBuckets; i++ {
+	for i := range nBuckets {
 		cumCount += h.count[i]
 		l := line{
 			Start:     buckets[i],

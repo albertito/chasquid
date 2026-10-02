@@ -519,7 +519,7 @@ func (c *Conn) checkSPF(addr string) (spf.Result, error) {
 		defer spfTr.Finish()
 		res, err := spf.CheckHostWithSender(
 			tcp.IP, envelope.DomainOf(addr), addr,
-			spf.WithTraceFunc(func(f string, a ...interface{}) {
+			spf.WithTraceFunc(func(f string, a ...any) {
 				spfTr.Debugf(f, a...)
 			}))
 
@@ -872,7 +872,7 @@ func checkData(data []byte) error {
 // as post-data hooks), so this function sanitizes the value to make it
 // shell-safe.
 func sanitizeEHLODomain(s string) string {
-	n := ""
+	var n strings.Builder
 	for _, c := range s {
 		// Allow a-zA-Z0-9 and []-.:
 		// That's enough for all domains, IPv4 and IPv6 literals, and also
@@ -884,11 +884,11 @@ func sanitizeEHLODomain(s string) string {
 			c >= '0' && c <= '9',
 			c == '-', c == '.',
 			c == '[', c == ']', c == ':':
-			n += string(c)
+			n.WriteString(string(c))
 		}
 	}
 
-	return n
+	return n.String()
 }
 
 // runPostDataHook and return the new headers to add, and on error a boolean
@@ -909,7 +909,7 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 
 	// Prepare the environment, copying some common variables so the hook has
 	// something reasonable, and then setting the specific ones for this case.
-	for _, v := range strings.Fields("USER PWD SHELL PATH") {
+	for v := range strings.FieldsSeq("USER PWD SHELL PATH") {
 		cmd.Env = append(cmd.Env, v+"="+os.Getenv(v))
 	}
 	cmd.Env = append(cmd.Env, "REMOTE_ADDR="+c.remoteAddr.String())
@@ -1269,7 +1269,7 @@ func (c *Conn) writeResponse(code int, msg string) error {
 	return writeResponse(c.writer, code, msg)
 }
 
-func (c *Conn) printfLine(format string, args ...interface{}) {
+func (c *Conn) printfLine(format string, args ...any) {
 	fmt.Fprintf(c.writer, format+"\r\n", args...)
 	c.writer.Flush()
 }

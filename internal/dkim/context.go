@@ -9,7 +9,7 @@ type contextKey string
 
 const traceKey contextKey = "trace"
 
-func trace(ctx context.Context, f string, args ...interface{}) {
+func trace(ctx context.Context, f string, args ...any) {
 	traceFunc, ok := ctx.Value(traceKey).(TraceFunc)
 	if !ok {
 		return
@@ -17,7 +17,7 @@ func trace(ctx context.Context, f string, args ...interface{}) {
 	traceFunc(f, args...)
 }
 
-type TraceFunc func(f string, a ...interface{})
+type TraceFunc func(f string, a ...any)
 
 func WithTraceFunc(ctx context.Context, trace TraceFunc) context.Context {
 	return context.WithValue(ctx, traceKey, trace)

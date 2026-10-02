@@ -42,7 +42,7 @@ func NewClient(conn net.Conn, host string) (*Client, error) {
 
 // cmd sends a command and returns the response over the text connection.
 // Based on Go's method of the same name.
-func (c *Client) cmd(expectCode int, format string, args ...interface{}) (int, string, error) {
+func (c *Client) cmd(expectCode int, format string, args ...any) (int, string, error) {
 	id, err := c.Text.Cmd(format, args...)
 	if err != nil {
 		return 0, "", err

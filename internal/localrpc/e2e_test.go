@@ -114,7 +114,7 @@ func TestEndToEnd(t *testing.T) {
 
 func waitForServer(t *testing.T, path string) {
 	t.Helper()
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		time.Sleep(10 * time.Millisecond)
 		conn, err := net.Dial("unix", path)
 		if conn != nil {

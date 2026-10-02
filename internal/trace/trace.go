@@ -38,7 +38,7 @@ func (t *Trace) NewChild(family, title string) *Trace {
 }
 
 // Printf adds this message to the trace's log.
-func (t *Trace) Printf(format string, a ...interface{}) {
+func (t *Trace) Printf(format string, a ...any) {
 	t.t.Printf(format, a...)
 
 	log.Log(log.Info, 1, "%s %s: %s", t.family, t.title,
@@ -46,7 +46,7 @@ func (t *Trace) Printf(format string, a ...interface{}) {
 }
 
 // Debugf adds this message to the trace's log, with a debugging level.
-func (t *Trace) Debugf(format string, a ...interface{}) {
+func (t *Trace) Debugf(format string, a ...any) {
 	t.t.Printf(format, a...)
 
 	log.Log(log.Debug, 1, "%s %s: %s",
@@ -54,7 +54,7 @@ func (t *Trace) Debugf(format string, a ...interface{}) {
 }
 
 // Errorf adds this message to the trace's log, with an error level.
-func (t *Trace) Errorf(format string, a ...interface{}) error {
+func (t *Trace) Errorf(format string, a ...any) error {
 	// Note we can't just call t.Error here, as it breaks caller logging.
 	err := fmt.Errorf(format, a...)
 	t.t.SetError()

@@ -277,7 +277,7 @@ func TestNextDelay(t *testing.T) {
 	}
 	for _, c := range cases {
 		// Repeat each case a few times to exercise the perturbation a bit.
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			delay := nextDelay(time.Now().Add(-c.since))
 
 			max := c.min + 1*time.Minute

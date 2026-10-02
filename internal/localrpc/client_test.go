@@ -56,8 +56,7 @@ func TestBadServer(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	var protoErr textproto.ProtocolError
-	if !errors.As(err, &protoErr) {
+	if _, ok := errors.AsType[textproto.ProtocolError](err); !ok {
 		t.Errorf("wanted textproto.ProtocolError, got: %v (%T)", err, err)
 	}
 }

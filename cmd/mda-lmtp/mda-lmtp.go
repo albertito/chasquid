@@ -3,7 +3,6 @@
 // See the usage below for details.
 //
 //go:build !coverage
-// +build !coverage
 
 package main
 
@@ -51,13 +50,13 @@ Flags:
 }
 
 // Exit with EX_TEMPFAIL.
-func tempExit(format string, args ...interface{}) {
+func tempExit(format string, args ...any) {
 	fmt.Printf(format+"\n", args...)
 	// 75 = EX_TEMPFAIL "temporary failure" exit code (sysexits.h).
 	os.Exit(75)
 }
 
-func permExit(format string, args ...interface{}) {
+func permExit(format string, args ...any) {
 	fmt.Printf(format+"\n", args...)
 	os.Exit(2)
 }
@@ -142,7 +141,7 @@ func main() {
 }
 
 // cmd sends a command and checks it matched the expected code.
-func cmd(conn *textproto.Conn, expectCode int, format string, args ...interface{}) {
+func cmd(conn *textproto.Conn, expectCode int, format string, args ...any) {
 	id, err := conn.Cmd(format, args...)
 	if err != nil {
 		tempExit("Sent %q, got %v", fmt.Sprintf(format, args...), err)

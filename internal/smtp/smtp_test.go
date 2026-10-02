@@ -232,7 +232,7 @@ var _ net.Conn = faker{}
 func fakeDialog(dialog string) (faker, string) {
 	var client, server string
 
-	for _, l := range strings.Split(dialog, "\n") {
+	for l := range strings.SplitSeq(dialog, "\n") {
 		if strings.HasPrefix(l, "< ") {
 			server += l[2:] + "\r\n"
 		} else if strings.HasPrefix(l, "> ") {

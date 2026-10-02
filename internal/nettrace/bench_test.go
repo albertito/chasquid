@@ -9,9 +9,9 @@ import (
 func runBench(b *testing.B, events int) {
 	nTraces := (b.N + events + 1) / events
 
-	for i := 0; i < nTraces; i++ {
+	for range nTraces {
 		tr := New("bench", "test")
-		for j := 0; j < events; j++ {
+		for j := range events {
 			tr.Printf("%d", j)
 		}
 		tr.Finish()

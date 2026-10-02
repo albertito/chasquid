@@ -5,6 +5,7 @@ package nettrace
 import (
 	"container/ring"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"sort"
 	"strconv"
@@ -51,11 +52,11 @@ type Trace interface {
 	SetError()
 
 	// Printf adds a message to the trace.
-	Printf(format string, a ...interface{})
+	Printf(format string, a ...any)
 
 	// Errorf adds a message to the trace, marks it as an error, and returns
 	// an error for it.
-	Errorf(format string, a ...interface{}) error
+	Errorf(format string, a ...any) error
 
 	// Finish marks the trace as complete.
 	// The trace should not be used after calling this method.
@@ -220,7 +221,7 @@ func (tr *trace) SetError() {
 	tr.mu.Unlock()
 }
 
-func (tr *trace) Printf(format string, a ...interface{}) {
+func (tr *trace) Printf(format string, a ...any) {
 	evt := &event{
 		When: time.Now(),
 		Type: evtLOG,
@@ -230,7 +231,7 @@ func (tr *trace) Printf(format string, a ...interface{}) {
 	tr.append(evt)
 }
 
-func (tr *trace) Errorf(format string, a ...interface{}) error {
+func (tr *trace) Errorf(format string, a ...any) error {
 	tr.SetError()
 	err := fmt.Errorf(format, a...)
 	tr.Printf("%s", err.Error())
@@ -354,7 +355,7 @@ func (r *traceRing) Len() int {
 }
 
 func (r *traceRing) Do(f func(tr *trace)) {
-	r.ring.Do(func(x interface{}) {
+	r.ring.Do(func(x any) {
 		if x == nil {
 			return
 		}
@@ -382,7 +383,7 @@ type familyTraces struct {
 func newFamilyTraces() *familyTraces {
 	ft := &familyTraces{}
 	ft.active = map[id]*trace{}
-	for i := 0; i < nBuckets; i++ {
+	for i := range nBuckets {
 		ft.finished[i] = newTraceRing(tracesInBucket)
 	}
 	ft.errors = newTraceRing(tracesInBucket)
@@ -512,9 +513,7 @@ func copyFamilies() map[string]*familyTraces {
 	n := map[string]*familyTraces{}
 
 	familiesMu.Lock()
-	for f, trs := range families {
-		n[f] = trs
-	}
+	maps.Copy(n, families)
 	familiesMu.Unlock()
 
 	return n

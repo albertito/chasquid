@@ -307,7 +307,7 @@ func TestTooManyRecipients(t *testing.T) {
 		t.Fatalf("Mail: %v", err)
 	}
 
-	for i := 0; i < 101; i++ {
+	for i := range 101 {
 		if err := c.Rcpt(fmt.Sprintf("to%d@somewhere", i)); err != nil {
 			t.Fatalf("Rcpt: %v", err)
 		}
@@ -363,7 +363,7 @@ func sendLargeEmail(tb testing.TB, c *smtp.Client, sizeMiB int) error {
 	}
 
 	// Write the 1 MiB string sizeMiB times.
-	for i := 0; i < sizeMiB; i++ {
+	for range sizeMiB {
 		if _, err := w.Write([]byte(str1MiB)); err != nil {
 			tb.Fatalf("Data write: %v", err)
 		}
@@ -615,7 +615,7 @@ func realMain(m *testing.M) int {
 
 	// Create a 1MiB string, which the large message tests use.
 	buf := make([]byte, 1024*1024)
-	for i := 0; i < len(buf); i++ {
+	for i := range buf {
 		buf[i] = 'a'
 	}
 	str1MiB = string(buf)

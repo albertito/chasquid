@@ -229,7 +229,7 @@ func TestFetch(t *testing.T) {
 func TestPolicyTooBig(t *testing.T) {
 	// Construct a valid but very large JSON as a policy.
 	raw := `{"version": "STSv1", "mode": "enforce", "mx": [`
-	for i := 0; i < 2000; i++ {
+	for i := range 2000 {
 		raw += fmt.Sprintf("\"mx%d\", ", i)
 	}
 	raw += `"mxlast"], "max_age": 100}`

@@ -1,5 +1,4 @@
 //go:build !coverage
-// +build !coverage
 
 // Utility to generate self-signed certificates.
 // It generates a self-signed x509 certificate and key pair, and writes them
@@ -34,7 +33,7 @@ var (
 		"Should this cert be its own CA?")
 )
 
-func fatalf(f string, a ...interface{}) {
+func fatalf(f string, a ...any) {
 	fmt.Printf(f, a...)
 	os.Exit(1)
 }
@@ -71,8 +70,8 @@ func main() {
 		tmpl.IsCA = true
 	}
 
-	hosts := strings.Split(*host, ",")
-	for _, h := range hosts {
+	hosts := strings.SplitSeq(*host, ",")
+	for h := range hosts {
 		if ip := net.ParseIP(h); ip != nil {
 			tmpl.IPAddresses = append(tmpl.IPAddresses, ip)
 		} else {

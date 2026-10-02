@@ -113,13 +113,13 @@ func main() {
 
 // Fatalf prints the given message to stderr, then exits the program with an
 // error code.
-func Fatalf(s string, arg ...interface{}) {
+func Fatalf(s string, arg ...any) {
 	fmt.Fprintf(os.Stderr, s+"\n", arg...)
 	os.Exit(1)
 }
 
 // Warnf prints the given message to stderr, but does not exit the program.
-func Warnf(s string, arg ...interface{}) {
+func Warnf(s string, arg ...any) {
 	fmt.Fprintf(os.Stderr, s+"\n", arg...)
 }
 

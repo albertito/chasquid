@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -249,26 +250,27 @@ func (q *Queue) Remove(id string) {
 func (q *Queue) DumpString() string {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	s := "# Queue status\n\n"
-	s += fmt.Sprintf("date: %v\n", time.Now())
-	s += fmt.Sprintf("length: %d\n\n", len(q.q))
+	var s strings.Builder
+	s.WriteString("# Queue status\n\n")
+	s.WriteString(fmt.Sprintf("date: %v\n", time.Now()))
+	s.WriteString(fmt.Sprintf("length: %d\n\n", len(q.q)))
 
 	for id, item := range q.q {
-		s += fmt.Sprintf("## Item %s\n", id)
+		s.WriteString(fmt.Sprintf("## Item %s\n", id))
 		item.Lock()
-		s += fmt.Sprintf("created at: %s\n", item.CreatedAt)
-		s += fmt.Sprintf("from: %s\n", item.From)
-		s += fmt.Sprintf("to: %s\n", item.To)
+		s.WriteString(fmt.Sprintf("created at: %s\n", item.CreatedAt))
+		s.WriteString(fmt.Sprintf("from: %s\n", item.From))
+		s.WriteString(fmt.Sprintf("to: %s\n", item.To))
 		for _, rcpt := range item.Rcpt {
-			s += fmt.Sprintf("%s %s (%s)\n", rcpt.Status, rcpt.Address, rcpt.Type)
-			s += fmt.Sprintf("  original address: %s\n", rcpt.OriginalAddress)
-			s += fmt.Sprintf("  last failure: %q\n", rcpt.LastFailureMessage)
+			s.WriteString(fmt.Sprintf("%s %s (%s)\n", rcpt.Status, rcpt.Address, rcpt.Type))
+			s.WriteString(fmt.Sprintf("  original address: %s\n", rcpt.OriginalAddress))
+			s.WriteString(fmt.Sprintf("  last failure: %q\n", rcpt.LastFailureMessage))
 		}
 		item.Unlock()
-		s += "\n"
+		s.WriteString("\n")
 	}
 
-	return s
+	return s.String()
 }
 
 // An Item in the queue.
@@ -458,11 +460,8 @@ func rewriteSender(from, originalAddr string) string {
 func (item *Item) countRcpt(statuses ...Recipient_Status) int {
 	c := 0
 	for _, rcpt := range item.Rcpt {
-		for _, status := range statuses {
-			if rcpt.Status == status {
-				c++
-				break
-			}
+		if slices.Contains(statuses, rcpt.Status) {
+			c++
 		}
 	}
 	return c

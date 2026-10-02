@@ -101,7 +101,7 @@ func loadConfig() {
 	}
 	notnil(err)
 
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		k, v, ok := strings.Cut(line, " ")
 		if !ok {
 			continue

@@ -312,7 +312,7 @@ func parseTags(s string) (tags, error) {
 	s = strings.TrimSuffix(s, ";")
 
 	tags := make(tags)
-	for _, tv := range strings.Split(s, ";") {
+	for tv := range strings.SplitSeq(s, ";") {
 		t, v, found := strings.Cut(tv, "=")
 		if !found {
 			return nil, fmt.Errorf("%w: missing '='", errInvalidTag)

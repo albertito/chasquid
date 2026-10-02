@@ -192,7 +192,7 @@ func FuzzDomainToUnicode(f *testing.F) {
 func BenchmarkToCRLF(b *testing.B) {
 	// Generate a 1000-line message.
 	bb := bytes.Buffer{}
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		bb.WriteString("this is a very pretty line 🐅\n")
 	}
 	buf := bb.Bytes()
@@ -206,7 +206,7 @@ func BenchmarkToCRLF(b *testing.B) {
 func BenchmarkStringToCRLF(b *testing.B) {
 	// Generate a 1000-line message.
 	sb := strings.Builder{}
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		sb.WriteString("this is a very pretty line 🐅\n")
 	}
 	s := sb.String()

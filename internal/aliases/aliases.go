@@ -60,6 +60,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"strings"
@@ -384,9 +385,7 @@ func (v *Resolver) AddAliasesFile(domain, path string) (int, error) {
 
 	// Add the aliases to the resolver, overriding any previous values.
 	v.mu.Lock()
-	for addr, rs := range aliases {
-		v.aliases[addr] = rs
-	}
+	maps.Copy(v.aliases, aliases)
 	v.mu.Unlock()
 
 	return len(aliases), nil
@@ -413,9 +412,7 @@ func (v *Resolver) Reload() error {
 			}
 
 			// Add the aliases to the resolver, overriding any previous values.
-			for addr, rs := range aliases {
-				newAliases[addr] = rs
-			}
+			maps.Copy(newAliases, aliases)
 		}
 	}
 
@@ -500,7 +497,7 @@ func parseRHS(rawalias, domain string) ([]Recipient, error) {
 	}
 
 	rs := []Recipient{}
-	for _, a := range strings.Split(rawalias, ",") {
+	for a := range strings.SplitSeq(rawalias, ",") {
 		a = strings.TrimSpace(a)
 		if a == "" {
 			// Ignore empty aliases. This is out of convenience, so we allow
@@ -558,7 +555,7 @@ func parseForward(rawalias string) (string, []string, error) {
 	// The via part is a list of servers, separated by "/". Split it up.
 	// For now we don't validate the servers, but we may in the future.
 	via := []string{}
-	for _, v := range strings.Split(viaS, "/") {
+	for v := range strings.SplitSeq(viaS, "/") {
 		server := strings.TrimSpace(v)
 		if server == "" {
 			return "", nil, fmt.Errorf("empty server in via list")
@@ -572,7 +569,7 @@ func parseForward(rawalias string) (string, []string, error) {
 // removeAllAfter removes everything from s that comes after the separators,
 // including them.
 func removeAllAfter(s, seps string) string {
-	for _, c := range strings.Split(seps, "") {
+	for c := range strings.SplitSeq(seps, "") {
 		if c == "" {
 			continue
 		}
@@ -590,7 +587,7 @@ func removeAllAfter(s, seps string) string {
 
 // removeChars removes the runes in "chars" from s.
 func removeChars(s, chars string) string {
-	for _, c := range strings.Split(chars, "") {
+	for c := range strings.SplitSeq(chars, "") {
 		s = strings.Replace(s, c, "", -1)
 	}
 
@@ -650,7 +647,7 @@ func (e *parseError) Error() string {
 	return fmt.Sprintf("line %d: %v", e.line, e.err)
 }
 
-func newParseError(line int, f string, args ...interface{}) error {
+func newParseError(line int, f string, args ...any) error {
 	return &parseError{
 		line: line,
 		err:  fmt.Errorf(f, args...),
