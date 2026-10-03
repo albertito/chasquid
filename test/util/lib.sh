@@ -26,7 +26,11 @@ function init() {
 	# Set traps to kill our subprocesses when we exit (for any reason).
 	trap ":" TERM      # Avoid the EXIT handler from killing bash.
 	trap "exit 2" INT  # Ctrl-C, make sure we fail in that case.
-	trap "kill 0" EXIT # Kill children on exit.
+	# Kill children on exit, and wait for them to finish, so they don't
+	# interfere with the next test (e.g. by still listening on a port).
+	# "wait" returns early (and with an error) if we get a signal while
+	# waiting, so we loop until it completes.
+	trap "kill 0; until wait; do :; done" EXIT
 }
 
 function chasquid() {
