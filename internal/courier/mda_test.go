@@ -7,13 +7,10 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
 func TestMDA(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 
 	p := MDA{
 		Binary:  "tee",

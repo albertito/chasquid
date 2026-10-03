@@ -1,7 +1,6 @@
 package nettrace
 
 import (
-	"context"
 	"testing"
 )
 
@@ -10,7 +9,7 @@ func TestContext(t *testing.T) {
 	defer tr.Finish()
 
 	// Attach the trace to a new context.
-	ctx := NewContext(context.Background(), tr)
+	ctx := NewContext(t.Context(), tr)
 
 	// Get the trace back from the context.
 	{
@@ -46,7 +45,7 @@ func TestContext(t *testing.T) {
 	// FromContextOrNew needs to create a new one.
 	{
 		tr5, ctx5 := FromContextOrNew(
-			context.Background(), "TestContext", "tr5")
+			t.Context(), "TestContext", "tr5")
 		if tr, _ := FromContext(ctx5); tr != tr5 {
 			t.Errorf("Context with trace returned the wrong trace: %v != %v",
 				tr, tr5)
@@ -57,7 +56,7 @@ func TestContext(t *testing.T) {
 	// Child from a context that has no trace attached.
 	{
 		tr6 := ChildFromContext(
-			context.Background(), "TestContext", "child")
+			t.Context(), "TestContext", "child")
 		tr6.Finish()
 		if p := tr6.(*trace).Parent; p != nil {
 			t.Errorf("Expected orphan trace, it has a parent: %v", p)

@@ -40,3 +40,6 @@ chasquid.test
 # Exclude any .pem files, to prevent accidentally including test keys and
 # certificates.
 *.pem
+
+# Test artifacts, saved when running "go test -artifacts".
+_artifacts/

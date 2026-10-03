@@ -12,7 +12,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/auth"
@@ -491,8 +490,7 @@ func TestAddDKIMSigner(t *testing.T) {
 		t.Errorf("AddDKIMSigner: expected not exist, got %v", err)
 	}
 
-	tmpDir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, tmpDir)
+	tmpDir := t.ArtifactDir()
 
 	// Invalid PEM file.
 	kf1 := tmpDir + "/key1-bad_pem.pem"
@@ -555,8 +553,7 @@ func BenchmarkManyEmails(b *testing.B) {
 	c := mustDial(b, ModeSMTP, false)
 	defer c.Close()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		sendEmail(b, c)
 	}
 }
@@ -575,25 +572,6 @@ func BenchmarkManyEmailsParallel(b *testing.B) {
 //
 // === Test environment ===
 //
-
-// waitForServer waits 5 seconds for the server to start, and returns an error
-// if it fails to do so.
-// It does this by repeatedly connecting to the address until it either
-// replies or times out. Note we do not do any validation of the reply.
-func waitForServer(addr string) error {
-	start := time.Now()
-	for time.Since(start) < 10*time.Second {
-		conn, err := net.Dial("tcp", addr)
-		if err == nil {
-			conn.Close()
-			return nil
-		}
-
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	return fmt.Errorf("not reachable")
-}
 
 type brokenAuthBE struct{}
 
@@ -615,11 +593,7 @@ func realMain(m *testing.M) int {
 	flag.Parse()
 
 	// Create a 1MiB string, which the large message tests use.
-	buf := make([]byte, 1024*1024)
-	for i := range buf {
-		buf[i] = 'a'
-	}
-	str1MiB = string(buf)
+	str1MiB = strings.Repeat("a", 1024*1024)
 
 	// Set up the mail log to stdout, which is captured by the test runner,
 	// so we have better debugging information on failures.
@@ -647,17 +621,29 @@ func realMain(m *testing.M) int {
 			return 1
 		}
 
-		smtpAddr = testlib.GetFreePort()
-		submissionAddr = testlib.GetFreePort()
-		submissionTLSAddr = testlib.GetFreePort()
-
 		s := NewServer()
 		s.Hostname = "localhost"
 		s.MaxDataSize = int64(maxDataSizeMiB) * 1024 * 1024
 		s.AddCerts(tmpDir+"/cert.pem", tmpDir+"/key.pem")
-		s.AddAddr(smtpAddr, ModeSMTP)
-		s.AddAddr(submissionAddr, ModeSubmission)
-		s.AddAddr(submissionTLSAddr, ModeSubmissionTLS)
+
+		// Open the listeners ourselves, so the ports are already bound
+		// (and we know their addresses) by the time the tests run.
+		for _, l := range []struct {
+			addr *string
+			mode SocketMode
+		}{
+			{&smtpAddr, ModeSMTP},
+			{&submissionAddr, ModeSubmission},
+			{&submissionTLSAddr, ModeSubmissionTLS},
+		} {
+			ln, err := net.Listen("tcp", "localhost:0")
+			if err != nil {
+				fmt.Printf("Failed to listen: %v\n", err)
+				return 1
+			}
+			*l.addr = ln.Addr().String()
+			s.AddListeners([]net.Listener{ln}, l.mode)
+		}
 
 		s.InitQueue(tmpDir+"/queue", localC, remoteC)
 
@@ -687,9 +673,6 @@ func realMain(m *testing.M) int {
 		go s.ListenAndServe()
 	}
 
-	waitForServer(smtpAddr)
-	waitForServer(submissionAddr)
-	waitForServer(submissionTLSAddr)
 	return m.Run()
 }
 

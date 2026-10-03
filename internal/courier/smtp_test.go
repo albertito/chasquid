@@ -9,7 +9,6 @@ import (
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/sts"
-	"blitiri.com.ar/go/chasquid/internal/testlib"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 )
 
@@ -27,14 +26,13 @@ func init() {
 	}
 }
 
-func newSMTP(t *testing.T) (*SMTP, string) {
-	dir := testlib.MustTempDir(t)
-	dinfo, err := domaininfo.New(dir)
+func newSMTP(t *testing.T) *SMTP {
+	dinfo, err := domaininfo.New(t.ArtifactDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	return &SMTP{"hello", dinfo, nil}, dir
+	return &SMTP{"hello", dinfo, nil}
 }
 
 func TestSMTP(t *testing.T) {
@@ -52,7 +50,6 @@ func TestSMTP(t *testing.T) {
 		"QUIT":              "250 quit ok\n",
 	}
 	srv := newFakeServer(t, responses, 1)
-	defer srv.Cleanup()
 	host, port := srv.HostPort()
 
 	// Put a non-existing host first, so we check that if the first host
@@ -67,8 +64,7 @@ func TestSMTP(t *testing.T) {
 	}
 	*smtpPort = port
 
-	s, tmpDir := newSMTP(t)
-	defer testlib.RemoveIfOk(t, tmpDir)
+	s := newSMTP(t)
 	err, _ := s.Deliver("me@me", "to@to", []byte("data"))
 	if err != nil {
 		t.Errorf("deliver failed: %v", err)
@@ -125,14 +121,12 @@ func TestSMTPErrors(t *testing.T) {
 
 	for _, rs := range responses {
 		srv := newFakeServer(t, rs, 1)
-		defer srv.Cleanup()
 		host, port := srv.HostPort()
 
 		testMX["to"] = []*net.MX{{Host: host, Pref: 10}}
 		*smtpPort = port
 
-		s, tmpDir := newSMTP(t)
-		defer testlib.RemoveIfOk(t, tmpDir)
+		s := newSMTP(t)
 		err, _ := s.Deliver("me@me", "to@to", []byte("data"))
 		if err == nil {
 			t.Errorf("deliver not failed in case %q: %v", rs["_welcome"], err)
@@ -146,8 +140,7 @@ func TestSMTPErrors(t *testing.T) {
 func TestNoMXServer(t *testing.T) {
 	testMX["to"] = []*net.MX{}
 
-	s, tmpDir := newSMTP(t)
-	defer testlib.RemoveIfOk(t, tmpDir)
+	s := newSMTP(t)
 	err, permanent := s.Deliver("me@me", "to@to", []byte("data"))
 	if err == nil {
 		t.Errorf("delivery worked, expected failure")
@@ -258,15 +251,13 @@ var tlsResponses = map[string]string{
 func TestTLS(t *testing.T) {
 	smtpTotalTimeout = 5 * time.Second
 	srv := newFakeServer(t, tlsResponses, 1)
-	defer srv.Cleanup()
 	_, *smtpPort = srv.HostPort()
 
 	testMX["to"] = []*net.MX{
 		{Host: "localhost", Pref: 20},
 	}
 
-	s, tmpDir := newSMTP(t)
-	defer testlib.RemoveIfOk(t, tmpDir)
+	s := newSMTP(t)
 	err, _ := s.Deliver("me@me", "to@to", []byte("data"))
 	if err != nil {
 		t.Errorf("deliver failed: %v", err)
@@ -286,7 +277,6 @@ func TestTLS(t *testing.T) {
 		"QUIT":              "250 quit ok\n",
 	}
 	srv = newFakeServer(t, responses, 1)
-	defer srv.Cleanup()
 	_, *smtpPort = srv.HostPort()
 
 	err, permanent := s.Deliver("me@me", "to@to", []byte("data"))
@@ -326,15 +316,13 @@ func TestTLSError(t *testing.T) {
 	// after the failed STARTTLS). Note this also checks that we correctly
 	// close the errored connection, instead of leaving it lingering.
 	srv := newFakeServer(t, responses, 2)
-	defer srv.Cleanup()
 	_, *smtpPort = srv.HostPort()
 
 	testMX["to"] = []*net.MX{
 		{Host: "localhost", Pref: 20},
 	}
 
-	s, tmpDir := newSMTP(t)
-	defer testlib.RemoveIfOk(t, tmpDir)
+	s := newSMTP(t)
 	err, _ := s.Deliver("me@me", "to@to", []byte("data"))
 	if err != nil {
 		t.Errorf("deliver failed: %v", err)
@@ -353,11 +341,9 @@ func TestTLSError(t *testing.T) {
 func TestSTSPolicyEnforcement(t *testing.T) {
 	smtpTotalTimeout = 5 * time.Second
 	srv := newFakeServer(t, tlsResponses, 1)
-	defer srv.Cleanup()
 	_, *smtpPort = srv.HostPort()
 
-	s, tmpDir := newSMTP(t)
-	defer testlib.RemoveIfOk(t, tmpDir)
+	s := newSMTP(t)
 
 	a := &attempt{
 		courier:  s,
@@ -393,7 +379,6 @@ func TestSTSPolicyEnforcement(t *testing.T) {
 	// be TLS_SECURE which is required by the STS policy.
 	srv = newFakeServer(t, tlsResponses, 1)
 	_, *smtpPort = srv.HostPort()
-	defer srv.Cleanup()
 
 	certRoots = srv.rootCA()
 	defer func() {

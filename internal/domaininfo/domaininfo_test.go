@@ -10,8 +10,7 @@ import (
 )
 
 func TestBasic(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 	db, err := New(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -70,8 +69,7 @@ func TestBasic(t *testing.T) {
 }
 
 func TestNewDomain(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 	db, err := New(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -101,8 +99,7 @@ func TestNewDomain(t *testing.T) {
 }
 
 func TestProgressions(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 	db, err := New(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -146,8 +143,7 @@ func TestErrors(t *testing.T) {
 	}
 
 	// Corrupt/invalid file.
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 	db, err := New(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -175,8 +171,7 @@ func TestErrors(t *testing.T) {
 }
 
 func TestDirectoryErrors(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 	db, err := New(dir + "/db")
 	if err != nil {
 		t.Fatal(err)

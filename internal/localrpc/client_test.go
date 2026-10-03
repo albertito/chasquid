@@ -6,22 +6,29 @@ import (
 	"io/fs"
 	"net"
 	"net/textproto"
-	"os"
 	"path/filepath"
 	"testing"
 )
 
+// NewFakeServer starts a fake server listening on the given path, which
+// replies with the given output to every request.
 func NewFakeServer(t *testing.T, path, output string) {
 	t.Helper()
 	lis, err := net.Listen("unix", path)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
+	t.Cleanup(func() { lis.Close() })
 
+	go fakeServe(t, lis, output)
+}
+
+func fakeServe(t *testing.T, lis net.Listener, output string) {
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
-			panic(err)
+			// Listener closed at the end of the test.
+			return
 		}
 		t.Logf("FakeServer %v: accepted ", conn)
 
@@ -39,20 +46,14 @@ func NewFakeServer(t *testing.T, path, output string) {
 }
 
 func TestBadServer(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "rpc-test-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDir)
-	socketPath := filepath.Join(tmpDir, "rpc.sock")
+	socketPath := filepath.Join(t.TempDir(), "rpc.sock")
 
 	// textproto client expects a numeric code, this should cause ReadCodeLine
 	// to fail with textproto.ProtocolError.
-	go NewFakeServer(t, socketPath, "xxx")
-	waitForServer(t, socketPath)
+	NewFakeServer(t, socketPath, "xxx")
 
 	client := NewClient(socketPath)
-	_, err = client.Call("Echo")
+	_, err := client.Call("Echo")
 	if err == nil {
 		t.Fatal("expected error")
 	}

@@ -4,9 +4,7 @@ import (
 	"errors"
 	"net"
 	"net/url"
-	"os"
 	"testing"
-	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/trace"
 	"github.com/google/go-cmp/cmp"
@@ -29,7 +27,6 @@ func HolaErr(tr *trace.Trace, input url.Values) (url.Values, error) {
 }
 
 type testServer struct {
-	dir  string
 	sock string
 	*Server
 }
@@ -37,29 +34,23 @@ type testServer struct {
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
 
-	tmpDir, err := os.MkdirTemp("", "rpc-test-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	tsrv := &testServer{
-		dir:    tmpDir,
-		sock:   tmpDir + "/sock",
+		sock:   t.TempDir() + "/sock",
 		Server: NewServer(),
 	}
 
 	tsrv.Register("Echo", Echo)
 	tsrv.Register("Hola", Hola)
 	tsrv.Register("HolaErr", HolaErr)
-	go tsrv.ListenAndServe(tsrv.sock)
 
-	waitForServer(t, tsrv.sock)
+	lis, err := net.Listen("unix", tsrv.sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { lis.Close() })
+	go tsrv.Serve(lis)
+
 	return tsrv
-}
-
-func (tsrv *testServer) Cleanup() {
-	tsrv.Close()
-	os.RemoveAll(tsrv.dir)
 }
 
 func mkV(args ...string) url.Values {
@@ -72,7 +63,6 @@ func mkV(args ...string) url.Values {
 
 func TestEndToEnd(t *testing.T) {
 	srv := newTestServer(t)
-	defer srv.Cleanup()
 
 	// Run the client.
 	client := NewClient(srv.sock)
@@ -110,21 +100,6 @@ func TestEndToEnd(t *testing.T) {
 	if diff := cmp.Diff(mkV("greeting", "Hola marola"), output); diff != "" {
 		t.Errorf("output mismatch (-want +got):\n%s", diff)
 	}
-}
-
-func waitForServer(t *testing.T, path string) {
-	t.Helper()
-	for range 100 {
-		time.Sleep(10 * time.Millisecond)
-		conn, err := net.Dial("unix", path)
-		if conn != nil {
-			conn.Close()
-		}
-		if err == nil {
-			return
-		}
-	}
-	t.Fatal("server didn't start")
 }
 
 // Allow us to compare errors with cmp.Diff by their string content (since the

@@ -10,7 +10,7 @@ import (
 func TestTraceNoCtx(t *testing.T) {
 	// Call trace() on a context without a trace function, to check it doesn't
 	// panic.
-	ctx := context.Background()
+	ctx := t.Context()
 	trace(ctx, "test")
 }
 
@@ -19,7 +19,7 @@ func TestTrace(t *testing.T) {
 	traceF := func(f string, a ...any) {
 		s = fmt.Sprintf(f, a...)
 	}
-	ctx := WithTraceFunc(context.Background(), traceF)
+	ctx := WithTraceFunc(t.Context(), traceF)
 	trace(ctx, "test %d", 1)
 	if s != "test 1" {
 		t.Errorf("trace function not called")
@@ -32,7 +32,7 @@ func TestLookupTXTNoCtx(t *testing.T) {
 	// We just check there is a reasonable error.
 	// We don't specifically check that it's NXDOMAIN because if we don't have
 	// internet access, the error may be different.
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := lookupTXT(ctx, "does.not.exist.example.com")
 	if _, ok := err.(*net.DNSError); !ok {
 		t.Fatalf("expected *net.DNSError, got %T", err)
@@ -45,7 +45,7 @@ func TestLookupTXT(t *testing.T) {
 		called = true
 		return nil, nil
 	}
-	ctx := WithLookupTXTFunc(context.Background(), lookupTXTF)
+	ctx := WithLookupTXTFunc(t.Context(), lookupTXTF)
 	lookupTXT(ctx, "example.com")
 	if !called {
 		t.Errorf("lookupTXT function not called")
@@ -54,7 +54,7 @@ func TestLookupTXT(t *testing.T) {
 
 func TestMaxHeaders(t *testing.T) {
 	// First without an override, check we return the default.
-	ctx := context.Background()
+	ctx := t.Context()
 	if m := maxHeaders(ctx); m != 5 {
 		t.Errorf("expected 5, got %d", m)
 	}

@@ -27,21 +27,13 @@ type FakeServer struct {
 func newFakeServer(t *testing.T, responses map[string]string, conns int) *FakeServer {
 	s := &FakeServer{
 		t:         t,
-		tmpDir:    testlib.MustTempDir(t),
+		tmpDir:    t.ArtifactDir(),
 		responses: responses,
 		conns:     conns,
 		wg:        &sync.WaitGroup{},
 	}
 	s.start()
 	return s
-}
-
-func (s *FakeServer) Cleanup() {
-	// Remove our temporary data. Be extra paranoid and make sure the
-	// directory isn't too shallow.
-	if len(s.tmpDir) > 8 {
-		os.RemoveAll(s.tmpDir)
-	}
 }
 
 func (s *FakeServer) initTLS() {
@@ -84,11 +76,7 @@ func (s *FakeServer) start() string {
 
 	s.initTLS()
 
-	s.wg.Add(s.conns)
-
 	accept := func() {
-		defer s.wg.Done()
-
 		c, err := l.Accept()
 		if err != nil {
 			panic(err)
@@ -137,8 +125,8 @@ func (s *FakeServer) start() string {
 		}
 	}
 
-	for i := 0; i < s.conns; i++ {
-		go accept()
+	for range s.conns {
+		s.wg.Go(accept)
 	}
 
 	return s.addr

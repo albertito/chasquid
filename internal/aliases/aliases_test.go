@@ -5,11 +5,11 @@ import (
 	"errors"
 	"os"
 	"os/exec"
-	"reflect"
 	"strings"
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/trace"
+	"github.com/google/go-cmp/cmp"
 )
 
 type Cases []struct {
@@ -29,9 +29,8 @@ func (cases Cases) check(t *testing.T, r *Resolver) {
 			t.Errorf("case %q: expected error %v, got %v",
 				c.addr, c.err, err)
 		}
-		if !reflect.DeepEqual(got, c.expect) {
-			t.Errorf("case %q: got %+v, expected %+v",
-				c.addr, got, c.expect)
+		if diff := cmp.Diff(c.expect, got); diff != "" {
+			t.Errorf("case %q: mismatch (-want +got):\n%s", c.addr, diff)
 		}
 	}
 }
@@ -507,7 +506,8 @@ func TestTooMuchRecursionOnCatchAll(t *testing.T) {
 }
 
 func mustWriteFile(t *testing.T, content string) string {
-	f, err := os.CreateTemp("", "aliases_test")
+	t.Helper()
+	f, err := os.CreateTemp(t.TempDir(), "aliases_test")
 	if err != nil {
 		t.Fatalf("failed to get temp file: %v", err)
 	}
@@ -555,7 +555,6 @@ func TestAddFile(t *testing.T) {
 
 	for _, c := range cases {
 		fname := mustWriteFile(t, c.contents)
-		defer os.Remove(fname)
 
 		resolver := NewResolver(allUsersExist)
 		_, err := resolver.AddAliasesFile("dom", fname)
@@ -568,8 +567,8 @@ func TestAddFile(t *testing.T) {
 			t.Errorf("case %q, got error: %v", c.contents, err)
 			continue
 		}
-		if !reflect.DeepEqual(got, c.expected) {
-			t.Errorf("case %q, got %v, expected %v", c.contents, got, c.expected)
+		if diff := cmp.Diff(c.expected, got); diff != "" {
+			t.Errorf("case %q: mismatch (-want +got):\n%s", c.contents, diff)
 		}
 	}
 
@@ -590,7 +589,6 @@ func TestAddFile(t *testing.T) {
 
 	for _, c := range errcases {
 		fname := mustWriteFile(t, c.contents)
-		defer os.Remove(fname)
 
 		resolver := NewResolver(allUsersExist)
 		_, err := resolver.AddAliasesFile("dom", fname)
@@ -637,7 +635,6 @@ y: z`
 
 func TestRichFile(t *testing.T) {
 	fname := mustWriteFile(t, richFileContents)
-	defer os.Remove(fname)
 
 	resolver := NewResolver(allUsersExist)
 	resolver.DropChars = "."
@@ -693,9 +690,6 @@ func TestManyFiles(t *testing.T) {
 		// Cross-domain.
 		"xd1": mustWriteFile(t, "a: b@xd2"),
 		"xd2": mustWriteFile(t, "b: |cmd"),
-	}
-	for _, fname := range files {
-		defer os.Remove(fname)
 	}
 
 	resolver := NewResolver(allUsersExist)
@@ -804,8 +798,7 @@ func TestHook(t *testing.T) {
 	if len(rcpts) != 0 {
 		t.Errorf("expected no recipients, got %v", rcpts)
 	}
-	execErr := &exec.ExitError{}
-	if !errors.As(err, &execErr) {
+	if _, ok := errors.AsType[*exec.ExitError](err); !ok {
 		t.Errorf("expected *exec.ExitError, got %T - %v", err, err)
 	}
 }
@@ -846,8 +839,8 @@ func TestParseForward(t *testing.T) {
 		if addr != c.addr {
 			t.Errorf("case %q: got addr %q, expected %q", c.raw, addr, c.addr)
 		}
-		if !reflect.DeepEqual(via, c.via) {
-			t.Errorf("case %q: got via %q, expected %q", c.raw, via, c.via)
+		if diff := cmp.Diff(c.via, via); diff != "" {
+			t.Errorf("case %q: via mismatch (-want +got):\n%s", c.raw, diff)
 		}
 	}
 }

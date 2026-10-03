@@ -20,7 +20,7 @@ func makeLookupTXT(results map[string][]string) lookupTXTFunc {
 }
 
 func TestVerifyRF6376CExample(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = WithTraceFunc(ctx, t.Logf)
 
 	// Use the public key from the example in RFC 6376 appendix C.
@@ -88,7 +88,7 @@ Joe.
 }
 
 func TestVerifyRFC8463Example(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = WithTraceFunc(ctx, t.Logf)
 
 	// Use the public keys from the example in RFC 8463 appendix A.2.

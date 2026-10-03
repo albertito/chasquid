@@ -1,7 +1,6 @@
 package dkim
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -33,7 +32,7 @@ Joe.
 `)
 
 func TestSignRSA(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = WithTraceFunc(ctx, t.Logf)
 
 	// Generate a new key pair.
@@ -84,7 +83,7 @@ func TestSignRSA(t *testing.T) {
 }
 
 func TestSignEd25519(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = WithTraceFunc(ctx, t.Logf)
 
 	// Generate a new key pair.
@@ -141,7 +140,7 @@ func TestSignBadMessage(t *testing.T) {
 		Domain:   "example.com",
 		Selector: "test",
 	}
-	_, err := s.Sign(context.Background(), "Bad message")
+	_, err := s.Sign(t.Context(), "Bad message")
 	if err == nil {
 		t.Errorf("Sign: wanted error; got nil")
 	}
@@ -159,7 +158,7 @@ func TestSignBadAlgorithm(t *testing.T) {
 	}
 	s.Signer = priv
 
-	_, err = s.Sign(context.Background(), basicMessage)
+	_, err = s.Sign(t.Context(), basicMessage)
 	if !errors.Is(err, errUnsupportedKeyType) {
 		t.Errorf("Sign: wanted unsupported key type; got %v", err)
 	}

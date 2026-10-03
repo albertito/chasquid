@@ -16,7 +16,7 @@ func TestLookupError(t *testing.T) {
 	errLookupF := func(ctx context.Context, name string) ([]string, error) {
 		return nil, testErr
 	}
-	ctx := WithLookupTXTFunc(context.Background(), errLookupF)
+	ctx := WithLookupTXTFunc(t.Context(), errLookupF)
 
 	pks, err := findPublicKeys(ctx, "example.com", "selector")
 	if pks != nil || err != testErr {
@@ -50,7 +50,7 @@ func testLookupTXT(ctx context.Context, name string) ([]string, error) {
 }
 
 func TestSkipBadRecords(t *testing.T) {
-	ctx := WithLookupTXTFunc(context.Background(), testLookupTXT)
+	ctx := WithLookupTXTFunc(t.Context(), testLookupTXT)
 	results["selector._domainkey.example.com"] = []string{
 		"not a tag",
 		"v=DKIM1; p=" + exampleRSAKeyB64,

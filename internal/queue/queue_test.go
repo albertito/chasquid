@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
@@ -18,224 +19,240 @@ func allUsersExist(tr *trace.Trace, user, domain string) (bool, error) {
 }
 
 func TestBasic(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
-	localC := testlib.NewTestCourier()
-	remoteC := testlib.NewTestCourier()
-	q, _ := New(dir, set.NewString("loco"),
-		aliases.NewResolver(allUsersExist),
-		localC, remoteC)
-	tr := trace.New("test", "TestBasic")
-	defer tr.Finish()
+	synctest.Test(t, func(t *testing.T) {
+		dir := t.ArtifactDir()
+		localC := testlib.NewTestCourier()
+		remoteC := testlib.NewTestCourier()
+		q, _ := New(dir, set.NewString("loco"),
+			aliases.NewResolver(allUsersExist),
+			localC, remoteC)
+		tr := trace.New("test", "TestBasic")
+		defer tr.Finish()
 
-	localC.Expect(2)
-	remoteC.Expect(1)
-	id, err := q.Put(tr, "from", []string{"am@loco", "x@remote", "nodomain"}, []byte("data"))
-	if err != nil {
-		t.Fatalf("Put: %v", err)
-	}
-
-	if len(id) < 6 {
-		t.Errorf("short ID: %v", id)
-	}
-
-	localC.Wait()
-	remoteC.Wait()
-
-	// Make sure the delivered items leave the queue.
-	testlib.WaitFor(func() bool { return q.Len() == 0 }, 2*time.Second)
-	if q.Len() != 0 {
-		t.Fatalf("%d items not removed from the queue after delivery", q.Len())
-	}
-
-	cases := []struct {
-		courier    *testlib.TestCourier
-		expectedTo string
-	}{
-		{localC, "nodomain"},
-		{localC, "am@loco"},
-		{remoteC, "x@remote"},
-	}
-	for _, c := range cases {
-		req := c.courier.ReqFor[c.expectedTo]
-		if req == nil {
-			t.Errorf("missing request for %q", c.expectedTo)
-			continue
+		localC.Expect(2)
+		remoteC.Expect(1)
+		id, err := q.Put(tr, "from", []string{"am@loco", "x@remote", "nodomain"}, []byte("data"))
+		if err != nil {
+			t.Fatalf("Put: %v", err)
 		}
 
-		if req.From != "from" || req.To != c.expectedTo ||
-			!bytes.Equal(req.Data, []byte("data")) {
-			t.Errorf("wrong request for %q: %v", c.expectedTo, req)
+		if len(id) < 6 {
+			t.Errorf("short ID: %v", id)
 		}
-	}
+
+		localC.Wait()
+		remoteC.Wait()
+
+		// Wait for the send loop to finish, and make sure the delivered items
+		// leave the queue.
+		synctest.Wait()
+		if q.Len() != 0 {
+			t.Fatalf("%d items not removed from the queue after delivery", q.Len())
+		}
+
+		cases := []struct {
+			courier    *testlib.TestCourier
+			expectedTo string
+		}{
+			{localC, "nodomain"},
+			{localC, "am@loco"},
+			{remoteC, "x@remote"},
+		}
+		for _, c := range cases {
+			req := c.courier.ReqFor[c.expectedTo]
+			if req == nil {
+				t.Errorf("missing request for %q", c.expectedTo)
+				continue
+			}
+
+			if req.From != "from" || req.To != c.expectedTo ||
+				!bytes.Equal(req.Data, []byte("data")) {
+				t.Errorf("wrong request for %q: %v", c.expectedTo, req)
+			}
+		}
+	})
 }
 
 func TestDSNOnTimeout(t *testing.T) {
-	localC := testlib.NewTestCourier()
-	remoteC := testlib.NewTestCourier()
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
-	q, _ := New(dir, set.NewString("loco"),
-		aliases.NewResolver(allUsersExist),
-		localC, remoteC)
+	synctest.Test(t, func(t *testing.T) {
+		localC := testlib.NewTestCourier()
+		remoteC := testlib.NewTestCourier()
+		dir := t.ArtifactDir()
+		q, _ := New(dir, set.NewString("loco"),
+			aliases.NewResolver(allUsersExist),
+			localC, remoteC)
 
-	// Insert an expired item in the queue.
-	item := &Item{
-		Message: Message{
-			ID:   <-newID,
-			From: "from@loco",
-			Rcpt: []*Recipient{
-				mkR("to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to")},
-			Data: []byte("data"),
-		},
-		CreatedAt: time.Now().Add(-24 * time.Hour),
-	}
-	q.q[item.ID] = item
-	err := item.WriteTo(q.path)
-	if err != nil {
-		t.Errorf("failed to write item: %v", err)
-	}
-
-	// Exercise DumpString while at it.
-	q.DumpString()
-
-	// Launch the sending loop, expect 1 local delivery (the DSN).
-	localC.Expect(1)
-	go item.SendLoop(q)
-	localC.Wait()
-
-	req := localC.ReqFor["from@loco"]
-	if req == nil {
-		t.Fatal("missing DSN")
-	}
-
-	if req.From != "<>" || req.To != "from@loco" ||
-		!strings.Contains(string(req.Data), "X-Failed-Recipients: to@to,") {
-		t.Errorf("wrong DSN: %q", string(req.Data))
-	}
-}
-
-func TestAliases(t *testing.T) {
-	localC := testlib.NewTestCourier()
-	remoteC := testlib.NewTestCourier()
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
-	q, _ := New(dir, set.NewString("loco"),
-		aliases.NewResolver(allUsersExist),
-		localC, remoteC)
-	tr := trace.New("test", "TestAliases")
-	defer tr.Finish()
-
-	q.aliases.AddDomain("loco")
-	q.aliases.AddAliasForTesting("ab@loco", "pq@loco", nil, aliases.EMAIL)
-	q.aliases.AddAliasForTesting("ab@loco", "rs@loco", nil, aliases.EMAIL)
-	q.aliases.AddAliasForTesting("cd@loco", "ata@hualpa", nil, aliases.EMAIL)
-	q.aliases.AddAliasForTesting(
-		"fwd@loco", "fwd@loco", []string{"server"}, aliases.FORWARD)
-	q.aliases.AddAliasForTesting(
-		"remote@loco", "remote@rana", []string{"server"}, aliases.FORWARD)
-	// Note the pipe aliases are tested below, as they don't use the couriers
-	// and it can be quite inconvenient to test them in this way.
-
-	localC.Expect(2)
-	remoteC.Expect(3)
-
-	// One email from a local domain: from@loco -> ab@loco, cd@loco, fwd@loco.
-	_, err := q.Put(tr, "from@loco",
-		[]string{"ab@loco", "cd@loco", "fwd@loco"},
-		[]byte("data"))
-	if err != nil {
-		t.Fatalf("Put: %v", err)
-	}
-
-	// And another from a remote domain: from@rana -> remote@loco
-	_, err = q.Put(tr, "from@rana",
-		[]string{"remote@loco"},
-		[]byte("data"))
-	if err != nil {
-		t.Fatalf("Put: %v", err)
-	}
-
-	localC.Wait()
-	remoteC.Wait()
-
-	cases := []struct {
-		courier      *testlib.TestCourier
-		expectedFrom string
-		expectedTo   string
-	}{
-		// From the local domain: from@loco
-		{localC, "from@loco", "pq@loco"},
-		{localC, "from@loco", "rs@loco"},
-		{remoteC, "from@loco", "ata@hualpa"},
-		{remoteC, "from@loco", "fwd@loco"},
-
-		// From the remote domain: from@rana.
-		// Note the SRS in the remoteC.
-		{remoteC, "remote+fwd_from=from=rana@loco", "remote@rana"},
-	}
-	for _, c := range cases {
-		req := c.courier.ReqFor[c.expectedTo]
-		if req == nil {
-			t.Errorf("missing request for %q", c.expectedTo)
-			continue
-		}
-
-		if req.From != c.expectedFrom || req.To != c.expectedTo ||
-			!bytes.Equal(req.Data, []byte("data")) {
-			t.Errorf("wrong request for %q: %v", c.expectedTo, *req)
-		}
-	}
-}
-
-func TestFullQueue(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
-	q, _ := New(dir, set.NewString(),
-		aliases.NewResolver(allUsersExist),
-		testlib.DumbCourier, testlib.DumbCourier)
-	tr := trace.New("test", "TestFullQueue")
-	defer tr.Finish()
-
-	// Force-insert as many items in the queue as it supports.
-	oneID := ""
-	for i := 0; i < q.MaxItems; i++ {
+		// Insert an expired item in the queue.
 		item := &Item{
 			Message: Message{
 				ID:   <-newID,
-				From: fmt.Sprintf("from-%d", i),
+				From: "from@loco",
 				Rcpt: []*Recipient{
-					mkR("to", Recipient_EMAIL, Recipient_PENDING, "", "")},
+					mkR("to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to")},
 				Data: []byte("data"),
 			},
-			CreatedAt: time.Now(),
+			CreatedAt: time.Now().Add(-24 * time.Hour),
 		}
 		q.q[item.ID] = item
-		oneID = item.ID
-	}
+		err := item.WriteTo(q.path)
+		if err != nil {
+			t.Errorf("failed to write item: %v", err)
+		}
 
-	// This one should fail due to the queue being too big.
-	id, err := q.Put(tr, "from", []string{"to"}, []byte("data-qf"))
-	if err != errQueueFull {
-		t.Errorf("Not failed as expected: %v - %v", id, err)
-	}
+		// Exercise DumpString while at it.
+		q.DumpString()
 
-	// Remove one, and try again: it should succeed.
-	// Write it first so we don't get complaints about the file not existing
-	// (as we did not all the items properly).
-	q.q[oneID].WriteTo(q.path)
-	q.Remove(oneID)
+		// Launch the sending loop, expect 1 local delivery (the DSN).
+		localC.Expect(1)
+		go item.SendLoop(q)
+		localC.Wait()
 
-	id, err = q.Put(tr, "from", []string{"to"}, []byte("data"))
-	if err != nil {
-		t.Errorf("Put: %v", err)
-	}
-	q.Remove(id)
+		req := localC.ReqFor["from@loco"]
+		if req == nil {
+			t.Fatal("missing DSN")
+		}
+
+		if req.From != "<>" || req.To != "from@loco" ||
+			!strings.Contains(string(req.Data), "X-Failed-Recipients: to@to,") {
+			t.Errorf("wrong DSN: %q", string(req.Data))
+		}
+
+		// Wait for the send loops to finish, so they don't race with the test
+		// directory cleanup.
+		synctest.Wait()
+	})
+}
+
+func TestAliases(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		localC := testlib.NewTestCourier()
+		remoteC := testlib.NewTestCourier()
+		dir := t.ArtifactDir()
+		q, _ := New(dir, set.NewString("loco"),
+			aliases.NewResolver(allUsersExist),
+			localC, remoteC)
+		tr := trace.New("test", "TestAliases")
+		defer tr.Finish()
+
+		q.aliases.AddDomain("loco")
+		q.aliases.AddAliasForTesting("ab@loco", "pq@loco", nil, aliases.EMAIL)
+		q.aliases.AddAliasForTesting("ab@loco", "rs@loco", nil, aliases.EMAIL)
+		q.aliases.AddAliasForTesting("cd@loco", "ata@hualpa", nil, aliases.EMAIL)
+		q.aliases.AddAliasForTesting(
+			"fwd@loco", "fwd@loco", []string{"server"}, aliases.FORWARD)
+		q.aliases.AddAliasForTesting(
+			"remote@loco", "remote@rana", []string{"server"}, aliases.FORWARD)
+		// Note the pipe aliases are tested below, as they don't use the couriers
+		// and it can be quite inconvenient to test them in this way.
+
+		localC.Expect(2)
+		remoteC.Expect(3)
+
+		// One email from a local domain: from@loco -> ab@loco, cd@loco, fwd@loco.
+		_, err := q.Put(tr, "from@loco",
+			[]string{"ab@loco", "cd@loco", "fwd@loco"},
+			[]byte("data"))
+		if err != nil {
+			t.Fatalf("Put: %v", err)
+		}
+
+		// And another from a remote domain: from@rana -> remote@loco
+		_, err = q.Put(tr, "from@rana",
+			[]string{"remote@loco"},
+			[]byte("data"))
+		if err != nil {
+			t.Fatalf("Put: %v", err)
+		}
+
+		localC.Wait()
+		remoteC.Wait()
+
+		cases := []struct {
+			courier      *testlib.TestCourier
+			expectedFrom string
+			expectedTo   string
+		}{
+			// From the local domain: from@loco
+			{localC, "from@loco", "pq@loco"},
+			{localC, "from@loco", "rs@loco"},
+			{remoteC, "from@loco", "ata@hualpa"},
+			{remoteC, "from@loco", "fwd@loco"},
+
+			// From the remote domain: from@rana.
+			// Note the SRS in the remoteC.
+			{remoteC, "remote+fwd_from=from=rana@loco", "remote@rana"},
+		}
+		for _, c := range cases {
+			req := c.courier.ReqFor[c.expectedTo]
+			if req == nil {
+				t.Errorf("missing request for %q", c.expectedTo)
+				continue
+			}
+
+			if req.From != c.expectedFrom || req.To != c.expectedTo ||
+				!bytes.Equal(req.Data, []byte("data")) {
+				t.Errorf("wrong request for %q: %v", c.expectedTo, *req)
+			}
+		}
+
+		// Wait for the send loops to finish, so they don't race with the test
+		// directory cleanup.
+		synctest.Wait()
+	})
+}
+
+func TestFullQueue(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		dir := t.ArtifactDir()
+		q, _ := New(dir, set.NewString(),
+			aliases.NewResolver(allUsersExist),
+			testlib.DumbCourier, testlib.DumbCourier)
+		tr := trace.New("test", "TestFullQueue")
+		defer tr.Finish()
+
+		// Force-insert as many items in the queue as it supports.
+		oneID := ""
+		for i := 0; i < q.MaxItems; i++ {
+			item := &Item{
+				Message: Message{
+					ID:   <-newID,
+					From: fmt.Sprintf("from-%d", i),
+					Rcpt: []*Recipient{
+						mkR("to", Recipient_EMAIL, Recipient_PENDING, "", "")},
+					Data: []byte("data"),
+				},
+				CreatedAt: time.Now(),
+			}
+			q.q[item.ID] = item
+			oneID = item.ID
+		}
+
+		// This one should fail due to the queue being too big.
+		id, err := q.Put(tr, "from", []string{"to"}, []byte("data-qf"))
+		if err != errQueueFull {
+			t.Errorf("Not failed as expected: %v - %v", id, err)
+		}
+
+		// Remove one, and try again: it should succeed.
+		// Write it first so we don't get complaints about the file not existing
+		// (as we did not all the items properly).
+		q.q[oneID].WriteTo(q.path)
+		q.Remove(oneID)
+
+		id, err = q.Put(tr, "from", []string{"to"}, []byte("data"))
+		if err != nil {
+			t.Errorf("Put: %v", err)
+		}
+		q.Remove(id)
+
+		// Wait for the send loops to finish, so they don't race with the test
+		// directory cleanup.
+		synctest.Wait()
+	})
 }
 
 func TestPipes(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 	q, _ := New(dir, set.NewString("loco"),
 		aliases.NewResolver(allUsersExist),
 		testlib.DumbCourier, testlib.DumbCourier)
@@ -290,44 +307,49 @@ func TestNextDelay(t *testing.T) {
 }
 
 func TestSerialization(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	synctest.Test(t, func(t *testing.T) {
+		dir := t.ArtifactDir()
 
-	// Save an item in the queue directory.
-	item := &Item{
-		Message: Message{
-			ID:   <-newID,
-			From: "from@loco",
-			Rcpt: []*Recipient{
-				mkR("to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to")},
-			Data: []byte("data"),
-		},
-		CreatedAt: time.Now().Add(-1 * time.Hour),
-	}
-	err := item.WriteTo(dir)
-	if err != nil {
-		t.Errorf("failed to write item: %v", err)
-	}
+		// Save an item in the queue directory.
+		item := &Item{
+			Message: Message{
+				ID:   <-newID,
+				From: "from@loco",
+				Rcpt: []*Recipient{
+					mkR("to@to", Recipient_EMAIL, Recipient_PENDING, "err", "to@to")},
+				Data: []byte("data"),
+			},
+			CreatedAt: time.Now().Add(-1 * time.Hour),
+		}
+		err := item.WriteTo(dir)
+		if err != nil {
+			t.Errorf("failed to write item: %v", err)
+		}
 
-	// Create the queue; should load the
-	remoteC := testlib.NewTestCourier()
-	remoteC.Expect(1)
-	q, _ := New(dir, set.NewString("loco"),
-		aliases.NewResolver(allUsersExist),
-		testlib.DumbCourier, remoteC)
-	q.Load()
+		// Create the queue; should load the
+		remoteC := testlib.NewTestCourier()
+		remoteC.Expect(1)
+		q, _ := New(dir, set.NewString("loco"),
+			aliases.NewResolver(allUsersExist),
+			testlib.DumbCourier, remoteC)
+		q.Load()
 
-	// Launch the sending loop, expect 1 remote delivery for the item we saved.
-	remoteC.Wait()
+		// Launch the sending loop, expect 1 remote delivery for the item we saved.
+		remoteC.Wait()
 
-	req := remoteC.ReqFor["to@to"]
-	if req == nil {
-		t.Fatal("email not delivered")
-	}
+		req := remoteC.ReqFor["to@to"]
+		if req == nil {
+			t.Fatal("email not delivered")
+		}
 
-	if req.From != "from@loco" || req.To != "to@to" {
-		t.Errorf("wrong email: %v", req)
-	}
+		if req.From != "from@loco" || req.To != "to@to" {
+			t.Errorf("wrong email: %v", req)
+		}
+
+		// Wait for the send loops to finish, so they don't race with the test
+		// directory cleanup.
+		synctest.Wait()
+	})
 }
 
 func mkR(a string, t Recipient_Type, s Recipient_Status, m, o string) *Recipient {

@@ -8,8 +8,6 @@ package dovecot
 import (
 	"net"
 	"testing"
-
-	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
 func TestUsernameNotSafe(t *testing.T) {
@@ -59,8 +57,7 @@ func TestAutodetect(t *testing.T) {
 	}
 
 	// Create a temporary directory, and two sockets on it.
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.TempDir()
 
 	userdb := dir + "/userdb"
 	client := dir + "/client"

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/dovecot"
@@ -59,43 +60,41 @@ func TestDecodeResponse(t *testing.T) {
 }
 
 func TestAuthenticate(t *testing.T) {
-	db := userdb.New("/dev/null")
-	db.AddUser("user", "password")
-	tr := trace.New("test", "TestAuthenticate")
-	defer tr.Finish()
+	synctest.Test(t, func(t *testing.T) {
+		db := userdb.New("/dev/null")
+		db.AddUser("user", "password")
+		tr := trace.New("test", "TestAuthenticate")
+		defer tr.Finish()
 
-	a := NewAuthenticator()
-	a.Register("domain", WrapNoErrorBackend(db))
+		a := NewAuthenticator()
+		a.Register("domain", WrapNoErrorBackend(db))
 
-	// Shorten the duration to speed up the test. This should still be long
-	// enough for it to fail if we don't sleep intentionally.
-	a.AuthDuration = 20 * time.Millisecond
+		// Test the correct case first
+		check(t, a, "user", "domain", "password", true)
 
-	// Test the correct case first
-	check(t, a, "user", "domain", "password", true)
+		// Wrong password, but valid user@domain.
+		ts := time.Now()
+		if ok, _ := a.Authenticate(tr, "user", "domain", "invalid"); ok {
+			t.Errorf("invalid password, but authentication succeeded")
+		}
+		if time.Since(ts) < a.AuthDuration {
+			t.Errorf("authentication was too fast (invalid case)")
+		}
 
-	// Wrong password, but valid user@domain.
-	ts := time.Now()
-	if ok, _ := a.Authenticate(tr, "user", "domain", "invalid"); ok {
-		t.Errorf("invalid password, but authentication succeeded")
-	}
-	if time.Since(ts) < a.AuthDuration {
-		t.Errorf("authentication was too fast (invalid case)")
-	}
-
-	// Incorrect cases, where the user@domain do not exist.
-	cases := []struct{ user, domain, password string }{
-		{"user", "unknown", "password"},
-		{"invalid", "domain", "p"},
-		{"invalid", "unknown", "p"},
-		{"user", "", "password"},
-		{"invalid", "", "p"},
-		{"", "domain", "password"},
-		{"", "", ""},
-	}
-	for _, c := range cases {
-		check(t, a, c.user, c.domain, c.password, false)
-	}
+		// Incorrect cases, where the user@domain do not exist.
+		cases := []struct{ user, domain, password string }{
+			{"user", "unknown", "password"},
+			{"invalid", "domain", "p"},
+			{"invalid", "unknown", "p"},
+			{"user", "", "password"},
+			{"invalid", "", "p"},
+			{"", "domain", "password"},
+			{"", "", ""},
+		}
+		for _, c := range cases {
+			check(t, a, c.user, c.domain, c.password, false)
+		}
+	})
 }
 
 func check(t *testing.T, a *Authenticator, user, domain, passwd string, expect bool) {
@@ -173,45 +172,43 @@ func (d *TestBE) Reload() error {
 }
 
 func TestMultipleBackends(t *testing.T) {
-	domain1 := NewTestBE()
-	domain2 := NewTestBE()
-	fallback := NewTestBE()
+	synctest.Test(t, func(t *testing.T) {
+		domain1 := NewTestBE()
+		domain2 := NewTestBE()
+		fallback := NewTestBE()
 
-	a := NewAuthenticator()
-	a.Register("domain1", domain1)
-	a.Register("domain2", domain2)
-	a.Fallback = fallback
+		a := NewAuthenticator()
+		a.Register("domain1", domain1)
+		a.Register("domain2", domain2)
+		a.Fallback = fallback
 
-	// Shorten the duration to speed up the test. This should still be long
-	// enough for it to fail if we don't sleep intentionally.
-	a.AuthDuration = 20 * time.Millisecond
+		domain1.add("user1", "passwd1")
+		domain2.add("user2", "passwd2")
+		fallback.add("user3@fallback", "passwd3")
+		fallback.add("user4@domain1", "passwd4")
 
-	domain1.add("user1", "passwd1")
-	domain2.add("user2", "passwd2")
-	fallback.add("user3@fallback", "passwd3")
-	fallback.add("user4@domain1", "passwd4")
+		// Successful tests.
+		cases := []struct{ user, domain, password string }{
+			{"user1", "domain1", "passwd1"},
+			{"user2", "domain2", "passwd2"},
+			{"user3", "fallback", "passwd3"},
+			{"user4", "domain1", "passwd4"},
+		}
+		for _, c := range cases {
+			check(t, a, c.user, c.domain, c.password, true)
+		}
 
-	// Successful tests.
-	cases := []struct{ user, domain, password string }{
-		{"user1", "domain1", "passwd1"},
-		{"user2", "domain2", "passwd2"},
-		{"user3", "fallback", "passwd3"},
-		{"user4", "domain1", "passwd4"},
-	}
-	for _, c := range cases {
-		check(t, a, c.user, c.domain, c.password, true)
-	}
-
-	// Unsuccessful tests (users don't exist).
-	cases = []struct{ user, domain, password string }{
-		{"nobody", "domain1", "p"},
-		{"nobody", "domain2", "p"},
-		{"nobody", "fallback", "p"},
-		{"user3", "", "p"},
-	}
-	for _, c := range cases {
-		check(t, a, c.user, c.domain, c.password, false)
-	}
+		// Unsuccessful tests (users don't exist).
+		cases = []struct{ user, domain, password string }{
+			{"nobody", "domain1", "p"},
+			{"nobody", "domain2", "p"},
+			{"nobody", "fallback", "p"},
+			{"user3", "", "p"},
+		}
+		for _, c := range cases {
+			check(t, a, c.user, c.domain, c.password, false)
+		}
+	})
 }
 
 func TestErrors(t *testing.T) {

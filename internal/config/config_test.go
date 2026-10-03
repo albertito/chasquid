@@ -5,22 +5,21 @@ import (
 	"os"
 	"testing"
 
-	"blitiri.com.ar/go/chasquid/internal/testlib"
 	"blitiri.com.ar/go/log"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
-func mustCreateConfig(t *testing.T, contents string) (string, string) {
-	tmpDir := testlib.MustTempDir(t)
-	confStr := []byte(contents)
-	err := os.WriteFile(tmpDir+"/chasquid.conf", confStr, 0600)
+func mustCreateConfig(t *testing.T, contents string) string {
+	t.Helper()
+	path := t.ArtifactDir() + "/chasquid.conf"
+	err := os.WriteFile(path, []byte(contents), 0600)
 	if err != nil {
 		t.Fatalf("Failed to write tmp config: %v", err)
 	}
 
-	return tmpDir, tmpDir + "/chasquid.conf"
+	return path
 }
 
 func TestEmptyStruct(t *testing.T) {
@@ -28,8 +27,7 @@ func TestEmptyStruct(t *testing.T) {
 }
 
 func TestEmptyConfig(t *testing.T) {
-	tmpDir, path := mustCreateConfig(t, "")
-	defer testlib.RemoveIfOk(t, tmpDir)
+	path := mustCreateConfig(t, "")
 	c, err := Load(path, "")
 	if err != nil {
 		t.Fatalf("error loading empty config: %v", err)
@@ -61,8 +59,7 @@ func TestFullConfig(t *testing.T) {
 		max_queue_items: 345
 	`
 
-	tmpDir, path := mustCreateConfig(t, confStr)
-	defer testlib.RemoveIfOk(t, tmpDir)
+	path := mustCreateConfig(t, confStr)
 
 	overrideStr := `
 		hostname: "proust"
@@ -118,9 +115,8 @@ func TestErrorLoading(t *testing.T) {
 }
 
 func TestBrokenConfig(t *testing.T) {
-	tmpDir, path := mustCreateConfig(
+	path := mustCreateConfig(
 		t, "<invalid> this is not a valid protobuf")
-	defer testlib.RemoveIfOk(t, tmpDir)
 
 	c, err := Load(path, "")
 	if err == nil {
@@ -129,9 +125,8 @@ func TestBrokenConfig(t *testing.T) {
 }
 
 func TestBrokenOverride(t *testing.T) {
-	tmpDir, path := mustCreateConfig(
+	path := mustCreateConfig(
 		t, `hostname: "test"`)
-	defer testlib.RemoveIfOk(t, tmpDir)
 
 	c, err := Load(path, "broken override")
 	if err == nil {
@@ -140,9 +135,8 @@ func TestBrokenOverride(t *testing.T) {
 }
 
 func TestInvalidGiveUpSendingAfter(t *testing.T) {
-	tmpDir, path := mustCreateConfig(
+	path := mustCreateConfig(
 		t, `give_up_send_after: "10"`)
-	defer testlib.RemoveIfOk(t, tmpDir)
 
 	c, err := Load(path, "")
 	if err == nil {

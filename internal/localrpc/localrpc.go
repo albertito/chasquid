@@ -47,19 +47,24 @@ func (s *Server) Register(name string, handler Handler) {
 
 // ListenAndServe starts the server.
 func (s *Server) ListenAndServe(path string) error {
-	tr := trace.New("LocalRPC.Server", path)
-	defer tr.Finish()
-
 	// Previous instances of the server may have shut down uncleanly, leaving
 	// behind the socket file. Remove it just in case.
 	os.Remove(path)
 
-	var err error
-	s.lis, err = net.Listen("unix", path)
+	lis, err := net.Listen("unix", path)
 	if err != nil {
 		return err
 	}
 
+	return s.Serve(lis)
+}
+
+// Serve connections from the given listener.
+func (s *Server) Serve(lis net.Listener) error {
+	tr := trace.New("LocalRPC.Server", lis.Addr().String())
+	defer tr.Finish()
+
+	s.lis = lis
 	tr.Printf("Listening")
 	for {
 		conn, err := s.lis.Accept()

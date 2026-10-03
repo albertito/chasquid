@@ -72,7 +72,7 @@ func TestMain(m *testing.M) {
 	httpServer := httptest.NewServer(http.HandlerFunc(testHTTPHandler))
 
 	fakeURLForTesting = httpServer.URL
-	os.Exit(m.Run())
+	m.Run()
 }
 
 func TestParsePolicy(t *testing.T) {
@@ -196,21 +196,21 @@ func TestFetch(t *testing.T) {
 	// defined in TestMain above. See httpGet for more details.
 
 	// Normal fetch, all valid.
-	p, err := Fetch(context.Background(), "domain.com")
+	p, err := Fetch(t.Context(), "domain.com")
 	if err != nil {
 		t.Errorf("failed to fetch policy: %v", err)
 	}
 	t.Logf("domain.com: %+v", p)
 
 	// Domain without a policy (HTTP get fails).
-	p, err = Fetch(context.Background(), "policy404")
+	p, err = Fetch(t.Context(), "policy404")
 	if err == nil {
 		t.Errorf("fetched unknown policy: %v", p)
 	}
 	t.Logf("policy404: got error as expected: %v", err)
 
 	// Domain with an invalid policy (unknown version).
-	p, err = Fetch(context.Background(), "version99")
+	p, err = Fetch(t.Context(), "version99")
 	if err != ErrUnknownVersion {
 		t.Errorf("expected error %v, got %v (and policy: %v)",
 			ErrUnknownVersion, err, p)
@@ -218,7 +218,7 @@ func TestFetch(t *testing.T) {
 	t.Logf("version99: got expected error: %v", err)
 
 	// Error fetching TXT record for this domain.
-	p, err = Fetch(context.Background(), "domErr")
+	p, err = Fetch(t.Context(), "domErr")
 	if err != errTest {
 		t.Errorf("expected error %v, got %v (and policy: %v)",
 			errTest, err, p)
@@ -235,7 +235,7 @@ func TestPolicyTooBig(t *testing.T) {
 	raw += `"mxlast"], "max_age": 100}`
 	policyForDomain["toobig"] = raw
 
-	_, err := Fetch(context.Background(), "toobig")
+	_, err := Fetch(t.Context(), "toobig")
 	if err == nil {
 		t.Errorf("fetch worked, but should have failed")
 	}
@@ -251,8 +251,7 @@ func expvarMustEq(t *testing.T, name string, v *expvar.Int, expected int64) {
 }
 
 func TestCacheBasics(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 
 	c, err := NewCache(dir)
 	if err != nil {
@@ -266,7 +265,7 @@ func TestCacheBasics(t *testing.T) {
 	cacheFetches.Set(0)
 	cacheHits.Set(0)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Fetch domain.com, check we get a reasonable policy, and that it's a
 	// cache miss.
@@ -314,15 +313,14 @@ func TestCacheBasics(t *testing.T) {
 
 // Test how the cache behaves when the files are corrupt.
 func TestCacheBadData(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 
 	c, err := NewCache(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cacheUnmarshalErrors.Set(0)
 	cacheInvalid.Set(0)
@@ -391,6 +389,7 @@ func (c *PolicyCache) mustFetch(ctx context.Context, t *testing.T, d string) *Po
 }
 
 func mustRewriteAndChtime(t *testing.T, fname, content string) {
+	t.Helper()
 	testlib.Rewrite(t, fname, content)
 
 	// Advance the expiration time to the future, so the rewritten policy is
@@ -403,15 +402,14 @@ func mustRewriteAndChtime(t *testing.T, fname, content string) {
 }
 
 func TestCacheRefresh(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 
 	c, err := NewCache(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	txtResults["_mta-sts.refresh-test"] = []string{"v=STSv1; id=blah;"}
 	policyForDomain["refresh-test"] = `
@@ -439,7 +437,7 @@ func TestCacheRefresh(t *testing.T) {
 
 	// Launch background refreshes, and wait for one to complete.
 	cacheRefreshCycles.Set(0)
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cancel()
 	go c.PeriodicallyRefresh(ctx)
 	for cacheRefreshCycles.Value() == 0 {
@@ -453,7 +451,7 @@ func TestCacheRefresh(t *testing.T) {
 }
 
 func TestCacheSlashSafe(t *testing.T) {
-	dir := testlib.MustTempDir(t)
+	dir := t.ArtifactDir()
 	c, err := NewCache(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -519,7 +517,7 @@ func TestHTTPGet(t *testing.T) {
 		}))
 	defer srv1.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	raw, err := httpGet(ctx, srv1.URL)
 	if err != nil {
 		t.Errorf("GET failed: got %q, %v", raw, err)

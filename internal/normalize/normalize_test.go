@@ -197,8 +197,7 @@ func BenchmarkToCRLF(b *testing.B) {
 	}
 	buf := bb.Bytes()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ToCRLF(buf)
 	}
 }
@@ -211,8 +210,7 @@ func BenchmarkStringToCRLF(b *testing.B) {
 	}
 	s := sb.String()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		StringToCRLF(s)
 	}
 }

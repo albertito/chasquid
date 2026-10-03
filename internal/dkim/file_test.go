@@ -44,7 +44,7 @@ func TestFromPrivateFiles(t *testing.T) {
 }
 
 func testOne(t *testing.T, base string) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = WithTraceFunc(ctx, t.Logf)
 
 	ctx = loadDNS(t, ctx, base+".dns")

@@ -5,20 +5,18 @@ import (
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/protoio/testpb"
-	"blitiri.com.ar/go/chasquid/internal/testlib"
 )
 
 func TestBin(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	fname := t.ArtifactDir() + "/f"
 	pb := &testpb.M{Content: "hola"}
 
-	if err := WriteMessage("f", pb, 0600); err != nil {
+	if err := WriteMessage(fname, pb, 0600); err != nil {
 		t.Error(err)
 	}
 
 	pb2 := &testpb.M{}
-	if err := ReadMessage("f", pb2); err != nil {
+	if err := ReadMessage(fname, pb2); err != nil {
 		t.Error(err)
 	}
 	if pb.Content != pb2.Content {
@@ -27,16 +25,15 @@ func TestBin(t *testing.T) {
 }
 
 func TestText(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	fname := t.ArtifactDir() + "/f"
 	pb := &testpb.M{Content: "hola"}
 
-	if err := WriteTextMessage("f", pb, 0600); err != nil {
+	if err := WriteTextMessage(fname, pb, 0600); err != nil {
 		t.Error(err)
 	}
 
 	pb2 := &testpb.M{}
-	if err := ReadTextMessage("f", pb2); err != nil {
+	if err := ReadTextMessage(fname, pb2); err != nil {
 		t.Error(err)
 	}
 	if pb.Content != pb2.Content {
@@ -45,8 +42,7 @@ func TestText(t *testing.T) {
 }
 
 func TestStore(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 	st, err := NewStore(dir + "/store")
 	if err != nil {
 		t.Fatalf("failed to create store: %v", err)
@@ -98,8 +94,6 @@ func mustCreate(t *testing.T, fname string) {
 }
 
 func TestFileErrors(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
 	pb := &testpb.M{Content: "hola"}
 
 	if err := WriteMessage("/proc/doesnotexist", pb, 0600); err == nil {
@@ -125,18 +119,17 @@ func TestFileErrors(t *testing.T) {
 }
 
 func TestMarshalErrors(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
 
 	// The marshaller enforces that strings are well-formed utf8. So to create
 	// a marshalling error, we use a non-utf8 string.
 	pb := &testpb.M{Content: "\xc3\x28"}
 
-	if err := WriteMessage("f", pb, 0600); err == nil {
+	if err := WriteMessage(dir+"/f", pb, 0600); err == nil {
 		t.Errorf("write worked, expected error")
 	}
 
-	if err := WriteTextMessage("ft", pb, 0600); err == nil {
+	if err := WriteTextMessage(dir+"/ft", pb, 0600); err == nil {
 		t.Errorf("text write worked, expected error")
 	}
 }

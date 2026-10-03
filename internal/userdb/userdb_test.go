@@ -1,34 +1,21 @@
 package userdb
 
 import (
-	"fmt"
 	"os"
-	"reflect"
-	"strings"
 	"testing"
+
+	"google.golang.org/protobuf/proto"
 )
-
-// Remove the file if the test was successful. Used in defer statements, to
-// leave files around for inspection when the tests failed.
-func removeIfSuccessful(t *testing.T, fname string) {
-	// Safeguard, to make sure we only remove test files.
-	// This should help prevent accidental deletions.
-	if !strings.Contains(fname, "userdb_test") {
-		panic("invalid/dangerous directory")
-	}
-
-	if !t.Failed() {
-		os.Remove(fname)
-	}
-}
 
 // Create a database with the given content on a temporary filename. Return
 // the filename, or an error if there were errors creating it.
 func mustCreateDB(t *testing.T, content string) string {
-	f, err := os.CreateTemp("", "userdb_test")
+	t.Helper()
+	f, err := os.CreateTemp(t.ArtifactDir(), "userdb_test")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer f.Close()
 
 	if _, err := f.WriteString(content); err != nil {
 		t.Fatal(err)
@@ -39,22 +26,7 @@ func mustCreateDB(t *testing.T, content string) string {
 }
 
 func dbEquals(a, b *DB) bool {
-	if a.db == nil || b.db == nil {
-		return a.db == nil && b.db == nil
-	}
-
-	if len(a.db.Users) != len(b.db.Users) {
-		return false
-	}
-
-	for k, av := range a.db.Users {
-		bv, ok := b.db.Users[k]
-		if !ok || !reflect.DeepEqual(av, bv) {
-			return false
-		}
-	}
-
-	return true
+	return proto.Equal(a.db, b.db)
 }
 
 var emptyDB = &DB{
@@ -80,7 +52,6 @@ func TestEmptyLoad(t *testing.T) {
 
 func testOneLoad(t *testing.T, desc, content string, fatal bool, fatalErr error) {
 	fname := mustCreateDB(t, content)
-	defer removeIfSuccessful(t, fname)
 	db, err := Load(fname)
 	if fatal {
 		if err == nil {
@@ -109,7 +80,6 @@ func mustLoad(t *testing.T, fname string) *DB {
 
 func TestWrite(t *testing.T) {
 	fname := mustCreateDB(t, "")
-	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
 	if err := db.Write(); err != nil {
@@ -170,8 +140,7 @@ func TestWrite(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	fname := fmt.Sprintf("%s/userdb_test-%d", os.TempDir(), os.Getpid())
-	defer os.Remove(fname)
+	fname := t.TempDir() + "/userdb"
 	db1 := New(fname)
 	db1.AddUser("user", "passwd")
 	db1.Write()
@@ -188,7 +157,6 @@ func TestNew(t *testing.T) {
 
 func TestInvalidUsername(t *testing.T) {
 	fname := mustCreateDB(t, "")
-	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
 	// Names that are invalid.
@@ -227,7 +195,6 @@ func plainPassword(p string) *Password {
 // debugging, but it should be functional for that purpose.
 func TestPlainScheme(t *testing.T) {
 	fname := mustCreateDB(t, "")
-	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
 	db.db.Users["user"] = plainPassword("pass word")
@@ -248,7 +215,6 @@ func TestPlainScheme(t *testing.T) {
 // Test the denied scheme.
 func TestDeniedScheme(t *testing.T) {
 	fname := mustCreateDB(t, "")
-	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
 	db.db.Users["user"] = &Password{Scheme: &Password_Denied{}}
@@ -266,7 +232,6 @@ func TestDeniedScheme(t *testing.T) {
 func TestReload(t *testing.T) {
 	content := "users:< key: 'u1' value:< plain:< password: 'pass' >>>"
 	fname := mustCreateDB(t, content)
-	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
 	// Add a valid line to the file.
@@ -306,7 +271,6 @@ func TestReload(t *testing.T) {
 
 func TestRemoveUser(t *testing.T) {
 	fname := mustCreateDB(t, "")
-	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
 	if ok := db.RemoveUser("unknown"); ok {
@@ -332,7 +296,6 @@ func TestRemoveUser(t *testing.T) {
 
 func TestExists(t *testing.T) {
 	fname := mustCreateDB(t, "")
-	defer removeIfSuccessful(t, fname)
 	db := mustLoad(t, fname)
 
 	if db.Exists("unknown") {

@@ -42,8 +42,8 @@ func testWriteFile(fname string, data []byte, perm os.FileMode, ops ...FileOp) e
 }
 
 func TestWriteFile(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
+	t.Chdir(dir)
 
 	// Write a new file.
 	content := []byte("content 1")
@@ -65,8 +65,8 @@ func TestWriteFile(t *testing.T) {
 }
 
 func TestWriteFileWithOp(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
+	t.Chdir(dir)
 
 	var opFile string
 	op := func(f string) error {
@@ -88,8 +88,8 @@ func TestWriteFileWithOp(t *testing.T) {
 }
 
 func TestWriteFileWithFailingOp(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
+	t.Chdir(dir)
 
 	var opFile string
 	opOK := func(f string) error {
@@ -166,8 +166,8 @@ func (f *testFile) Close() error {
 var _ osFile = &testFile{}
 
 func TestErrors(t *testing.T) {
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
+	t.Chdir(dir)
 
 	oldCreateTemp := createTemp
 	defer func() { createTemp = oldCreateTemp }()
@@ -248,8 +248,8 @@ func checkNotExists(t *testing.T, fname string) {
 
 func TestFsyncFileOp(t *testing.T) {
 	// Check it as an operation on a normal file.
-	dir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, dir)
+	dir := t.ArtifactDir()
+	t.Chdir(dir)
 
 	content := []byte("content 1")
 	err := testWriteFile("file1", content, 0660, FsyncFileOp)

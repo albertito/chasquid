@@ -21,8 +21,7 @@ func mustMkdir(t *testing.T, path string) string {
 }
 
 func TestFindCertKey(t *testing.T) {
-	tmpDir := testlib.MustTempDir(t)
-	defer testlib.RemoveIfOk(t, tmpDir)
+	tmpDir := t.ArtifactDir()
 
 	cases := []struct {
 		name  string
