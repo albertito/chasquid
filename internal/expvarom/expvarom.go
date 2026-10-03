@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -90,8 +90,8 @@ func MetricsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Sort the variables for reproducibility and readability.
-	sort.Slice(vars, func(i, j int) bool {
-		return vars[i].Name < vars[j].Name
+	slices.SortFunc(vars, func(a, b exportedVar) int {
+		return strings.Compare(a.Name, b.Name)
 	})
 
 	for _, v := range vars {

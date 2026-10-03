@@ -1,5 +1,3 @@
-//go:build !coverage
-
 // minidns is a trivial DNS server used for testing.
 //
 // It takes an "answers" file which contains lines with the following format:

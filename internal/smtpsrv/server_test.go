@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/smtp"
 	"net/textproto"
@@ -486,7 +487,7 @@ func TestStartTLSOnTLS(t *testing.T) {
 func TestAddDKIMSigner(t *testing.T) {
 	s := NewServer()
 	err := s.AddDKIMSigner("example.com", "selector", "keyfile-does-not-exist")
-	if !os.IsNotExist(err) {
+	if !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("AddDKIMSigner: expected not exist, got %v", err)
 	}
 

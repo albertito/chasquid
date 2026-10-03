@@ -214,10 +214,8 @@ func DecodeResponse(response string) (user, domain, passwd string, err error) {
 
 	// Split identity into "user@domain", if possible.
 	user = identity
-	idsp := strings.SplitN(identity, "@", 2)
-	if len(idsp) >= 2 {
-		user = idsp[0]
-		domain = idsp[1]
+	if u, d, ok := strings.Cut(identity, "@"); ok {
+		user, domain = u, d
 	}
 
 	// Normalize the user and domain. This is so users can write the username

@@ -2,6 +2,8 @@
 package protoio
 
 import (
+	"errors"
+	"io/fs"
 	"net/url"
 	"os"
 	"strings"
@@ -87,7 +89,7 @@ func (s *Store) Put(id string, m proto.Message) error {
 // Get a message from the store.
 func (s *Store) Get(id string, m proto.Message) (bool, error) {
 	err := ReadTextMessage(s.idToFname(id), m)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	}
 	return err == nil, err

@@ -1,5 +1,3 @@
-//go:build !coverage
-
 // SMTP connection generator, for testing purposes.
 package main
 
@@ -8,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"net/smtp"
-	"time"
 
 	_ "net/http/pprof"
 
@@ -66,9 +63,7 @@ func main() {
 	log.Infof("done, created %d simultaneous connections", *count)
 
 	if *wait {
-		for {
-			time.Sleep(24 * time.Hour)
-		}
+		select {}
 	}
 
 	for _, c := range conns {

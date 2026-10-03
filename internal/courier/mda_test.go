@@ -2,6 +2,8 @@ package courier
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"testing"
 	"time"
@@ -67,7 +69,7 @@ func TestExitCode(t *testing.T) {
 	// TODO: This can happen when building under unusual circumstances, such
 	// as Debian package building. Are they reasonable enough for us to keep
 	// this?
-	if _, err := os.Stat("../../test/util/exitcode"); os.IsNotExist(err) {
+	if _, err := os.Stat("../../test/util/exitcode"); errors.Is(err, fs.ErrNotExist) {
 		t.Skipf("util/exitcode not found, running from outside repo?")
 	}
 

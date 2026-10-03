@@ -58,8 +58,10 @@ package aliases
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"maps"
 	"os"
 	"os/exec"
@@ -376,7 +378,7 @@ func (v *Resolver) AddAliasesFile(domain, path string) (int, error) {
 	v.mu.Unlock()
 
 	aliases, err := v.parseFile(domain, path)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return 0, nil
 	}
 	if err != nil {
@@ -404,7 +406,7 @@ func (v *Resolver) Reload() error {
 	for domain, paths := range v.files {
 		for _, path := range paths {
 			aliases, err := v.parseFile(domain, path)
-			if os.IsNotExist(err) {
+			if errors.Is(err, fs.ErrNotExist) {
 				continue
 			}
 			if err != nil {
@@ -447,12 +449,12 @@ func (v *Resolver) parseReader(domain string, r io.Reader) (map[string][]Recipie
 			continue
 		}
 
-		sp := strings.SplitN(line, ":", 2)
-		if len(sp) != 2 {
+		addr, rawalias, ok := strings.Cut(line, ":")
+		if !ok {
 			return nil, newParseError(i, "missing ':' in line")
 		}
 
-		addr, rawalias := strings.TrimSpace(sp[0]), strings.TrimSpace(sp[1])
+		addr, rawalias = strings.TrimSpace(addr), strings.TrimSpace(rawalias)
 		if len(addr) == 0 || len(rawalias) == 0 {
 			return nil, newParseError(i, "missing address or alias")
 		}
@@ -574,12 +576,7 @@ func removeAllAfter(s, seps string) string {
 			continue
 		}
 
-		i := strings.Index(s, c)
-		if i == -1 {
-			continue
-		}
-
-		s = s[:i]
+		s, _, _ = strings.Cut(s, c)
 	}
 
 	return s
@@ -588,7 +585,7 @@ func removeAllAfter(s, seps string) string {
 // removeChars removes the runes in "chars" from s.
 func removeChars(s, chars string) string {
 	for c := range strings.SplitSeq(chars, "") {
-		s = strings.Replace(s, c, "", -1)
+		s = strings.ReplaceAll(s, c, "")
 	}
 
 	return s
@@ -600,7 +597,7 @@ func (v *Resolver) runResolveHook(tr *trace.Trace, addr string) ([]Recipient, er
 		return nil, nil
 	}
 	// TODO: check if the file is executable.
-	if _, err := os.Stat(v.ResolveHook); os.IsNotExist(err) {
+	if _, err := os.Stat(v.ResolveHook); errors.Is(err, fs.ErrNotExist) {
 		hookResults.Add("resolve:skip", 1)
 		return nil, nil
 	}

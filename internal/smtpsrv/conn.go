@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"math/rand/v2"
 	"net"
 	"net/mail"
@@ -343,7 +344,7 @@ loop:
 	}
 
 	if err != nil {
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			c.tr.Debugf("client closed the connection")
 		} else {
 			c.tr.Errorf("exiting with error: %v", err)
@@ -363,7 +364,7 @@ func (c *Conn) HELO(params string) (code int, msg string) {
 		"liquor emporium", "antique weapons outlet", "delicatessen",
 		"jewelers", "quality apparel and accessories", "hardware",
 		"rare books", "lighting store"}
-	t := types[rand.Int()%len(types)]
+	t := types[rand.IntN(len(types))]
 	msg = fmt.Sprintf("Hello my friend, welcome to chasqui's %s!", t)
 
 	return 250, msg
@@ -408,7 +409,7 @@ func (c *Conn) RSET(params string) (code int, msg string) {
 		"Your mind releases itself from mundane concerns.",
 		"As your mind turns inward on itself, you forget everything else.",
 	}
-	return 250, "2.0.0 " + msgs[rand.Int()%len(msgs)]
+	return 250, "2.0.0 " + msgs[rand.IntN(len(msgs))]
 }
 
 // VRFY SMTP command handler.
@@ -455,7 +456,7 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 	// It should be written "<>", we check for that and remove spaces just to
 	// be more flexible.
 	addr := ""
-	if strings.Replace(rawAddr, " ", "", -1) == "<>" {
+	if strings.ReplaceAll(rawAddr, " ", "") == "<>" {
 		addr = "<>"
 	} else {
 		e, err := mail.ParseAddress(rawAddr)
@@ -668,11 +669,11 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 	// Read the data. Enforce CRLF correctness, and maximum size.
 	c.data, err = readUntilDot(c.reader, c.maxDataSize)
 	if err != nil {
-		if err == errMessageTooLarge {
+		if errors.Is(err, errMessageTooLarge) {
 			// Message is too big; excess data has already been discarded.
 			return 552, "5.3.4 Message too big"
 		}
-		if err == errInvalidLineEnding {
+		if errors.Is(err, errInvalidLineEnding) {
 			// We can't properly recover from this, so we have to drop the
 			// connection.
 			c.writeResponse(521, "5.5.2 Error reading DATA: invalid line ending")
@@ -734,7 +735,7 @@ func (c *Conn) DATA(params string) (code int, msg string) {
 		"In return to thy service, I grant thee the gift of Immortality!",
 		"You ascend to the status of Demigod(dess)...",
 	}
-	return 250, "2.0.0 " + msgs[rand.Int()%len(msgs)]
+	return 250, "2.0.0 " + msgs[rand.IntN(len(msgs))]
 }
 
 func (c *Conn) addReceivedHeader() {
@@ -884,7 +885,7 @@ func sanitizeEHLODomain(s string) string {
 			c >= '0' && c <= '9',
 			c == '-', c == '.',
 			c == '[', c == ']', c == ':':
-			n.WriteString(string(c))
+			n.WriteRune(c)
 		}
 	}
 
@@ -895,7 +896,7 @@ func sanitizeEHLODomain(s string) string {
 // indicating if it's permanent, and the error itself.
 func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 	// TODO: check if the file is executable.
-	if _, err := os.Stat(c.postDataHook); os.IsNotExist(err) {
+	if _, err := os.Stat(c.postDataHook); errors.Is(err, fs.ErrNotExist) {
 		hookResults.Add("post-data:skip", 1)
 		return nil, false, nil
 	}
@@ -1152,8 +1153,8 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 	// If the response is not there, we reply with 334, and expect the
 	// response back from the client in the next message.
 
-	sp := strings.SplitN(params, " ", 2)
-	if len(sp) < 1 || sp[0] != "PLAIN" {
+	mech, response, hasResponse := strings.Cut(params, " ")
+	if mech != "PLAIN" {
 		// As we only offer plain, this should not really happen.
 		return 534, "5.7.9 Asmodeus demands 534 zorkmids for safe passage"
 	}
@@ -1162,10 +1163,7 @@ func (c *Conn) AUTH(params string) (code int, msg string) {
 	// find their way to the users in some circumstances.
 
 	// Get the response, either from the message or interactively.
-	response := ""
-	if len(sp) == 2 {
-		response = sp[1]
-	} else {
+	if !hasResponse {
 		// Reply 334 and expect the user to provide it.
 		// In this case, the text IS relevant, as it is taken as the
 		// server-side SASL challenge (empty for PLAIN).
@@ -1232,13 +1230,8 @@ func (c *Conn) readCommand() (cmd, params string, err error) {
 		return "", "", err
 	}
 
-	sp := strings.SplitN(msg, " ", 2)
-	cmd = strings.ToUpper(sp[0])
-	if len(sp) > 1 {
-		params = sp[1]
-	}
-
-	return cmd, params, err
+	cmd, params, _ = strings.Cut(msg, " ")
+	return strings.ToUpper(cmd), params, err
 }
 
 func (c *Conn) readLine() (line string, err error) {

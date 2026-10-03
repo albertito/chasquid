@@ -2,7 +2,7 @@ package queue
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -182,7 +182,7 @@ func printDiff(print func(s string), expected, got string) {
 
 	// sort the lines, to make it easier to see the differences (this works
 	// ok when there's few, horrible when there's lots).
-	sort.Strings(lines)
+	slices.Sort(lines)
 
 	// print diff of expected vs. got
 	seen := map[string]bool{}

@@ -1,7 +1,4 @@
 // smtp-check is a command-line too for checking SMTP setups.
-//
-//go:build !coverage
-
 package main
 
 import (

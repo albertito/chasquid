@@ -128,11 +128,8 @@ func readRequest(r *textproto.Reader) (string, string, error) {
 		return "", "", err
 	}
 
-	sp := strings.SplitN(line, " ", 2)
-	if len(sp) == 1 {
-		return sp[0], "", nil
-	}
-	return sp[0], sp[1], nil
+	name, params, _ := strings.Cut(line, " ")
+	return name, params, nil
 }
 
 func writeError(tr *trace.Trace, tconn *textproto.Conn, err error) {

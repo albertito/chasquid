@@ -5,9 +5,6 @@
 #
 # The .coverage directory is used to store the data, it will be erased and
 # recreated on each run.
-#
-# This is not very tidy, and relies on some hacky tricks (see
-# coverage_test.go), but works for now.
 
 set -e
 . "$(dirname "$0")/util/lib.sh"

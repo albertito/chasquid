@@ -1,9 +1,6 @@
 // mda-lmtp is a very basic MDA that uses LMTP to do the delivery.
 //
 // See the usage below for details.
-//
-//go:build !coverage
-
 package main
 
 import (

@@ -1,5 +1,3 @@
-//go:build !coverage
-
 // Fetch an URL, and check if the response matches what we expect.
 //
 // Useful for testing HTTP(s) servers.
@@ -11,10 +9,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -85,12 +84,7 @@ func main() {
 		fmt.Printf("Request: %s\n", url)
 		fmt.Printf("Response:\n")
 		fmt.Printf("  %v  %v\n", resp.Proto, resp.Status)
-		ks := []string{}
-		for k := range resp.Header {
-			ks = append(ks, k)
-		}
-		sort.Strings(ks)
-		for _, k := range ks {
+		for _, k := range slices.Sorted(maps.Keys(resp.Header)) {
 			fmt.Printf("  %v: %s\n", k,
 				strings.Join(resp.Header[k], ", "))
 		}

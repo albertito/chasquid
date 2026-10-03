@@ -1,6 +1,8 @@
 package testlib
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"testing"
 	"time"
@@ -22,7 +24,7 @@ func TestBasic(t *testing.T) {
 	}
 
 	RemoveIfOk(t, dir)
-	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+	if _, err := os.Stat(dir); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("%s existed, should have been deleted: %v", dir, err)
 	}
 }
@@ -45,7 +47,7 @@ func TestLeaveDirOnError(t *testing.T) {
 	myt.Errorf("something bad happened")
 
 	RemoveIfOk(myt, dir)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
+	if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("%s was removed, should have been kept", dir)
 	}
 

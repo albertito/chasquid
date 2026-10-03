@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"expvar"
 	"flag"
 	"fmt"
@@ -126,7 +127,7 @@ func launchMonitoringServer(conf *config.Config) {
 	http.HandleFunc("/debug/config", debugConfigHandler(conf))
 	http.HandleFunc("/debug/traces", nettrace.RenderTraces)
 
-	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("Monitoring server failed: %v", err)
 	}
 }

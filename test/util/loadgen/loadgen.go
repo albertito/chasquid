@@ -1,5 +1,3 @@
-//go:build !coverage
-
 // SMTP load generator, for testing purposes.
 package main
 
@@ -114,9 +112,7 @@ func main() {
 	)
 
 	if *wait {
-		for {
-			time.Sleep(24 * time.Hour)
-		}
+		select {}
 	}
 }
 

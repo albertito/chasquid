@@ -11,12 +11,8 @@ import (
 
 // Split an user@domain address into user and domain.
 func Split(addr string) (string, string) {
-	ps := strings.SplitN(addr, "@", 2)
-	if len(ps) != 2 {
-		return addr, ""
-	}
-
-	return ps[0], ps[1]
+	user, domain, _ := strings.Cut(addr, "@")
+	return user, domain
 }
 
 // UserOf user@domain returns user.
@@ -48,7 +44,7 @@ func AddHeader(data []byte, k, v string) []byte {
 		if v[len(v)-1] == '\n' {
 			v = v[:len(v)-1]
 		}
-		v = strings.Replace(v, "\n", "\n\t", -1)
+		v = strings.ReplaceAll(v, "\n", "\n\t")
 	}
 
 	header := []byte(fmt.Sprintf("%s: %s\n", k, v))

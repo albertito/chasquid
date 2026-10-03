@@ -5,7 +5,6 @@
 // daemon for testing purposes only.
 //
 //go:build ignore
-// +build ignore
 
 package main
 

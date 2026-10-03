@@ -86,13 +86,13 @@ func parsePolicy(raw []byte) (*Policy, error) {
 
 	scanner := bufio.NewScanner(bytes.NewReader(raw))
 	for scanner.Scan() {
-		sp := strings.SplitN(scanner.Text(), ":", 2)
-		if len(sp) != 2 {
+		key, value, ok := strings.Cut(scanner.Text(), ":")
+		if !ok {
 			continue
 		}
 
-		key := strings.TrimSpace(sp[0])
-		value := strings.TrimSpace(sp[1])
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
 
 		// Only care for the keys we recognize.
 		switch key {
@@ -293,9 +293,9 @@ func matchDomain(domain, pattern string) bool {
 	// For wildcards, skip the first part of the domain and match the rest.
 	// Note that if the pattern is malformed this might fail, but we are ok
 	// with that.
-	if strings.HasPrefix(pattern, "*.") {
-		parts := strings.SplitN(domain, ".", 2)
-		if len(parts) > 1 && parts[1] == pattern[2:] {
+	if suffix, ok := strings.CutPrefix(pattern, "*."); ok {
+		_, rest, found := strings.Cut(domain, ".")
+		if found && rest == suffix {
 			return true
 		}
 	}

@@ -340,9 +340,7 @@ func (s *Server) ListenAndServe() {
 
 	// Never return. If the serve goroutines have problems, they will abort
 	// execution.
-	for {
-		time.Sleep(24 * time.Hour)
-	}
+	select {}
 }
 
 func (s *Server) serve(l net.Listener, mode SocketMode) {

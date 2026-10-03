@@ -1,5 +1,3 @@
-//go:build !coverage
-
 // Utility to generate self-signed certificates.
 // It generates a self-signed x509 certificate and key pair, and writes them
 // to "fullchain.pem" and "privkey.pem".

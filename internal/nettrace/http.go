@@ -8,7 +8,7 @@ import (
 	"html/template"
 	"math"
 	"net/http"
-	"sort"
+	"slices"
 	"strconv"
 	"time"
 )
@@ -156,8 +156,8 @@ func allEvents(tr *trace) []traceAndEvent {
 	evts := appendAllEvents(tr, []traceAndEvent{}, seen, 0)
 
 	// Sort them by time.
-	sort.Slice(evts, func(i, j int) bool {
-		return evts[i].Event.When.Before(evts[j].Event.When)
+	slices.SortFunc(evts, func(a, b traceAndEvent) int {
+		return a.Event.When.Compare(b.Event.When)
 	})
 
 	return evts

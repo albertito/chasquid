@@ -10,8 +10,10 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/mail"
 	"os"
 	"path"
@@ -161,7 +163,7 @@ func dkimKeygen() {
 		keyPath = keyPathFor(domain, selector)
 	}
 
-	if _, err := os.Stat(keyPath); !os.IsNotExist(err) {
+	if _, err := os.Stat(keyPath); !errors.Is(err, fs.ErrNotExist) {
 		Fatalf("Error: key already exists at %q", keyPath)
 	}
 

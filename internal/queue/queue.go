@@ -252,19 +252,19 @@ func (q *Queue) DumpString() string {
 	defer q.mu.RUnlock()
 	var s strings.Builder
 	s.WriteString("# Queue status\n\n")
-	s.WriteString(fmt.Sprintf("date: %v\n", time.Now()))
-	s.WriteString(fmt.Sprintf("length: %d\n\n", len(q.q)))
+	fmt.Fprintf(&s, "date: %v\n", time.Now())
+	fmt.Fprintf(&s, "length: %d\n\n", len(q.q))
 
 	for id, item := range q.q {
-		s.WriteString(fmt.Sprintf("## Item %s\n", id))
+		fmt.Fprintf(&s, "## Item %s\n", id)
 		item.Lock()
-		s.WriteString(fmt.Sprintf("created at: %s\n", item.CreatedAt))
-		s.WriteString(fmt.Sprintf("from: %s\n", item.From))
-		s.WriteString(fmt.Sprintf("to: %s\n", item.To))
+		fmt.Fprintf(&s, "created at: %s\n", item.CreatedAt)
+		fmt.Fprintf(&s, "from: %s\n", item.From)
+		fmt.Fprintf(&s, "to: %s\n", item.To)
 		for _, rcpt := range item.Rcpt {
-			s.WriteString(fmt.Sprintf("%s %s (%s)\n", rcpt.Status, rcpt.Address, rcpt.Type))
-			s.WriteString(fmt.Sprintf("  original address: %s\n", rcpt.OriginalAddress))
-			s.WriteString(fmt.Sprintf("  last failure: %q\n", rcpt.LastFailureMessage))
+			fmt.Fprintf(&s, "%s %s (%s)\n", rcpt.Status, rcpt.Address, rcpt.Type)
+			fmt.Fprintf(&s, "  original address: %s\n", rcpt.OriginalAddress)
+			fmt.Fprintf(&s, "  last failure: %q\n", rcpt.LastFailureMessage)
 		}
 		item.Unlock()
 		s.WriteString("\n")
@@ -329,8 +329,7 @@ func (item *Item) SendLoop(q *Queue) {
 				continue
 			}
 
-			wg.Add(1)
-			go item.sendOneRcpt(&wg, tr, q, rcpt)
+			wg.Go(func() { item.sendOneRcpt(tr, q, rcpt) })
 		}
 		wg.Wait()
 
@@ -359,8 +358,7 @@ func (item *Item) SendLoop(q *Queue) {
 }
 
 // sendOneRcpt, and update it with the results.
-func (item *Item) sendOneRcpt(wg *sync.WaitGroup, tr *trace.Trace, q *Queue, rcpt *Recipient) {
-	defer wg.Done()
+func (item *Item) sendOneRcpt(tr *trace.Trace, q *Queue, rcpt *Recipient) {
 	to := rcpt.Address
 	tr.Debugf("%s sending", to)
 
@@ -452,7 +450,7 @@ func rewriteSender(from, originalAddr string) string {
 	// we can't know if the other side will support SMTPUTF8.
 	return fmt.Sprintf("%s+fwd_from=%s@%s",
 		envelope.UserOf(originalAddr),
-		strings.Replace(from, "@", "=", -1),
+		strings.ReplaceAll(from, "@", "="),
 		mustIDNAToASCII(envelope.DomainOf(originalAddr)))
 }
 

@@ -7,9 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -166,7 +167,7 @@ func checkUserDB() {
 	path := userDBForDomain("")
 	// Check if the file exists. This is because userdb.Load does not consider
 	// it an error.
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		Fatalf("Error: file %q does not exist", path)
 	}
 
@@ -281,13 +282,7 @@ func aliasesResolve() {
 
 	// Result is a map of type -> []addresses.
 	// Sort the types for deterministic output.
-	ts := []string{}
-	for t := range vs {
-		ts = append(ts, t)
-	}
-	sort.Strings(ts)
-
-	for _, t := range ts {
+	for _, t := range slices.Sorted(maps.Keys(vs)) {
 		for _, a := range vs[t] {
 			fmt.Printf("%v  %s\n", t, a)
 		}
@@ -333,12 +328,8 @@ func parseArgs(usage string) map[string]string {
 		// Note: Consider handling end of args marker "--" explicitly in
 		// the future if needed.
 		if strings.HasPrefix(a, "-") {
-			sp := strings.SplitN(a, "=", 2)
-			if len(sp) < 2 {
-				args[a] = ""
-			} else {
-				args[sp[0]] = sp[1]
-			}
+			k, v, _ := strings.Cut(a, "=")
+			args[k] = v
 		} else {
 			args["$"+strconv.Itoa(pos)] = a
 			pos++

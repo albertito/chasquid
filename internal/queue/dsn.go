@@ -88,7 +88,7 @@ type dsnInfo struct {
 // indent s with the given number of spaces.
 func indent(sp int, s string) string {
 	pad := strings.Repeat(" ", sp)
-	return strings.Replace(s, "\n", "\n"+pad, -1)
+	return strings.ReplaceAll(s, "\n", "\n"+pad)
 }
 
 var dsnTemplate = template.Must(

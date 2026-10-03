@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"math/rand/v2"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,11 +29,8 @@ func newID(family string, ts int64) id {
 }
 
 func (id id) Family() string {
-	sp := strings.SplitN(string(id), "!", 2)
-	if len(sp) != 2 {
-		return string(id)
-	}
-	return sp[0]
+	family, _, _ := strings.Cut(string(id), "!")
+	return family
 }
 
 // Trace represents a single request trace.
@@ -433,8 +430,8 @@ func (ft *familyTraces) TracesFor(b int, allgt bool) []*trace {
 
 	// Sort them by start, newer first. This is the order that will be used
 	// when displaying them.
-	sort.Slice(trs, func(i, j int) bool {
-		return trs[i].Start.After(trs[j].Start)
+	slices.SortFunc(trs, func(a, b *trace) int {
+		return b.Start.Compare(a.Start)
 	})
 	return trs
 }
@@ -510,13 +507,9 @@ var (
 )
 
 func copyFamilies() map[string]*familyTraces {
-	n := map[string]*familyTraces{}
-
 	familiesMu.Lock()
-	maps.Copy(n, families)
-	familiesMu.Unlock()
-
-	return n
+	defer familiesMu.Unlock()
+	return maps.Clone(families)
 }
 
 func findInFamilies(traceID id, refID id) *trace {

@@ -1,5 +1,3 @@
-//go:build !coverage
-
 // Generate an HTML visualization of a Go coverage profile.
 // Serves a similar purpose to "go tool cover -html", but has a different
 // visual style.

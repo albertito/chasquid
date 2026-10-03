@@ -33,7 +33,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"sync"
 
 	"golang.org/x/crypto/scrypt"
@@ -73,7 +73,7 @@ func Load(fname string) (*DB, error) {
 		db.db = &ProtoDB{Users: map[string]*Password{}}
 	}
 
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		// If the file does not exist now, it is not an error, as it might
 		// exist later and we want to be able to read it.
 		err = nil

@@ -38,7 +38,7 @@ func readUntilDot(r *bufio.Reader, max int64) ([]byte, error) {
 loop:
 	for {
 		b, err := r.ReadByte()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return buf, io.ErrUnexpectedEOF
 		} else if err != nil {
 			return buf, err
