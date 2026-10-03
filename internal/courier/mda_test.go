@@ -33,7 +33,7 @@ func TestMDATimeout(t *testing.T) {
 	p := MDA{"sleep", []string{"1"}, 100 * time.Millisecond}
 
 	err, permanent := p.Deliver("from", "to@local", []byte("data"))
-	if err != errTimeout {
+	if !errors.Is(err, errTimeout) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 	if permanent {

@@ -71,7 +71,8 @@ func (p *MDA) Deliver(from string, to string, data []byte) (error, bool) {
 
 	output, err := cmd.CombinedOutput()
 	if ctx.Err() == context.DeadlineExceeded {
-		return tr.Error(errTimeout), false
+		return tr.Errorf("local delivery failed: %w after %v",
+			errTimeout, p.Timeout), false
 	}
 
 	if err != nil {
@@ -84,7 +85,10 @@ func (p *MDA) Deliver(from string, to string, data []byte) (error, bool) {
 				permanent = status.ExitStatus() != 75
 			}
 		}
-		err = tr.Errorf("MDA delivery failed: %w - %q", err, string(output))
+		// Include the output, as it usually contains the reason for the
+		// failure. Quote it, as it can contain arbitrary characters.
+		err = tr.Errorf("local delivery failed: %w (output: %q)",
+			err, strings.TrimSpace(string(output)))
 		return err, permanent
 	}
 

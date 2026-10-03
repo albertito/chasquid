@@ -74,19 +74,23 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 	}
 
 	mxs, err, perm := lookupMXs(a.tr, a.toDomain)
-	if err != nil || len(mxs) == 0 {
+	if err != nil {
+		return a.tr.Errorf("error looking up mail servers for %q: %w",
+			a.toDomain, err), perm
+	}
+	if len(mxs) == 0 {
 		// Note this is considered a permanent error.
 		// This is in line with what other servers (Exim) do. However, the
 		// downside is that temporary DNS issues can affect delivery, so we
 		// have to make sure we try hard enough on the lookup above.
-		return a.tr.Errorf("Could not find mail server: %v", err), perm
+		return a.tr.Errorf("no mail servers found for %q", a.toDomain), true
 	}
 
 	a.stsPolicy = s.fetchSTSPolicy(a.tr, a.toDomain)
 
 	for _, mx := range mxs {
 		if a.stsPolicy != nil && !a.stsPolicy.MXIsAllowed(mx) {
-			a.tr.Printf("%q skipped as per MTA-STA policy", mx)
+			a.tr.Printf("%q skipped as per MTA-STS policy", mx)
 			continue
 		}
 
@@ -101,8 +105,17 @@ func (s *SMTP) Deliver(from string, to string, data []byte) (error, bool) {
 		a.tr.Errorf("%q returned transient error: %v", mx, err)
 	}
 
+	if err == nil {
+		// We did not attempt delivery to any of the MXs, because the MTA-STS
+		// policy did not allow any of them.
+		return a.tr.Errorf(
+			"none of the mail servers for %q are allowed by its MTA-STS policy",
+			a.toDomain), false
+	}
+
 	// We exhausted all MXs failed to deliver, try again later.
-	return a.tr.Errorf("all MXs returned transient failures (last: %v)", err), false
+	return a.tr.Errorf(
+		"all mail servers failed temporarily, last error: %w", err), false
 }
 
 // Forward an email. On failures, returns an error, and whether or not it is
@@ -137,8 +150,14 @@ func (s *SMTP) Forward(from string, to string, data []byte, servers []string) (e
 		a.tr.Errorf("%q returned transient error: %v", server, err)
 	}
 
+	if err == nil {
+		// Should not happen, as the alias parser requires at least one server.
+		return a.tr.Errorf("no servers to forward to"), false
+	}
+
 	// We exhausted all servers, try again later.
-	return a.tr.Errorf("all servers returned transient failures (last: %v)", err), false
+	return a.tr.Errorf(
+		"all servers failed temporarily, last error: %w", err), false
 }
 
 type attempt struct {
@@ -160,18 +179,18 @@ func (a *attempt) deliver(mx string) (error, bool) {
 retry:
 	conn, err := net.DialTimeout("tcp", mx+":"+*smtpPort, smtpDialTimeout)
 	if err != nil {
-		return a.tr.Errorf("Could not dial: %w", err), false
+		return a.tr.Errorf("%s: connection failed: %w", mx, err), false
 	}
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(smtpTotalTimeout))
 
 	c, err := smtp.NewClient(conn, mx)
 	if err != nil {
-		return a.tr.Errorf("Error creating client: %w", err), false
+		return a.tr.Errorf("%s: greeting failed: %w", mx, err), false
 	}
 
 	if err = c.Hello(a.courier.HelloDomain); err != nil {
-		return a.tr.Errorf("Error saying hello: %w", err), false
+		return a.tr.Errorf("%s: EHLO failed: %w", mx, err), false
 	}
 
 	secLevel := domaininfo.SecLevel_PLAIN
@@ -218,7 +237,9 @@ retry:
 		// We consider the failure transient, so transient misconfigurations
 		// do not affect deliveries.
 		slcResults.Add("fail", 1)
-		return a.tr.Errorf("Security level check failed (level:%s)", secLevel), false
+		return a.tr.Errorf("%s: security level check failed: "+
+			"connection is %s, but we have previously seen a higher "+
+			"security level for %q", mx, secLevel, a.toDomain), false
 	}
 	slcResults.Add("pass", 1)
 
@@ -227,29 +248,34 @@ retry:
 		// https://tools.ietf.org/html/rfc8461#section-4.2
 		if secLevel != domaininfo.SecLevel_TLS_SECURE {
 			stsSecurityResults.Add("fail", 1)
-			return a.tr.Errorf("invalid security level (%v) for STS policy",
-				secLevel), false
+			return a.tr.Errorf("%s: connection is %s, but the MTA-STS "+
+				"policy for %q requires TLS with a valid certificate",
+				mx, secLevel, a.toDomain), false
 		}
 		stsSecurityResults.Add("pass", 1)
 		a.tr.Debugf("STS policy: connection is using valid TLS")
 	}
 
 	if err = c.MailAndRcpt(a.from, a.to); err != nil {
-		return a.tr.Errorf("MAIL+RCPT %w", err), smtp.IsPermanent(err)
+		return a.tr.Errorf("%s: MAIL/RCPT failed: %w", mx, err),
+			smtp.IsPermanent(err)
 	}
 
 	w, err := c.Data()
 	if err != nil {
-		return a.tr.Errorf("DATA %w", err), smtp.IsPermanent(err)
+		return a.tr.Errorf("%s: DATA failed: %w", mx, err),
+			smtp.IsPermanent(err)
 	}
 	_, err = w.Write(a.data)
 	if err != nil {
-		return a.tr.Errorf("DATA writing: %w", err), smtp.IsPermanent(err)
+		return a.tr.Errorf("%s: sending message data failed: %w", mx, err),
+			smtp.IsPermanent(err)
 	}
 
 	err = w.Close()
 	if err != nil {
-		return a.tr.Errorf("DATA closing %w", err), smtp.IsPermanent(err)
+		return a.tr.Errorf("%s: message not accepted: %w", mx, err),
+			smtp.IsPermanent(err)
 	}
 
 	_ = c.Quit()
