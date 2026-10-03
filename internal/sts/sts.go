@@ -256,7 +256,7 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 	// https://tools.ietf.org/html/rfc8461#section-3.2
 	mt, _, err := mime.ParseMediaType(resp.Header.Get("Content-type"))
 	if err != nil {
-		return nil, fmt.Errorf("HTTP media type error: %v", err)
+		return nil, fmt.Errorf("HTTP media type error: %w", err)
 	}
 	if mt != "text/plain" {
 		return nil, ErrInvalidMediaType
@@ -399,7 +399,7 @@ func (c *PolicyCache) load(domain string) (*Policy, error) {
 	if err := p.Check(); err != nil {
 		cacheInvalid.Add(1)
 		return nil, fmt.Errorf(
-			"%s unmarshalled invalid policy %v: %v", domain, p, err)
+			"%s unmarshalled invalid policy %v: %w", domain, p, err)
 	}
 
 	return p, nil
@@ -409,7 +409,7 @@ func (c *PolicyCache) store(domain string, p *Policy) error {
 	data, err := json.Marshal(p)
 	if err != nil {
 		cacheMarshalErrors.Add(1)
-		return fmt.Errorf("%s failed to marshal policy %v, error: %v",
+		return fmt.Errorf("%s failed to marshal policy %v, error: %w",
 			domain, p, err)
 	}
 

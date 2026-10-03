@@ -119,11 +119,11 @@ func (a *Auth) Exists(user string) (bool, error) {
 	// SPID\t<pid>
 	err = expect(conn, "VERSION\t1")
 	if err != nil {
-		return false, fmt.Errorf("error receiving version: %v", err)
+		return false, fmt.Errorf("error receiving version: %w", err)
 	}
 	err = expect(conn, "SPID\t")
 	if err != nil {
-		return false, fmt.Errorf("error receiving SPID: %v", err)
+		return false, fmt.Errorf("error receiving SPID: %w", err)
 	}
 
 	// Send our version, and then the request.
@@ -140,7 +140,7 @@ func (a *Auth) Exists(user string) (bool, error) {
 	// Get the response, and we're done.
 	resp, err := conn.ReadLine()
 	if err != nil {
-		return false, fmt.Errorf("error receiving response: %v", err)
+		return false, fmt.Errorf("error receiving response: %w", err)
 	} else if strings.HasPrefix(resp, "USER\t1\t") {
 		return true, nil
 	} else if strings.HasPrefix(resp, "NOTFOUND\t") {
@@ -178,7 +178,7 @@ func (a *Auth) Authenticate(user, passwd string) (bool, error) {
 	for {
 		resp, err := conn.ReadLine()
 		if err != nil {
-			return false, fmt.Errorf("error receiving handshake: %v", err)
+			return false, fmt.Errorf("error receiving handshake: %w", err)
 		}
 		if resp == "DONE" {
 			break
@@ -202,7 +202,7 @@ func (a *Auth) Authenticate(user, passwd string) (bool, error) {
 	// Get the response, and we're done.
 	resp, err = conn.ReadLine()
 	if err != nil {
-		return false, fmt.Errorf("error receiving response: %v", err)
+		return false, fmt.Errorf("error receiving response: %w", err)
 	} else if strings.HasPrefix(resp, "OK\t1") {
 		return true, nil
 	} else if strings.HasPrefix(resp, "FAIL\t1") {

@@ -44,13 +44,13 @@ func Load(path, overrides string) (*Config, error) {
 	// Load from the path.
 	buf, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config at %q: %v", path, err)
+		return nil, fmt.Errorf("failed to read config at %q: %w", path, err)
 	}
 
 	fromFile := &Config{}
 	err = prototext.Unmarshal(buf, fromFile)
 	if err != nil {
-		return nil, fmt.Errorf("parsing config: %v", err)
+		return nil, fmt.Errorf("parsing config: %w", err)
 	}
 	override(c, fromFile)
 
@@ -58,7 +58,7 @@ func Load(path, overrides string) (*Config, error) {
 	fromOverrides := &Config{}
 	err = prototext.Unmarshal([]byte(overrides), fromOverrides)
 	if err != nil {
-		return nil, fmt.Errorf("parsing override: %v", err)
+		return nil, fmt.Errorf("parsing override: %w", err)
 	}
 	override(c, fromOverrides)
 
@@ -67,14 +67,14 @@ func Load(path, overrides string) (*Config, error) {
 	if c.Hostname == "" {
 		c.Hostname, err = os.Hostname()
 		if err != nil {
-			return nil, fmt.Errorf("could not get hostname: %v", err)
+			return nil, fmt.Errorf("could not get hostname: %w", err)
 		}
 	}
 
 	// Validate the GiveUpSendAfter value.
 	if _, err := time.ParseDuration(c.GiveUpSendAfter); err != nil {
 		return nil, fmt.Errorf(
-			"invalid give_up_send_after value %q: %v", c.GiveUpSendAfter, err)
+			"invalid give_up_send_after value %q: %w", c.GiveUpSendAfter, err)
 	}
 
 	return c, nil

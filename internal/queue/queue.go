@@ -187,7 +187,7 @@ func (q *Queue) Put(tr *trace.Trace, from string, to []string, data []byte) (str
 
 		rcpts, err := q.aliases.Resolve(tr, t)
 		if err != nil {
-			return "", fmt.Errorf("error resolving aliases for %q: %v", t, err)
+			return "", fmt.Errorf("error resolving aliases for %q: %w", t, err)
 		}
 
 		// Add the recipients (after resolving aliases); this conversion is
@@ -218,7 +218,7 @@ func (q *Queue) Put(tr *trace.Trace, from string, to []string, data []byte) (str
 
 	err := item.WriteTo(q.path)
 	if err != nil {
-		return "", tr.Errorf("failed to write item: %v", err)
+		return "", tr.Errorf("failed to write item: %w", err)
 	}
 
 	q.mu.Lock()

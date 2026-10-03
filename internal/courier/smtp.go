@@ -160,18 +160,18 @@ func (a *attempt) deliver(mx string) (error, bool) {
 retry:
 	conn, err := net.DialTimeout("tcp", mx+":"+*smtpPort, smtpDialTimeout)
 	if err != nil {
-		return a.tr.Errorf("Could not dial: %v", err), false
+		return a.tr.Errorf("Could not dial: %w", err), false
 	}
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(smtpTotalTimeout))
 
 	c, err := smtp.NewClient(conn, mx)
 	if err != nil {
-		return a.tr.Errorf("Error creating client: %v", err), false
+		return a.tr.Errorf("Error creating client: %w", err), false
 	}
 
 	if err = c.Hello(a.courier.HelloDomain); err != nil {
-		return a.tr.Errorf("Error saying hello: %v", err), false
+		return a.tr.Errorf("Error saying hello: %w", err), false
 	}
 
 	secLevel := domaininfo.SecLevel_PLAIN
@@ -235,21 +235,21 @@ retry:
 	}
 
 	if err = c.MailAndRcpt(a.from, a.to); err != nil {
-		return a.tr.Errorf("MAIL+RCPT %v", err), smtp.IsPermanent(err)
+		return a.tr.Errorf("MAIL+RCPT %w", err), smtp.IsPermanent(err)
 	}
 
 	w, err := c.Data()
 	if err != nil {
-		return a.tr.Errorf("DATA %v", err), smtp.IsPermanent(err)
+		return a.tr.Errorf("DATA %w", err), smtp.IsPermanent(err)
 	}
 	_, err = w.Write(a.data)
 	if err != nil {
-		return a.tr.Errorf("DATA writing: %v", err), smtp.IsPermanent(err)
+		return a.tr.Errorf("DATA writing: %w", err), smtp.IsPermanent(err)
 	}
 
 	err = w.Close()
 	if err != nil {
-		return a.tr.Errorf("DATA closing %v", err), smtp.IsPermanent(err)
+		return a.tr.Errorf("DATA closing %w", err), smtp.IsPermanent(err)
 	}
 
 	_ = c.Quit()

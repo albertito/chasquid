@@ -161,7 +161,7 @@ func (db *DB) AddUser(name, plainPassword string) error {
 	s.Encrypted, err = scrypt.Key([]byte(plainPassword), s.Salt,
 		1<<s.LogN, int(s.R), int(s.P), int(s.KeyLen))
 	if err != nil {
-		return fmt.Errorf("scrypt failed: %v", err)
+		return fmt.Errorf("scrypt failed: %w", err)
 	}
 
 	db.mu.Lock()

@@ -84,7 +84,7 @@ func (p *MDA) Deliver(from string, to string, data []byte) (error, bool) {
 				permanent = status.ExitStatus() != 75
 			}
 		}
-		err = tr.Errorf("MDA delivery failed: %v - %q", err, string(output))
+		err = tr.Errorf("MDA delivery failed: %w - %q", err, string(output))
 		return err, permanent
 	}
 

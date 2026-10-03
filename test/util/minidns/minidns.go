@@ -181,7 +181,7 @@ func readTCPMessage(conn net.Conn) (*dnsmessage.Message, error) {
 	msg := &dnsmessage.Message{}
 	err = msg.Unpack(data)
 	if err != nil {
-		return nil, fmt.Errorf("%v error unpacking message: %v", addr, err)
+		return nil, fmt.Errorf("%v error unpacking message: %w", addr, err)
 	}
 
 	return msg, nil
@@ -190,7 +190,7 @@ func readTCPMessage(conn net.Conn) (*dnsmessage.Message, error) {
 func writeTCPMessage(conn net.Conn, msg *dnsmessage.Message) error {
 	rbuf, err := msg.Pack()
 	if err != nil {
-		return fmt.Errorf("error packing reply: %v", err)
+		return fmt.Errorf("error packing reply: %w", err)
 	}
 
 	lenHdr := struct{ Len uint16 }{Len: uint16(len(rbuf))}

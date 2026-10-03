@@ -65,7 +65,7 @@ func (db *DB) Reload() error {
 		_, err := db.store.Get(id, d)
 		if err != nil {
 			tr.Errorf("id %q: %v", id, err)
-			return fmt.Errorf("error loading %q: %v", id, err)
+			return fmt.Errorf("error loading %q: %w", id, err)
 		}
 
 		db.info[d.Name] = d
