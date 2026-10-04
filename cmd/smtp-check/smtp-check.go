@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/sts"
-	"blitiri.com.ar/go/chasquid/internal/tlsconst"
 	"blitiri.com.ar/go/spf"
 
 	"golang.org/x/net/idna"
@@ -105,8 +104,8 @@ func main() {
 				errs = append(errs, fmt.Errorf("%s: TLS failed", mx.Host))
 			} else {
 				cstate, _ := c.TLSConnectionState()
-				log.Printf("TLS OK: %s - %s", tlsconst.VersionName(cstate.Version),
-					tlsconst.CipherSuiteName(cstate.CipherSuite))
+				log.Printf("TLS OK: %s - %s", tls.VersionName(cstate.Version),
+					tls.CipherSuiteName(cstate.CipherSuite))
 			}
 
 			c.Close()

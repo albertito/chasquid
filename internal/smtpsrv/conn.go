@@ -31,7 +31,6 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/queue"
 	"blitiri.com.ar/go/chasquid/internal/set"
-	"blitiri.com.ar/go/chasquid/internal/tlsconst"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 	"blitiri.com.ar/go/spf"
 )
@@ -773,12 +772,12 @@ func (c *Conn) addReceivedHeader() {
 	if c.tlsConnState != nil {
 		// https://tools.ietf.org/html/rfc8314#section-4.3
 		received += fmt.Sprintf("tls %s\n",
-			tlsconst.CipherSuiteName(c.tlsConnState.CipherSuite))
+			tls.CipherSuiteName(c.tlsConnState.CipherSuite))
 	}
 
 	received += fmt.Sprintf("(over %s, ", c.mode)
 	if c.tlsConnState != nil {
-		received += fmt.Sprintf("%s, ", tlsconst.VersionName(c.tlsConnState.Version))
+		received += fmt.Sprintf("%s, ", tls.VersionName(c.tlsConnState.Version))
 	} else {
 		received += "plain text!, "
 	}

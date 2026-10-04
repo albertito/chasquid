@@ -5,7 +5,7 @@ Received-SPF: pass (matched mx)
 Received: from *
 	by primary (chasquid) with ESMTPS
 	tls TLS_*
-	(over SMTP, TLS-1.3, envelope from "chain-1-4+fwd_from=chain-1-3+fwd_from=user222=dodo=kiwi@dodo")
+	(over SMTP, TLS 1.3, envelope from "chain-1-4+fwd_from=chain-1-3+fwd_from=user222=dodo=kiwi@dodo")
 	; *
 Authentication-Results: secondary
 	;spf=pass (matched mx)
@@ -14,7 +14,7 @@ Received-SPF: pass (matched mx)
 Received: from *
 	by secondary (chasquid) with ESMTPS
 	tls TLS_*
-	(over SMTP, TLS-1.3, envelope from "chain-1-3+fwd_from=user222=dodo@kiwi")
+	(over SMTP, TLS 1.3, envelope from "chain-1-3+fwd_from=user222=dodo@kiwi")
 	; *
 Authentication-Results: external
 	;spf=pass (matched mx)
@@ -23,7 +23,7 @@ Received-SPF: pass (matched mx)
 Received: from *
 	by external (chasquid) with ESMTPS
 	tls TLS_*
-	(over SMTP, TLS-1.3, envelope from "user222@dodo")
+	(over SMTP, TLS 1.3, envelope from "user222@dodo")
 	; *
 Authentication-Results: primary
 	;spf=pass (matched mx)
@@ -32,12 +32,12 @@ Received-SPF: pass (matched mx)
 Received: from *
 	by primary (chasquid) with ESMTPS
 	tls TLS_*
-	(over SMTP, TLS-1.3, envelope from "user222@dodo")
+	(over SMTP, TLS 1.3, envelope from "user222@dodo")
 	; *
 Received: from localhost
 	by secondary (chasquid) with ESMTPSA
 	tls TLS_*
-	(over submission+TLS, TLS-1.3, envelope from "user222@dodo")
+	(over submission+TLS, TLS 1.3, envelope from "user222@dodo")
 	; *
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed;
 	d=dodo; s=sel-secondary-1; t=*

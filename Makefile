@@ -62,8 +62,7 @@ fmt:
 	black -l 79 \
 		test/util/check-hostaliases \
 		test/util/chamuyero \
-		test/util/mail_diff \
-		internal/tlsconst/generate-ciphers.py
+		test/util/mail_diff
 
 .PHONY: chasquid test \
 	chasquid-util smtp-check mda-lmtp dovecot-auth-cli \
