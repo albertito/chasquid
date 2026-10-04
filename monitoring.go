@@ -91,6 +91,24 @@ func parseVersionInfo() {
 func launchMonitoringServer(conf *config.Config) {
 	log.Infof("Monitoring HTTP server listening on %s", conf.MonitoringAddress)
 
+	srv := &http.Server{
+		Addr:              conf.MonitoringAddress,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	// Use the default mux, as that's where the expvar and pprof handlers
+	// register themselves.
+	srv.Handler = monitoringHandler(http.DefaultServeMux, srv, conf)
+
+	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalf("Monitoring server failed: %v", err)
+	}
+}
+
+// monitoringHandler registers the monitoring handlers in the given mux, and
+// returns the handler to use for the monitoring server.
+func monitoringHandler(mux *http.ServeMux, srv *http.Server,
+	conf *config.Config) http.Handler {
 	osHostname, _ := os.Hostname()
 
 	indexData := struct {
@@ -109,27 +127,23 @@ func launchMonitoringServer(conf *config.Config) {
 		Hostname:   osHostname,
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		if err := monitoringHTMLIndex.Execute(w, indexData); err != nil {
 			log.Infof("monitoring handler error: %v", err)
 		}
 	})
 
-	srv := &http.Server{Addr: conf.MonitoringAddress}
+	mux.HandleFunc("POST /exit", exitHandler(srv))
+	mux.HandleFunc("GET /metrics", expvarom.MetricsHandler)
+	mux.HandleFunc("GET /debug/flags", debugFlagsHandler)
+	mux.HandleFunc("GET /debug/config", debugConfigHandler(conf))
+	mux.HandleFunc("GET /debug/traces", nettrace.RenderTraces)
 
-	http.HandleFunc("/exit", exitHandler(srv))
-	http.HandleFunc("/metrics", expvarom.MetricsHandler)
-	http.HandleFunc("/debug/flags", debugFlagsHandler)
-	http.HandleFunc("/debug/config", debugConfigHandler(conf))
-	http.HandleFunc("/debug/traces", nettrace.RenderTraces)
-
-	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("Monitoring server failed: %v", err)
-	}
+	// Reject cross-origin requests from browsers, except for safe methods
+	// (like GET). This prevents cross-site request forgery: otherwise, any
+	// web page could make the browser of someone who can reach the monitoring
+	// server send it a POST /exit.
+	return http.NewCrossOriginProtection().Handler(mux)
 }
 
 // Functions available inside the templates.
@@ -207,11 +221,6 @@ os hostname <i>{{.Hostname}}</i><br>
 
 func exitHandler(srv *http.Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			http.Error(w, "Use POST method for exiting", http.StatusMethodNotAllowed)
-			return
-		}
-
 		log.Infof("Received /exit")
 		http.Error(w, "OK exiting", http.StatusOK)
 
