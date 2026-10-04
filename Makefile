@@ -58,6 +58,7 @@ install-config-skeleton:
 fmt:
 	go vet ./...
 	gofmt -s -w .
+	go fix ./...
 	clang-format -i $(shell find . -iname '*.proto')
 	black -l 79 \
 		test/util/check-hostaliases \
