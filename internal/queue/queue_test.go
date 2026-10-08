@@ -201,6 +201,27 @@ func TestAliases(t *testing.T) {
 	})
 }
 
+func TestRewriteSender(t *testing.T) {
+	cases := []struct {
+		from, originalAddr, expected string
+	}{
+		{"from@rana", "remote@loco", "remote+fwd_from=from=rana@loco"},
+
+		// The domain of the original address is converted to ASCII.
+		{"from@rana", "remote@ñoño", "remote+fwd_from=from=rana@xn--oo-yjab"},
+
+		// If the conversion fails, the domain is left as-is.
+		{"from@rana", "remote@xn---", "remote+fwd_from=from=rana@xn---"},
+	}
+	for _, c := range cases {
+		got := rewriteSender(c.from, c.originalAddr)
+		if got != c.expected {
+			t.Errorf("rewriteSender(%q, %q) = %q, expected %q",
+				c.from, c.originalAddr, got, c.expected)
+		}
+	}
+}
+
 func TestFullQueue(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		dir := t.ArtifactDir()

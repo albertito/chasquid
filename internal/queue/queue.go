@@ -524,9 +524,9 @@ func nextDelay(createdAt time.Time) time.Duration {
 func mustIDNAToASCII(s string) string {
 	a, err := idna.ToASCII(s)
 	if err != nil {
-		return a
+		return s
 	}
-	return s
+	return a
 }
 
 func timeFromProto(ts *Timestamp) time.Time {
