@@ -2,6 +2,9 @@ package dkim
 
 import (
 	"context"
+	"crypto"
+	"encoding/base64"
+	"errors"
 	"net"
 	"strings"
 	"testing"
@@ -199,6 +202,57 @@ Joe.
 	if res.Found != 2 || res.Valid != 0 || err != nil {
 		t.Errorf("VerifyMessage: wanted 2 found, 0 valid / nil; got %v / %v",
 			res, err)
+	}
+}
+
+func TestVerifyBodyLength(t *testing.T) {
+	ctx := t.Context()
+	ctx = WithTraceFunc(ctx, t.Logf)
+
+	// Any valid key works, since none of the signatures here are valid. We
+	// use the one from the example in RFC 8463 appendix A.2.
+	ctx = WithLookupTXTFunc(ctx, makeLookupTXT(map[string][]string{
+		"brisbane._domainkey.example.com": {
+			"v=DKIM1; k=ed25519; " +
+				"p=11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo="},
+	}))
+
+	// Use a valid body hash, so we can tell the l= cases apart: when l= is
+	// the body length, the body hash matches and we fail later on (because
+	// b= is bogus).
+	body := "Hi.\r\n"
+	bh := base64.StdEncoding.EncodeToString(
+		hashWith(crypto.SHA256, []byte(body)))
+
+	cases := []struct {
+		l    string
+		want error
+	}{
+		{"4", ErrBodyHashMismatch},
+		{"5", ErrVerificationFailed},
+		{"6", errInvalidTag},
+		{"18446744073709551615", errInvalidTag},
+	}
+	for _, c := range cases {
+		message := toCRLF(
+			"DKIM-Signature: v=1; a=ed25519-sha256; c=simple/simple;\n"+
+				" d=example.com; s=brisbane; h=from; l="+c.l+";\n"+
+				" bh="+bh+"; b=AAAA\n"+
+				"From: Joe SixPack <joe@example.com>\n"+
+				"\n") + body
+
+		res, err := VerifyMessage(ctx, message)
+		if err != nil {
+			t.Fatalf("l=%s: VerifyMessage returned error: %v", c.l, err)
+		}
+		if res.Found != 1 || res.Valid != 0 {
+			t.Fatalf("l=%s: wanted 1 found, 0 valid; got %v", c.l, res)
+		}
+		r := res.Results[0]
+		if r.State != PERMFAIL || !errors.Is(r.Error, c.want) {
+			t.Errorf("l=%s: wanted PERMFAIL / %v; got %v / %v",
+				c.l, c.want, r.State, r.Error)
+		}
 	}
 }
 

@@ -190,6 +190,17 @@ func verifySignature(ctx context.Context, sigH header,
 	// https://datatracker.ietf.org/doc/html/rfc6376#section-3.7
 	bodyC := sig.cB.body(body)
 	if sig.l > 0 {
+		// The l= value MUST NOT be larger than the canonicalized body.
+		// https://datatracker.ietf.org/doc/html/rfc6376#section-3.5
+		if sig.l > uint64(len(bodyC)) {
+			trace(ctx, "l= (%d) is larger than the body (%d)",
+				sig.l, len(bodyC))
+			result.Error = fmt.Errorf(
+				"%w: l= (%d) is larger than the body (%d)",
+				errInvalidTag, sig.l, len(bodyC))
+			result.State = PERMFAIL
+			return result
+		}
 		bodyC = bodyC[:sig.l]
 	}
 
