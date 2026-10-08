@@ -40,7 +40,7 @@ func TestSignatureFromHeader(t *testing.T) {
 				d:  "example.com",
 				h:  []string{"from", "to", "subject"},
 				i:  "agent@example.com",
-				l:  77,
+				l:  new(uint64(77)),
 				q:  []string{"dns/txt"},
 				s:  "selector",
 				t:  time.Unix(1600700888, 0),

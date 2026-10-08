@@ -50,7 +50,9 @@ type dkimSignature struct {
 	i string
 
 	// Body octet count of the canonicalized body.
-	l uint64
+	// nil if not present. Note that 0 is a valid value, and means that none
+	// of the body is signed.
+	l *uint64
 
 	// Query methods used for DNS lookup.
 	// Colon-separated list of methods. Only "dns/txt" is valid.
@@ -213,11 +215,13 @@ func dkimSignatureFromHeader(header string) (*dkimSignature, error) {
 	sig.i = tags["i"]
 
 	if tags["l"] != "" {
-		sig.l, err = strconv.ParseUint(tags["l"], 10, 64)
+		var l uint64
+		l, err = strconv.ParseUint(tags["l"], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("%w: failed to parse l: %w",
 				errInvalidSignature, err)
 		}
+		sig.l = &l
 	}
 
 	// q is a colon-separated list of query methods.

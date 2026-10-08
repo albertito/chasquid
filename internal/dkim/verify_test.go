@@ -217,23 +217,26 @@ func TestVerifyBodyLength(t *testing.T) {
 				"p=11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo="},
 	}))
 
-	// Use a valid body hash, so we can tell the l= cases apart: when l= is
-	// the body length, the body hash matches and we fail later on (because
-	// b= is bogus).
+	// Use a valid body hash (of the "signed" part of the body), so we can
+	// tell the l= cases apart: when l= covers exactly the signed part, the
+	// body hash matches and we fail later on (because b= is bogus).
 	body := "Hi.\r\n"
-	bh := base64.StdEncoding.EncodeToString(
-		hashWith(crypto.SHA256, []byte(body)))
 
 	cases := []struct {
-		l    string
-		want error
+		l      string
+		signed string
+		want   error
 	}{
-		{"4", ErrBodyHashMismatch},
-		{"5", ErrVerificationFailed},
-		{"6", errInvalidTag},
-		{"18446744073709551615", errInvalidTag},
+		{"0", "", ErrVerificationFailed},
+		{"0", body, ErrBodyHashMismatch},
+		{"4", body, ErrBodyHashMismatch},
+		{"5", body, ErrVerificationFailed},
+		{"6", body, errInvalidTag},
+		{"18446744073709551615", body, errInvalidTag},
 	}
 	for _, c := range cases {
+		bh := base64.StdEncoding.EncodeToString(
+			hashWith(crypto.SHA256, []byte(c.signed)))
 		message := toCRLF(
 			"DKIM-Signature: v=1; a=ed25519-sha256; c=simple/simple;\n"+
 				" d=example.com; s=brisbane; h=from; l="+c.l+";\n"+
@@ -243,15 +246,17 @@ func TestVerifyBodyLength(t *testing.T) {
 
 		res, err := VerifyMessage(ctx, message)
 		if err != nil {
-			t.Fatalf("l=%s: VerifyMessage returned error: %v", c.l, err)
+			t.Fatalf("l=%s signed=%q: VerifyMessage returned error: %v",
+				c.l, c.signed, err)
 		}
 		if res.Found != 1 || res.Valid != 0 {
-			t.Fatalf("l=%s: wanted 1 found, 0 valid; got %v", c.l, res)
+			t.Fatalf("l=%s signed=%q: wanted 1 found, 0 valid; got %v",
+				c.l, c.signed, res)
 		}
 		r := res.Results[0]
 		if r.State != PERMFAIL || !errors.Is(r.Error, c.want) {
-			t.Errorf("l=%s: wanted PERMFAIL / %v; got %v / %v",
-				c.l, c.want, r.State, r.Error)
+			t.Errorf("l=%s signed=%q: wanted PERMFAIL / %v; got %v / %v",
+				c.l, c.signed, c.want, r.State, r.Error)
 		}
 	}
 }
