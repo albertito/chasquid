@@ -585,6 +585,9 @@ func TestAddFile(t *testing.T) {
 		{"a", "line 1: missing ':' in line"},
 		{"a: x y z\n", "disallowed rune encountered"},
 		{"a: f via sA//sB\n", "empty server in via list"},
+		{"a: b@c/d\n", "invalid domain"},
+		{"a: b@[1.2.3.4]\n", "invalid domain"},
+		{"a: b@c/d via sA\n", "invalid domain"},
 	}
 
 	for _, c := range errcases {

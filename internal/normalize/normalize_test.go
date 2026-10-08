@@ -44,6 +44,9 @@ func TestDomain(t *testing.T) {
 		{"xn--aca-6ma", "ñaca"},
 		{"xn--lca", "ñ"}, // Punycode is for 'Ñ'.
 		{"e\u0301", "é"}, // Transform to NFC form.
+		{"a_b.c-d", "a_b.c-d"},
+		{"Trailing.Dot.", "trailing.dot."},
+		{"", ""},
 	}
 	for _, c := range valid {
 		nu, err := Domain(c.user)
@@ -56,7 +59,12 @@ func TestDomain(t *testing.T) {
 
 	}
 
-	invalid := []string{"xn---", "xn--xyz-ñ"}
+	invalid := []string{
+		"xn---", "xn--xyz-ñ",
+		"a/b", "a\\b", "a%2fb", "a b", "a\x00b", "a:b", "a@b",
+		"[1.2.3.4]", "[IPv6:::1]",
+		"ñ/b", // Non-ASCII label, ASCII characters are kept by Punycode.
+	}
 	for _, u := range invalid {
 		nu, err := Domain(u)
 		if err == nil {
@@ -85,7 +93,7 @@ func TestAddr(t *testing.T) {
 	}
 
 	invalid := []string{
-		"á é@i", "henry\u2163@throne", "a@xn---",
+		"á é@i", "henry\u2163@throne", "a@xn---", "a@b/c", "a@[1.2.3.4]",
 	}
 	for _, u := range invalid {
 		nu, err := Addr(u)
@@ -121,7 +129,7 @@ func TestDomainToUnicode(t *testing.T) {
 		}
 	}
 
-	invalid := []string{"a@xn---", "a@xn--xyz-ñ"}
+	invalid := []string{"a@xn---", "a@xn--xyz-ñ", "a@b/c", "a@[1.2.3.4]"}
 	for _, u := range invalid {
 		got, err := DomainToUnicode(u)
 		if err == nil {

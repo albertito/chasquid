@@ -21,7 +21,20 @@ c -> MAIL FROM:<pepe>
 c <~ 501
 
 c -> MAIL FROM:<a@xn--->
-c <- 501 5.1.8 Malformed sender domain (IDNA conversion failed)
+c <- 501 5.1.8 Malformed sender domain
+
+# Reconnect to avoid getting rejected due to too many errors.
+c close
+c tcp_connect localhost:1025
+c <~ 220
+c -> HELO localhost
+c <~ 250
+
+c -> MAIL FROM:<a@b/c>
+c <- 501 5.1.8 Malformed sender domain
+
+c -> MAIL FROM:<a@[1.2.3.4]>
+c <- 501 5.1.8 Malformed sender domain
 
 # Reconnect to avoid getting rejected due to too many errors.
 c close

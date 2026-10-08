@@ -23,10 +23,18 @@ var (
 	id       = flag.String("id", "mid1234", "Message ID")
 	from     = flag.String("from", "from", "Mail from")
 	rcpt     = flag.String("rcpt", "rcpt", "Rcpt to")
+	rcptType = flag.String("rcpt_type", "EMAIL",
+		"Recipient type (EMAIL, PIPE, FORWARD)")
 )
 
 func main() {
 	flag.Parse()
+
+	rType, ok := queue.Recipient_Type_value[*rcptType]
+	if !ok {
+		fmt.Printf("unknown recipient type %q\n", *rcptType)
+		os.Exit(1)
+	}
 
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -42,7 +50,7 @@ func main() {
 			Rcpt: []*queue.Recipient{
 				{
 					Address: *rcpt,
-					Type:    queue.Recipient_EMAIL,
+					Type:    queue.Recipient_Type(rType),
 					Status:  queue.Recipient_PENDING,
 				},
 			},

@@ -47,6 +47,7 @@ func TestDecodeResponse(t *testing.T) {
 		"", "\x00", "\x00\x00", "\x00\x00\x00", "\x00\x00\x00\x00",
 		"a\x00b", "a\x00b\x00c", "a@a\x00b@b\x00pass",
 		"\xffa@b\x00\xffa@b\x00pass",
+		"u@a/b\x00\x00pass", "u@[1.2.3.4]\x00\x00pass",
 	}
 	for _, c := range failedCases {
 		r := base64.StdEncoding.EncodeToString([]byte(c))

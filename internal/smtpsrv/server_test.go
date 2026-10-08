@@ -225,7 +225,8 @@ func TestBrokenAuth(t *testing.T) {
 }
 
 func TestWrongMailParsing(t *testing.T) {
-	addrs := []string{"from", "a b c", "a @ b", "<x>", "<x y>", "><"}
+	addrs := []string{"from", "a b c", "a @ b", "<x>", "<x y>", "><",
+		"a@b/c", "a@[1.2.3.4]"}
 	for _, addr := range addrs {
 		c := mustDial(t, ModeSMTP, false)
 
@@ -245,6 +246,32 @@ func TestWrongMailParsing(t *testing.T) {
 
 		c.Close()
 	}
+}
+
+func TestMalformedDomain(t *testing.T) {
+	// Unauthenticated MAIL FROM.
+	c := mustDial(t, ModeSMTP, false)
+	defer c.Close()
+
+	err := c.Mail("a@b/c")
+	expectTPErr(t, err, 501, "5.1.8 Malformed sender domain")
+
+	// Authenticated RCPT TO. We need to authenticate, otherwise it may get
+	// rejected as relaying.
+	c = mustDial(t, ModeSubmission, true)
+	defer c.Close()
+
+	auth := smtp.PlainAuth("", "testuser@localhost", "testpasswd", "127.0.0.1")
+	if err := c.Auth(auth); err != nil {
+		t.Fatalf("Auth: %v", err)
+	}
+
+	if err := c.Mail("testuser@localhost"); err != nil {
+		t.Fatalf("Mail: %v", err)
+	}
+
+	err = c.Rcpt("a@b/c")
+	expectTPErr(t, err, 501, "5.1.2 Malformed destination domain")
 }
 
 func TestNullMailFrom(t *testing.T) {

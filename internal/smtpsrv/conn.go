@@ -473,6 +473,16 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 			return 501, "5.1.7 Sender address too long"
 		}
 
+		// Normalize (and validate) the address before doing any lookups.
+		// Note SPF and the security level check use the address as given,
+		// and we only use the normalized version from then on.
+		normAddr, err := normalize.DomainToUnicode(addr)
+		if err != nil {
+			maillog.Rejected(c.remoteAddr, addr, nil,
+				fmt.Sprintf("malformed address: %v", err))
+			return 501, "5.1.8 Malformed sender domain"
+		}
+
 		// SPF check - https://tools.ietf.org/html/rfc7208#section-2.4
 		// We opt not to fail on errors, to avoid accidents from preventing
 		// delivery.
@@ -491,12 +501,7 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 			return 550, "5.7.3 Security level check failed"
 		}
 
-		addr, err = normalize.DomainToUnicode(addr)
-		if err != nil {
-			maillog.Rejected(c.remoteAddr, addr, nil,
-				fmt.Sprintf("malformed address: %v", err))
-			return 501, "5.1.8 Malformed sender domain (IDNA conversion failed)"
-		}
+		addr = normAddr
 	}
 
 	c.mailFrom = addr
@@ -595,7 +600,7 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 
 	addr, err := normalize.DomainToUnicode(e.Address)
 	if err != nil {
-		return 501, "5.1.2 Malformed destination domain (IDNA conversion failed)"
+		return 501, "5.1.2 Malformed destination domain"
 	}
 
 	// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.3

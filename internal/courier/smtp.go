@@ -13,6 +13,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/envelope"
 	"blitiri.com.ar/go/chasquid/internal/expvarom"
+	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/smtp"
 	"blitiri.com.ar/go/chasquid/internal/sts"
 	"blitiri.com.ar/go/chasquid/internal/trace"
@@ -333,6 +334,14 @@ func (s *SMTP) fetchSTSPolicy(tr *trace.Trace, domain string) *sts.Policy {
 }
 
 func lookupMXs(tr *trace.Trace, domain string) ([]string, error, bool) {
+	// Check the domain is valid. It should have been normalized already, but
+	// it can come from sources we don't control (e.g. queue items written by
+	// older versions), and an invalid domain can cause problems later on
+	// (e.g. in the STS cache).
+	if _, err := normalize.Domain(domain); err != nil {
+		return nil, err, true
+	}
+
 	domain, err := idna.ToASCII(domain)
 	if err != nil {
 		return nil, err, true

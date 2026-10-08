@@ -262,6 +262,33 @@ func TestSTSNoMXAllowed(t *testing.T) {
 	}
 }
 
+func TestDeliverInvalidDomain(t *testing.T) {
+	// Mimic what the real resolver returns for invalid domains, so delivery
+	// would fall back to A if we didn't check the domain.
+	testMXErr["a/b"] = &net.DNSError{
+		Err:        "no such host (test)",
+		IsNotFound: true,
+	}
+	t.Cleanup(func() { delete(testMXErr, "a/b") })
+
+	// Set up an STS cache, as that is one of the things that can't handle
+	// invalid domains.
+	stsCache, err := sts.NewCache(t.ArtifactDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := newSMTP(t)
+	s.STSCache = stsCache
+	err, permanent := s.Deliver("me@me", "to@a/b", []byte("data"))
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+	if !permanent {
+		t.Errorf("expected permanent failure, got transient")
+	}
+}
+
 func TestNoMXServer(t *testing.T) {
 	testMX["to"] = []*net.MX{}
 

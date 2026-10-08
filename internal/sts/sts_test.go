@@ -289,7 +289,11 @@ func TestCacheBasics(t *testing.T) {
 	// Simulate an expired cache entry by changing the mtime of domain.com's
 	// entry to the past.
 	expires := time.Now().Add(-1 * time.Minute)
-	os.Chtimes(c.domainPath("domain.com"), expires, expires)
+	fname, err := c.domainPath("domain.com")
+	if err != nil {
+		t.Fatalf("domainPath failed: %v", err)
+	}
+	os.Chtimes(fname, expires, expires)
 
 	// Do a third fetch, check that we don't get a cache hit.
 	p, err = c.Fetch(ctx, "domain.com")
@@ -349,7 +353,10 @@ func TestCacheBadData(t *testing.T) {
 		expvarMustEq(t, "cacheHits", cacheHits, 0)
 
 		// Edit the file, filling it with the bad content for this case.
-		fname := c.domainPath("domain.com")
+		fname, err := c.domainPath("domain.com")
+		if err != nil {
+			t.Fatalf("domainPath failed: %v", err)
+		}
 		mustRewriteAndChtime(t, fname, badContent)
 
 		// We now expect Fetch to fall back to getting the policy from the
@@ -457,15 +464,21 @@ func TestCacheSlashSafe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			t.Logf("recovered: %v", r)
-		} else {
-			t.Fatalf("check did not panic as expected")
-		}
-	}()
+	if fname, err := c.domainPath("a/b"); err == nil {
+		t.Errorf("domainPath did not fail as expected, returned %q", fname)
+	}
 
-	c.domainPath("a/b")
+	if p, err := c.Fetch(t.Context(), "a/b"); err == nil {
+		t.Errorf("cache Fetch did not fail as expected, returned %v", p)
+	}
+
+	if err := c.store("a/b", &Policy{}); err == nil {
+		t.Errorf("store did not fail as expected")
+	}
+
+	if p, err := Fetch(t.Context(), "a/b"); err == nil {
+		t.Errorf("Fetch did not fail as expected, returned %v", p)
+	}
 }
 
 func TestURLForDomain(t *testing.T) {

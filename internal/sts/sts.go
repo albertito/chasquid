@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/expvarom"
+	"blitiri.com.ar/go/chasquid/internal/normalize"
 	"blitiri.com.ar/go/chasquid/internal/safeio"
 	"blitiri.com.ar/go/chasquid/internal/trace"
 
@@ -174,6 +175,12 @@ func (p *Policy) MXIsAllowed(mx string) bool {
 // This can be useful for debugging and troubleshooting, but you should always
 // call Check on the policy before using it.
 func UncheckedFetch(ctx context.Context, domain string) (*Policy, error) {
+	// Check the domain is valid before doing any lookups, as we use it to
+	// construct the URL.
+	if _, err := normalize.Domain(domain); err != nil {
+		return nil, err
+	}
+
 	// Convert the domain to ascii form, as httpGet does not support IDNs in
 	// any other way.
 	domain, err := idna.ToASCII(domain)
@@ -358,19 +365,25 @@ func NewCache(dir string) (*PolicyCache, error) {
 
 const pathPrefix = "pol:"
 
-func (c *PolicyCache) domainPath(domain string) string {
-	// We assume the domain is well formed, sanity check just in case.
-	if strings.Contains(domain, "/") {
-		panic("domain contains slash")
+func (c *PolicyCache) domainPath(domain string) (string, error) {
+	// Domains should have been normalized already, but they can come from
+	// sources we don't control (e.g. queue items written by older versions),
+	// so check they're valid. Among other things, this guarantees they don't
+	// contain "/".
+	if _, err := normalize.Domain(domain); err != nil {
+		return "", err
 	}
 
-	return c.dir + "/" + pathPrefix + domain
+	return c.dir + "/" + pathPrefix + domain, nil
 }
 
 var errExpired = errors.New("cache entry expired")
 
 func (c *PolicyCache) load(domain string) (*Policy, error) {
-	fname := c.domainPath(domain)
+	fname, err := c.domainPath(domain)
+	if err != nil {
+		return nil, err
+	}
 
 	fi, err := os.Stat(fname)
 	if err != nil {
@@ -421,7 +434,10 @@ func (c *PolicyCache) store(domain string, p *Policy) error {
 		return os.Chtimes(fname, expires, expires)
 	}
 
-	fname := c.domainPath(domain)
+	fname, err := c.domainPath(domain)
+	if err != nil {
+		return err
+	}
 	err = safeio.WriteFile(fname, data, 0640, chTime)
 	if err != nil {
 		cacheIOErrors.Add(1)

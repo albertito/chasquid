@@ -4,6 +4,8 @@ package normalize
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"strings"
 
 	"blitiri.com.ar/go/chasquid/internal/envelope"
@@ -23,7 +25,8 @@ func User(user string) (string, error) {
 	return norm, nil
 }
 
-// Domain normalizes a DNS domain into a cleaned UTF-8 form.
+// Domain normalizes a DNS domain into a cleaned UTF-8 form, and checks that
+// it is valid (see checkDomain for details).
 // On error, it will also return the original domain to simplify callers.
 func Domain(domain string) (string, error) {
 	// For now, we just convert them to lower case and make sure it's in NFC
@@ -39,7 +42,42 @@ func Domain(domain string) (string, error) {
 
 	d = norm.NFC.String(d)
 	d = strings.ToLower(d)
+
+	if err := checkDomain(d); err != nil {
+		return domain, err
+	}
 	return d, nil
+}
+
+var errInvalidDomain = errors.New("invalid domain")
+
+// checkDomain checks that the domain, in its ASCII form, only contains
+// characters that can appear in DNS names: letters, digits, '-', '.', and
+// '_' (not valid in hostnames, but found in the real world).
+//
+// This is intentionally lenient: we don't check label structure or lengths,
+// as those are not a problem for us and DNS lookups will fail anyway. The
+// goal is to reject characters that could be problematic when the domain is
+// used in other contexts (e.g. '/' in file paths or URLs).
+// Note this also rejects domain literals (e.g. "[1.2.3.4]").
+func checkDomain(domain string) error {
+	// Check the ASCII form, as that is what is used for DNS lookups and
+	// other external interactions. Punycode encoding preserves ASCII
+	// characters, so they will show up here even in mixed labels.
+	a, err := idna.ToASCII(domain)
+	if err != nil {
+		return err
+	}
+
+	for _, c := range []byte(a) {
+		switch {
+		case 'a' <= c && c <= 'z', 'A' <= c && c <= 'Z', '0' <= c && c <= '9':
+		case c == '-', c == '.', c == '_':
+		default:
+			return fmt.Errorf("%w: invalid character %q", errInvalidDomain, c)
+		}
+	}
+	return nil
 }
 
 // Addr normalizes an email address, applying User and Domain to its

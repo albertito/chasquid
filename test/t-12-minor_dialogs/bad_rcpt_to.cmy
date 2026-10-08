@@ -26,7 +26,22 @@ c -> RCPT TO:<pepe>
 c <~ 501
 
 c -> RCPT TO:<a@xn--->
-c <- 501 5.1.2 Malformed destination domain (IDNA conversion failed)
+c <- 501 5.1.2 Malformed destination domain
+
+# Reconnect to avoid getting rejected due to too many errors.
+c close
+c tcp_connect localhost:1025
+c <~ 220
+c -> HELO localhost
+c <~ 250
+c -> MAIL FROM:<test@testy.com>
+c <~ 250
+
+c -> RCPT TO:<a@b/c>
+c <- 501 5.1.2 Malformed destination domain
+
+c -> RCPT TO:<a@[1.2.3.4]>
+c <- 501 5.1.2 Malformed destination domain
 
 # Reconnect to avoid getting rejected due to too many errors.
 c close
