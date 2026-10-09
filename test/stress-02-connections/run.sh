@@ -16,11 +16,12 @@ wait_until_ready 1025
 
 echo "Peak RAM: $(chasquid_ram_peak)"
 
-# Set connection count to (max open files) - (leeway).
-# We set the leeway to account for file descriptors opened by the runtime and
-# listeners; 20 should be enough for now.
+# Set connection count to (connection limit) - (leeway).
+# chasquid limits incoming connections to half of its file descriptor limit.
+# Go raises the soft limit to (almost) the hard limit at startup, so we use
+# the hard limit, with some leeway; 20 should be enough for now.
 # Cap it to 2000, as otherwise it can be problematic due to port availability.
-COUNT=$(( $(ulimit -n) - 20 ))
+COUNT=$(( $(ulimit -Hn) / 2 - 20 ))
 if [ $COUNT -gt 2000 ]; then
 	COUNT=2000
 fi

@@ -11,12 +11,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"strings"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
@@ -52,6 +55,11 @@ const (
 var (
 	acceptErrors = expvarom.NewInt("chasquid/smtpIn/acceptErrors",
 		"count of errors accepting incoming connections")
+	activeConnections = expvarom.NewInt("chasquid/smtpIn/activeConnections",
+		"number of active incoming connections")
+	connectionsOverLimit = expvarom.NewInt(
+		"chasquid/smtpIn/connectionsOverLimit",
+		"count of incoming connections closed due to the connection limit")
 )
 
 // Server represents an SMTP server instance.
@@ -101,6 +109,14 @@ type Server struct {
 
 	// Path to the hooks.
 	HookPath string
+
+	// Maximum number of concurrent incoming connections (0 = no limit), and
+	// how many there are right now.
+	maxConns    int64
+	activeConns atomic.Int64
+
+	// When we last logged about reaching the connection limit (Unix time).
+	connLimitLogged atomic.Int64
 }
 
 // NewServer returns a new empty Server.
@@ -132,6 +148,7 @@ func NewServer() *Server {
 
 		connTimeout:    20 * time.Minute,
 		commandTimeout: 1 * time.Minute,
+		maxConns:       connLimit(),
 		localDomains:   &set.String{},
 		authr:          authr,
 		aliasesR:       aliasesR,
@@ -331,6 +348,12 @@ func (s *Server) ListenAndServe() {
 
 	go s.periodicallyReload()
 
+	if s.maxConns > 0 {
+		log.Infof("Incoming connection limit: %d", s.maxConns)
+	} else {
+		log.Infof("No incoming connection limit")
+	}
+
 	for m, addrs := range s.addrs {
 		for _, addr := range addrs {
 			l, err := net.Listen("tcp", addr)
@@ -394,6 +417,23 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 		}
 		backoff = acceptMinBackoff
 
+		// Close the connection if we're over the limit. Log at most once a
+		// minute (across all listeners) to avoid flooding the logs.
+		if n := s.activeConns.Add(1); s.maxConns > 0 && n > s.maxConns {
+			s.activeConns.Add(-1)
+			connectionsOverLimit.Add(1)
+			conn.Close()
+
+			now, last := time.Now().Unix(), s.connLimitLogged.Load()
+			if now-last >= 60 && s.connLimitLogged.CompareAndSwap(last, now) {
+				log.Errorf("Incoming connection limit (%d) reached, "+
+					"closing new connections (%d closed so far)",
+					s.maxConns, connectionsOverLimit.Value())
+			}
+			continue
+		}
+		activeConnections.Add(1)
+
 		sc := &Conn{
 			hostname:       s.Hostname,
 			maxDataSize:    s.MaxDataSize,
@@ -412,6 +452,32 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 			commandTimeout: s.commandTimeout,
 			queue:          s.queue,
 		}
-		go sc.Handle()
+		go func() {
+			sc.Handle()
+			s.activeConns.Add(-1)
+			activeConnections.Add(-1)
+		}()
 	}
+}
+
+// connLimit returns the maximum number of concurrent incoming connections we
+// should allow, or 0 for no limit.
+//
+// It's half of the file descriptor limit, to leave room for everything else
+// that needs them (queue files, outgoing connections, hooks, etc.), so a large
+// number of incoming connections doesn't prevent the rest of the server from
+// working.
+func connLimit() int64 {
+	var lim syscall.Rlimit
+	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim); err != nil {
+		return 0
+	}
+
+	// The type of lim.Cur varies across platforms (int64 or uint64). Values
+	// out of range (e.g. RLIM_INFINITY) mean there's no meaningful limit.
+	cur := int64(lim.Cur)
+	if cur <= 0 || cur > math.MaxInt32 {
+		return 0
+	}
+	return cur / 2
 }

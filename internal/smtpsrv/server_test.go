@@ -1,11 +1,11 @@
 package smtpsrv
 
 import (
-	"bufio"
 	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/smtp"
@@ -575,73 +575,137 @@ MC4CAQAwBQYDK2VwBCIEID6bjSoiW6g6NJA67RNl0SZ7zpylVOq9w/VGAXF5whnS
 	}
 }
 
-// scriptedListener is a net.Listener that returns a predefined sequence of
-// results from Accept, and net.ErrClosed once they run out.
-type scriptedListener struct {
-	results []acceptResult
-}
+// chanListener is a net.Listener that returns the results sent to it from
+// Accept, and net.ErrClosed once the channel is closed.
+type chanListener chan acceptResult
 
 type acceptResult struct {
 	conn net.Conn
 	err  error
 }
 
-func (l *scriptedListener) Accept() (net.Conn, error) {
-	if len(l.results) == 0 {
+func (l chanListener) Accept() (net.Conn, error) {
+	r, ok := <-l
+	if !ok {
 		return nil, net.ErrClosed
 	}
-	r := l.results[0]
-	l.results = l.results[1:]
 	return r.conn, r.err
 }
 
-func (l *scriptedListener) Close() error   { return nil }
-func (l *scriptedListener) Addr() net.Addr { return &net.TCPAddr{} }
+func (l chanListener) Close() error   { return nil }
+func (l chanListener) Addr() net.Addr { return &net.TCPAddr{} }
 
-func TestAcceptErrors(t *testing.T) {
-	srvConn, cliConn := net.Pipe()
-	defer cliConn.Close()
-
-	emfile := &net.OpError{Op: "accept", Net: "tcp",
-		Err: os.NewSyscallError("accept4", syscall.EMFILE)}
-	l := &scriptedListener{results: []acceptResult{
-		{err: emfile},
-		{err: emfile},
-		{conn: srvConn},
-		{err: emfile},
-	}}
-
-	s := NewServer()
-	s.Hostname = "acceptsrv"
-	prevErrors := acceptErrors.Value()
-
-	// serve should retry on errors, and return once the listener reports
-	// net.ErrClosed.
+// serveInBackground runs s.serve(l) in a goroutine, and returns a channel
+// that is closed once it returns.
+func serveInBackground(s *Server, l net.Listener) chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		s.serve(l, ModeSMTP)
 		close(done)
 	}()
+	return done
+}
 
-	// The connection we got in between the errors must have been handled.
-	// net.Pipe is synchronous, so this also unblocks the server's write.
-	greeting, err := textproto.NewReader(bufio.NewReader(cliConn)).ReadLine()
-	if err != nil {
-		t.Fatalf("error reading greeting: %v", err)
-	}
-	if greeting != "220 acceptsrv ESMTP chasquid" {
-		t.Errorf("unexpected greeting: %q", greeting)
-	}
-
+func waitForServe(t *testing.T, done chan struct{}) {
+	t.Helper()
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
 		t.Fatalf("serve did not return after net.ErrClosed")
 	}
+}
+
+// newPipeConn sends a new connection to the listener, and returns the client
+// side of it.
+func newPipeConn(l chanListener) *textproto.Conn {
+	srvConn, cliConn := net.Pipe()
+	l <- acceptResult{conn: srvConn}
+	return textproto.NewConn(cliConn)
+}
+
+func expectGreeting(t *testing.T, c *textproto.Conn, hostname string) {
+	t.Helper()
+	greeting, err := c.ReadLine()
+	if err != nil {
+		t.Fatalf("error reading greeting: %v", err)
+	}
+	if want := "220 " + hostname + " ESMTP chasquid"; greeting != want {
+		t.Errorf("got greeting %q, expected %q", greeting, want)
+	}
+}
+
+func TestAcceptErrors(t *testing.T) {
+	s := NewServer()
+	s.Hostname = "acceptsrv"
+	prevErrors := acceptErrors.Value()
+
+	emfile := &net.OpError{Op: "accept", Net: "tcp",
+		Err: os.NewSyscallError("accept4", syscall.EMFILE)}
+	srvConn, cliConn := net.Pipe()
+	defer cliConn.Close()
+
+	l := make(chanListener, 4)
+	l <- acceptResult{err: emfile}
+	l <- acceptResult{err: emfile}
+	l <- acceptResult{conn: srvConn}
+	l <- acceptResult{err: emfile}
+	close(l)
+
+	// serve should retry on errors, and return once the listener reports
+	// net.ErrClosed.
+	done := serveInBackground(s, l)
+
+	// The connection we got in between the errors must have been handled.
+	expectGreeting(t, textproto.NewConn(cliConn), "acceptsrv")
+
+	waitForServe(t, done)
 
 	if n := acceptErrors.Value() - prevErrors; n != 3 {
 		t.Errorf("acceptErrors increased by %d, expected 3", n)
 	}
+}
+
+func TestConnectionLimit(t *testing.T) {
+	s := NewServer()
+	s.Hostname = "limitsrv"
+	s.maxConns = 2
+	prevOverLimit := connectionsOverLimit.Value()
+
+	l := make(chanListener)
+	done := serveInBackground(s, l)
+
+	// The first two connections are within the limit.
+	c1 := newPipeConn(l)
+	expectGreeting(t, c1, "limitsrv")
+	c2 := newPipeConn(l)
+	defer c2.Close()
+	expectGreeting(t, c2, "limitsrv")
+
+	// The third one is over the limit, and gets closed without a greeting.
+	c3 := newPipeConn(l)
+	if line, err := c3.ReadLine(); err != io.EOF {
+		t.Errorf("over the limit: got %q, %v; expected EOF", line, err)
+	}
+	if n := connectionsOverLimit.Value() - prevOverLimit; n != 1 {
+		t.Errorf("connectionsOverLimit increased by %d, expected 1", n)
+	}
+
+	// Once a connection finishes, we can accept new ones again.
+	c1.Close()
+	deadline := time.Now().Add(5 * time.Second)
+	for s.activeConns.Load() != 1 {
+		if time.Now().After(deadline) {
+			t.Fatalf("activeConns = %d, expected 1", s.activeConns.Load())
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	c4 := newPipeConn(l)
+	defer c4.Close()
+	expectGreeting(t, c4, "limitsrv")
+
+	close(l)
+	waitForServe(t, done)
 }
 
 //

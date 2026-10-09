@@ -50,9 +50,16 @@ List of exported variables:
   count of items the queue wrote to disk.
 - **chasquid/queue/putCount** (counter)  
   number of envelopes put in the queue.
+- **chasquid/smtpIn/acceptErrors** (counter)  
+  count of errors accepting incoming connections.
+- **chasquid/smtpIn/activeConnections** (gauge)  
+  number of active incoming connections.
 - **chasquid/smtpIn/commandCount** (map of command -> count)  
   count of SMTP commands received, by command. Note that for unknown commands
   we use `unknown<COMMAND>`.
+- **chasquid/smtpIn/connectionsOverLimit** (counter)  
+  count of incoming connections closed due to the connection limit, which is
+  half of the file descriptor limit.
 - **chasquid/smtpIn/dkimSignErrors** (counter)  
   count of DKIM sign errors
 - **chasquid/smtpIn/dkimSigned** (counter)  
