@@ -182,4 +182,15 @@ func TestHeadersFindAll(t *testing.T) {
 		t.Errorf("headers.Find() mismatch (-want +got):\n%s", diff)
 	}
 
+	// "\u017fubject" (U+017F is a long s) must not match "Subject", even
+	// though they are equal under Unicode case folding.
+	hs = append(hs, header{Name: "\u017fubject", Value: "x"})
+	subjectHs := hs.FindAll("SUBJECT")
+	expected = headers{
+		{Name: "Subject", Value: "test", Source: "Subject: test"},
+	}
+	if diff := cmp.Diff(expected, subjectHs); diff != "" {
+		t.Errorf("headers.Find() mismatch (-want +got):\n%s", diff)
+	}
+
 }

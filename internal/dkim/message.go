@@ -18,7 +18,11 @@ type headers []header
 func (h headers) FindAll(name string) headers {
 	hs := make(headers, 0)
 	for _, header := range h {
-		if strings.EqualFold(header.Name, name) {
+		// Compare using strings.ToLower and not strings.EqualFold, to be
+		// consistent with the verifier (see headersToInclude). They differ
+		// for some non-ASCII characters, which are invalid in header names
+		// but can still appear in messages.
+		if strings.ToLower(header.Name) == strings.ToLower(name) {
 			hs = append(hs, header)
 		}
 	}

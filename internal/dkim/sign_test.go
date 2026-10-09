@@ -210,6 +210,47 @@ Hi.
 	}
 }
 
+func TestSignNonASCIIHeaderNames(t *testing.T) {
+	// Header names with non-ASCII characters are invalid, but we must still
+	// sign them consistently with how we verify them.
+	// Here, "\u017fubject" (U+017F is a long s) is not the same as
+	// "Subject", and should not be signed as such.
+	ctx := t.Context()
+	ctx = WithTraceFunc(ctx, t.Logf)
+
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("ed25519.GenerateKey: %v", err)
+	}
+
+	ctx = WithLookupTXTFunc(ctx, makeLookupTXT(map[string][]string{
+		"test._domainkey.example.com": {
+			"v=DKIM1; k=ed25519; p=" + base64.StdEncoding.EncodeToString(pub),
+		},
+	}))
+
+	s := &Signer{
+		Domain:   "example.com",
+		Selector: "test",
+		Signer:   priv,
+	}
+
+	message := toCRLF("From: from@example.com\n" +
+		"\u017fubject: Not a subject\n" +
+		"\n" +
+		"Hi.\n")
+
+	sig, err := s.Sign(ctx, message)
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+
+	res, err := VerifyMessage(ctx, addSig(sig, message))
+	if err != nil || res.Valid != 1 {
+		t.Errorf("VerifyMessage: wanted 1 valid / nil; got %v / %v", res, err)
+	}
+}
+
 func addSig(sig, message string) string {
 	return "DKIM-Signature: " +
 		strings.ReplaceAll(sig, "\r\n", "\r\n\t") +
