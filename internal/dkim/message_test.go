@@ -116,8 +116,8 @@ func TestParseMessageWithErrors(t *testing.T) {
 
 func TestParseMessageWithoutBlankLine(t *testing.T) {
 	// If there's no blank line, all the lines are headers, including the
-	// continuation lines of the last one.
-	hs, _, err := parseMessage("From: a@b\r\nTo: c@d\r\n e@f")
+	// continuation lines of the last one, and the body is empty.
+	hs, body, err := parseMessage("From: a@b\r\nTo: c@d\r\n e@f")
 	if err != nil {
 		t.Fatalf("parseMessage error: %v", err)
 	}
@@ -127,6 +127,9 @@ func TestParseMessageWithoutBlankLine(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, hs); diff != "" {
 		t.Errorf("parseMessage headers mismatch (-want +got):\n%s", diff)
+	}
+	if body != "" {
+		t.Errorf("parseMessage body: wanted empty, got %q", body)
 	}
 }
 

@@ -37,7 +37,9 @@ func parseMessage(message string) (headers, string, error) {
 	// Group the lines of each header: the first line, followed by its
 	// continuation lines (if any).
 	groups := [][]string{}
-	eoh := 0
+
+	// End of headers. If there's no blank line, all the lines are headers.
+	eoh := len(lines)
 	for i, line := range lines {
 		if line == "" {
 			eoh = i
@@ -67,7 +69,13 @@ func parseMessage(message string) (headers, string, error) {
 		headers = append(headers, h)
 	}
 
-	return headers, strings.Join(lines[eoh+1:], "\r\n"), nil
+	// The body is everything after the blank line (if there is one).
+	body := ""
+	if eoh < len(lines) {
+		body = strings.Join(lines[eoh+1:], "\r\n")
+	}
+
+	return headers, body, nil
 }
 
 // Parse a header, given its lines (the first one, followed by the
