@@ -129,6 +129,42 @@ func TestSignEd25519(t *testing.T) {
 	}
 }
 
+func TestSignManyHeaders(t *testing.T) {
+	// Regression test for signing being quadratic on the number of instances
+	// of a header. This takes milliseconds, while the quadratic
+	// implementation took minutes with this input. We don't check the
+	// timing, so a regression will show up as this test being very slow.
+	const n = 50_000
+
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("ed25519.GenerateKey: %v", err)
+	}
+	s := &Signer{
+		Domain:   "example.com",
+		Selector: "test",
+		Signer:   priv,
+	}
+
+	message := "From: from@example.com\r\n" +
+		strings.Repeat("To: to@example.com\r\n", n) +
+		"\r\nHi.\r\n"
+
+	sig, err := s.Sign(t.Context(), message)
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+
+	// All instances must be in h=, plus the extra one we always add.
+	hTag := regexp.MustCompile(`h=([^;]*);`).FindStringSubmatch(sig)
+	if hTag == nil {
+		t.Fatalf("h= not found in signature: %q", sig)
+	}
+	if got := strings.Count(hTag[1], "to"); got != n+1 {
+		t.Errorf("wanted %d instances of 'to' in h=, got %d", n+1, got)
+	}
+}
+
 func addSig(sig, message string) string {
 	return "DKIM-Signature: " +
 		strings.ReplaceAll(sig, "\r\n", "\r\n\t") +

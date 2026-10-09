@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -186,6 +187,32 @@ func TestSignatureFromHeader(t *testing.T) {
 			t.Errorf("dkimSignatureFromHeader(%q) error: got %v, want %v",
 				c.in, err, c.err)
 		}
+	}
+}
+
+func TestSignatureFromHeaderHTagLimit(t *testing.T) {
+	sigWithH := func(n int) string {
+		return "v=1; a=rsa-sha256; d=example.com; s=selector;" +
+			" b=aG9sYQ==; bh=aG9sYQ==;" +
+			" h=" + strings.Repeat("x:", n-1) + "from"
+	}
+
+	// At the limit is fine.
+	sig, err := dkimSignatureFromHeader(sigWithH(maxHTagEntries))
+	if err != nil {
+		t.Fatalf("h= with %d entries: unexpected error: %v",
+			maxHTagEntries, err)
+	}
+	if len(sig.h) != maxHTagEntries {
+		t.Errorf("h= with %d entries: got %d entries",
+			maxHTagEntries, len(sig.h))
+	}
+
+	// Over the limit is not.
+	sig, err = dkimSignatureFromHeader(sigWithH(maxHTagEntries + 1))
+	if sig != nil || !errors.Is(err, errInvalidTag) {
+		t.Errorf("h= with %d entries: wanted nil / %v, got %v / %v",
+			maxHTagEntries+1, errInvalidTag, sig, err)
 	}
 }
 

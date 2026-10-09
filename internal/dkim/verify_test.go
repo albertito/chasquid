@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 	"testing"
@@ -341,6 +342,26 @@ func TestHeadersToInclude(t *testing.T) {
 				},
 			},
 		},
+
+		// Check that header names are compared case-insensitively, and that
+		// headers that are not present are skipped.
+		{
+			sigH: header{
+				Name:  "DKIM-Signature",
+				Value: "v=1; a=rsa-sha256; s=brisbane; d=example.com;",
+			},
+			hTag: []string{"from", "X-Missing", "FROM", "subject"},
+			headers: headers{
+				{Name: "FROM", Value: "from1"},
+				{Name: "Subject", Value: "subject1"},
+				{Name: "From", Value: "from2"},
+			},
+			want: []header{
+				{Name: "From", Value: "from2"},
+				{Name: "FROM", Value: "from1"},
+				{Name: "Subject", Value: "subject1"},
+			},
+		},
 	}
 
 	for _, c := range cases {
@@ -349,6 +370,33 @@ func TestHeadersToInclude(t *testing.T) {
 			t.Errorf("headersToInclude(%q, %v, %v) diff (-want +got):\n%s",
 				c.sigH, c.hTag, c.headers, diff)
 		}
+	}
+}
+
+func TestHeadersToIncludeLarge(t *testing.T) {
+	// Regression test for a DoS where headersToInclude was O(len(h=) *
+	// len(headers)), which with large (attacker-controlled) inputs could take
+	// hours. This takes milliseconds, while the quadratic implementation
+	// took minutes with this input. We don't check the timing, so a
+	// regression will show up as this test being very slow.
+	const n = 100_000
+
+	sigH := header{Name: "DKIM-Signature", Value: "v=1;"}
+	hTag := make([]string, n)
+	hdrs := make(headers, n)
+	for i := range n {
+		hTag[i] = "a"
+		hdrs[i] = header{Name: "a", Value: fmt.Sprint(i)}
+	}
+
+	got := headersToInclude(sigH, hTag, hdrs)
+	if len(got) != n {
+		t.Fatalf("wanted %d headers, got %d", n, len(got))
+	}
+	// Last instance first.
+	if got[0].Value != fmt.Sprint(n-1) || got[n-1].Value != "0" {
+		t.Errorf("unexpected order: first %q, last %q",
+			got[0].Value, got[n-1].Value)
 	}
 }
 

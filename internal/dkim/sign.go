@@ -75,7 +75,9 @@ func (s *Signer) Sign(ctx context.Context, message string) (string, error) {
 	hsForHeader := []string{}
 	for _, h := range headersToSign {
 		// Append the header as many times as it appears in the message.
-		for i := 0; i < len(headers.FindAll(h)); i++ {
+		// Note the range expression is evaluated only once; evaluating
+		// FindAll on every iteration would make this quadratic.
+		for range len(headers.FindAll(h)) {
 			hsForHeader = append(hsForHeader, h)
 		}
 	}

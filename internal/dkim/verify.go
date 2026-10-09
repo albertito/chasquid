@@ -285,24 +285,28 @@ func headersToInclude(sigH header, hTag []string, headers headers) []header {
 	//    https://datatracker.ietf.org/doc/html/rfc6376#section-3.7
 	//  - Headers may be missing, and that's allowed.
 	//    https://datatracker.ietf.org/doc/html/rfc6376#section-5.4
-	seen := map[string]int{}
+	//
+	// Both h= and the headers are attacker-controlled, so this must be
+	// linear on their sizes: we index the headers by (lowercased) name once,
+	// with the last instance first, and then for every entry in h= we pick
+	// (and consume) the next available instance.
+	byName := map[string][]header{}
+	for _, h := range slices.Backward(headers) {
+		name := strings.ToLower(h.Name)
+		byName[name] = append(byName[name], h)
+	}
+
 	include := []header{}
 	for _, h := range hTag {
-		all := headers.FindAll(h)
-		slices.Reverse(all)
-
-		// We keep track of the last instance of each header that we
-		// included, and find the next one every time it appears in h=.
-		// We have to be careful because the header itself may not be present,
-		// or we may be asked to include it more times than it appears.
+		// The header may not be present, or we may be asked to include it
+		// more times than it appears.
 		lh := strings.ToLower(h)
-		i := seen[lh]
-		if i >= len(all) {
+		available := byName[lh]
+		if len(available) == 0 {
 			continue
 		}
-		seen[lh]++
-
-		selected := all[i]
+		selected := available[0]
+		byName[lh] = available[1:]
 
 		if selected == sigH {
 			continue

@@ -100,6 +100,21 @@ func (sig *dkimSignature) canonicalizationFromString(s string) error {
 	return nil
 }
 
+// Maximum number of entries in the h= tag that we accept.
+//
+// The RFC does not set a limit, but h= is attacker-controlled, so we cap it
+// to bound the work done when verifying. Signatures over the limit are
+// considered invalid (instead of truncating h=, which would also make them
+// fail, but in a more obscure way).
+//
+// 512 is chosen to be well above what legitimate signers use:
+//   - Signers typically use a few dozen entries at most (ours uses ~25).
+//   - OpenDKIM truncates h= to 4096 bytes, so signatures with a longer h=
+//     already fail verification there. With realistic header names (~10
+//     bytes each), 512 entries is above that.
+//   - Exim limits the number of headers it considers when verifying to 512.
+const maxHTagEntries = 512
+
 func (sig *dkimSignature) checkRequiredTags() error {
 	// https://datatracker.ietf.org/doc/html/rfc6376#section-6.1.1
 	if sig.a == "" {
@@ -119,6 +134,11 @@ func (sig *dkimSignature) checkRequiredTags() error {
 	}
 	if sig.s == "" {
 		return fmt.Errorf("%w: s=", errMissingRequiredTag)
+	}
+
+	if len(sig.h) > maxHTagEntries {
+		return fmt.Errorf("%w: h= has too many entries (%d > %d)",
+			errInvalidTag, len(sig.h), maxHTagEntries)
 	}
 
 	// h= must contain From.
