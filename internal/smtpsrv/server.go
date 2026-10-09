@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -23,6 +24,7 @@ import (
 	"blitiri.com.ar/go/chasquid/internal/courier"
 	"blitiri.com.ar/go/chasquid/internal/dkim"
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
+	"blitiri.com.ar/go/chasquid/internal/expvarom"
 	"blitiri.com.ar/go/chasquid/internal/localrpc"
 	"blitiri.com.ar/go/chasquid/internal/maillog"
 	"blitiri.com.ar/go/chasquid/internal/queue"
@@ -38,6 +40,18 @@ var (
 	// changing it, but until then, it's a test-only flag for simplicity.
 	reloadEvery = flag.Duration("testing__reload_every", 30*time.Second,
 		"how often to reload, ONLY FOR TESTING")
+)
+
+// Backoff between Accept errors.
+const (
+	acceptMinBackoff = 5 * time.Millisecond
+	acceptMaxBackoff = 1 * time.Second
+)
+
+// Exported variables.
+var (
+	acceptErrors = expvarom.NewInt("chasquid/smtpIn/acceptErrors",
+		"count of errors accepting incoming connections")
 )
 
 // Server represents an SMTP server instance.
@@ -338,8 +352,8 @@ func (s *Server) ListenAndServe() {
 		}
 	}
 
-	// Never return. If the serve goroutines have problems, they will abort
-	// execution.
+	// Never return. The serve goroutines only return if their listener is
+	// closed, which doesn't happen in practice.
 	select {}
 }
 
@@ -351,11 +365,34 @@ func (s *Server) serve(l net.Listener, mode SocketMode) {
 
 	pdhook := path.Join(s.HookPath, "post-data")
 
+	backoff := acceptMinBackoff
+	var lastErrLog time.Time
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			log.Fatalf("Error accepting: %v", err)
+			if errors.Is(err, net.ErrClosed) {
+				// We never close the listeners, so this is unexpected.
+				log.Errorf("Listener %s closed, no longer accepting: %v",
+					l.Addr(), err)
+				return
+			}
+
+			// Other errors are usually transient (e.g. running out of file
+			// descriptors), so we back off and retry instead of exiting,
+			// which would make it trivial to take the server down.
+			// Log at most once a minute to avoid flooding the logs.
+			acceptErrors.Add(1)
+			if time.Since(lastErrLog) >= time.Minute {
+				log.Errorf("Error accepting on %s (will retry): %v",
+					l.Addr(), err)
+				lastErrLog = time.Now()
+			}
+			time.Sleep(backoff)
+			backoff = min(backoff*2, acceptMaxBackoff)
+			continue
 		}
+		backoff = acceptMinBackoff
 
 		sc := &Conn{
 			hostname:       s.Hostname,

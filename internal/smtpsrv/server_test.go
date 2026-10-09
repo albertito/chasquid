@@ -1,6 +1,7 @@
 package smtpsrv
 
 import (
+	"bufio"
 	"crypto/tls"
 	"errors"
 	"flag"
@@ -11,7 +12,9 @@ import (
 	"net/textproto"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/auth"
@@ -569,6 +572,75 @@ MC4CAQAwBQYDK2VwBCIEID6bjSoiW6g6NJA67RNl0SZ7zpylVOq9w/VGAXF5whnS
 	err = s.AddDKIMSigner("example.com", "selector", kf5)
 	if err != nil {
 		t.Errorf("AddDKIMSigner: %v", err)
+	}
+}
+
+// scriptedListener is a net.Listener that returns a predefined sequence of
+// results from Accept, and net.ErrClosed once they run out.
+type scriptedListener struct {
+	results []acceptResult
+}
+
+type acceptResult struct {
+	conn net.Conn
+	err  error
+}
+
+func (l *scriptedListener) Accept() (net.Conn, error) {
+	if len(l.results) == 0 {
+		return nil, net.ErrClosed
+	}
+	r := l.results[0]
+	l.results = l.results[1:]
+	return r.conn, r.err
+}
+
+func (l *scriptedListener) Close() error   { return nil }
+func (l *scriptedListener) Addr() net.Addr { return &net.TCPAddr{} }
+
+func TestAcceptErrors(t *testing.T) {
+	srvConn, cliConn := net.Pipe()
+	defer cliConn.Close()
+
+	emfile := &net.OpError{Op: "accept", Net: "tcp",
+		Err: os.NewSyscallError("accept4", syscall.EMFILE)}
+	l := &scriptedListener{results: []acceptResult{
+		{err: emfile},
+		{err: emfile},
+		{conn: srvConn},
+		{err: emfile},
+	}}
+
+	s := NewServer()
+	s.Hostname = "acceptsrv"
+	prevErrors := acceptErrors.Value()
+
+	// serve should retry on errors, and return once the listener reports
+	// net.ErrClosed.
+	done := make(chan struct{})
+	go func() {
+		s.serve(l, ModeSMTP)
+		close(done)
+	}()
+
+	// The connection we got in between the errors must have been handled.
+	// net.Pipe is synchronous, so this also unblocks the server's write.
+	greeting, err := textproto.NewReader(bufio.NewReader(cliConn)).ReadLine()
+	if err != nil {
+		t.Fatalf("error reading greeting: %v", err)
+	}
+	if greeting != "220 acceptsrv ESMTP chasquid" {
+		t.Errorf("unexpected greeting: %q", greeting)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("serve did not return after net.ErrClosed")
+	}
+
+	if n := acceptErrors.Value() - prevErrors; n != 3 {
+		t.Errorf("acceptErrors increased by %d, expected 3", n)
 	}
 }
 
