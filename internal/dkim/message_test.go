@@ -1,6 +1,7 @@
 package dkim
 
 import (
+	"strings"
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/normalize"
@@ -33,6 +34,34 @@ body`),
 					Source: "Continues: This\r\n  continues."},
 			},
 			body: "body",
+		},
+		{
+			// Multiple continuation lines, with spaces and tabs, in a header
+			// that is not the last one. Colons in continuation lines are
+			// part of the value.
+			message: normalize.StringToCRLF(`From: a@b
+Multi: one
+ two:three
+	four
+To: c@d
+
+body`),
+			headers: headers{
+				header{Name: "From", Value: " a@b",
+					Source: "From: a@b"},
+				header{Name: "Multi",
+					Value:  " one\r\n two:three\r\n\tfour",
+					Source: "Multi: one\r\n two:three\r\n\tfour"},
+				header{Name: "To", Value: " c@d",
+					Source: "To: c@d"},
+			},
+			body: "body",
+		},
+		{
+			// Empty message.
+			message: "",
+			headers: headers{},
+			body:    "",
 		},
 	}
 
@@ -68,6 +97,12 @@ func TestParseMessageWithErrors(t *testing.T) {
 			message: "No colon",
 			err:     errInvalidHeader,
 		},
+		{
+			// Header without ':' in its first line, even if there's one in
+			// a continuation line.
+			message: "No colon\r\n but: here",
+			err:     errInvalidHeader,
+		},
 	}
 
 	for i, c := range cases {
@@ -76,6 +111,54 @@ func TestParseMessageWithErrors(t *testing.T) {
 			t.Errorf("parseMessage([%d]) err mismatch (-want +got):\n%s",
 				i, diff)
 		}
+	}
+}
+
+func TestParseMessageWithoutBlankLine(t *testing.T) {
+	// If there's no blank line, all the lines are headers, including the
+	// continuation lines of the last one.
+	hs, _, err := parseMessage("From: a@b\r\nTo: c@d\r\n e@f")
+	if err != nil {
+		t.Fatalf("parseMessage error: %v", err)
+	}
+	want := headers{
+		{Name: "From", Value: " a@b", Source: "From: a@b"},
+		{Name: "To", Value: " c@d\r\n e@f", Source: "To: c@d\r\n e@f"},
+	}
+	if diff := cmp.Diff(want, hs); diff != "" {
+		t.Errorf("parseMessage headers mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestParseMessageManyContinuations(t *testing.T) {
+	// Regression test for parsing being quadratic on the number of
+	// continuation lines of a header. This takes milliseconds, while the
+	// quadratic implementation took minutes with this input. We don't check
+	// the timing, so a regression will show up as this test being very slow.
+	const n = 1_000_000
+	value := strings.Repeat("\r\n a", n)
+	message := "From: a@b\r\nLong:" + value + "\r\n\r\nbody"
+
+	headers, body, err := parseMessage(message)
+	if err != nil {
+		t.Fatalf("parseMessage error: %v", err)
+	}
+	if len(headers) != 2 {
+		t.Fatalf("wanted 2 headers, got %d", len(headers))
+	}
+	if headers[1].Name != "Long" {
+		t.Fatalf("unexpected header name: %q", headers[1].Name)
+	}
+	if headers[1].Value != value {
+		t.Errorf("unexpected value (len %d, want len %d)",
+			len(headers[1].Value), len(value))
+	}
+	if headers[1].Source != "Long:"+value {
+		t.Errorf("unexpected source (len %d, want len %d)",
+			len(headers[1].Source), len("Long:"+value))
+	}
+	if body != "body" {
+		t.Errorf("unexpected body: %q", body)
 	}
 }
 

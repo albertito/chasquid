@@ -32,8 +32,11 @@ var errInvalidHeader = errors.New("invalid header")
 // Does NOT touch whitespace, this is important to preserve the original
 // message and headers, which is required for the signature.
 func parseMessage(message string) (headers, string, error) {
-	headers := make(headers, 0)
 	lines := strings.Split(message, "\r\n")
+
+	// Group the lines of each header: the first line, followed by its
+	// continuation lines (if any).
+	groups := [][]string{}
 	eoh := 0
 	for i, line := range lines {
 		if line == "" {
@@ -43,35 +46,43 @@ func parseMessage(message string) (headers, string, error) {
 
 		if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
 			// Continuation of the previous header.
-			if len(headers) == 0 {
+			if len(groups) == 0 {
 				return nil, "", fmt.Errorf(
 					"%w: bad continuation", errInvalidHeader)
 			}
-			headers[len(headers)-1].Value += "\r\n" + line
-			headers[len(headers)-1].Source += "\r\n" + line
+			last := len(groups) - 1
+			groups[last] = append(groups[last], line)
 		} else {
 			// New header.
-			h, err := parseHeader(line)
-			if err != nil {
-				return nil, "", err
-			}
-
-			headers = append(headers, h)
+			groups = append(groups, []string{line})
 		}
+	}
+
+	headers := make(headers, 0, len(groups))
+	for _, g := range groups {
+		h, err := parseHeader(g)
+		if err != nil {
+			return nil, "", err
+		}
+		headers = append(headers, h)
 	}
 
 	return headers, strings.Join(lines[eoh+1:], "\r\n"), nil
 }
 
-func parseHeader(line string) (header, error) {
-	name, value, found := strings.Cut(line, ":")
-	if !found {
+// Parse a header, given its lines (the first one, followed by the
+// continuation lines, if any).
+func parseHeader(lines []string) (header, error) {
+	// The colon must be in the first line.
+	if !strings.Contains(lines[0], ":") {
 		return header{}, fmt.Errorf("%w: no colon", errInvalidHeader)
 	}
 
+	source := strings.Join(lines, "\r\n")
+	name, value, _ := strings.Cut(source, ":")
 	return header{
 		Name:   name,
 		Value:  value,
-		Source: line,
+		Source: source,
 	}, nil
 }
