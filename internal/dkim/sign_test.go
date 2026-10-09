@@ -1,6 +1,7 @@
 package dkim
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -375,4 +376,58 @@ func TestFormatHeaders(t *testing.T) {
 			t.Errorf("      got  %q", got)
 		}
 	}
+}
+
+func FuzzSignAndVerify(f *testing.F) {
+	f.Add(basicMessage)
+	f.Add("From: a@b\r\n\r\n")
+	f.Add("")
+
+	// Repeated headers with different values.
+	f.Add("From: a@b\r\nTo: c@d\r\n e@f\r\nTo: g@h\r\n\r\nbody\r\n")
+
+	// Non-ASCII header name (U+017F is a long s).
+	f.Add("From: a@b\r\nſubject: x\r\n\r\nbody\r\n")
+
+	// Messages from the file-based tests, which have more realistic headers,
+	// including existing DKIM signatures.
+	addTestdataCorpus(f)
+
+	// Use a fixed key, as generating one for each run would be too slow.
+	priv := ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize))
+	pub := priv.Public().(ed25519.PublicKey)
+	ctx := WithLookupTXTFunc(context.Background(),
+		makeLookupTXT(map[string][]string{
+			"test._domainkey.example.com": {
+				"v=DKIM1; k=ed25519; p=" +
+					base64.StdEncoding.EncodeToString(pub),
+			},
+		}))
+
+	s := &Signer{
+		Domain:   "example.com",
+		Selector: "test",
+		Signer:   priv,
+	}
+
+	f.Fuzz(func(t *testing.T, msg string) {
+		sig, err := s.Sign(ctx, msg)
+		if err != nil {
+			return
+		}
+
+		// Any message we can sign, we must be able to verify.
+		// Our signature is the first one, so it's always verified even if
+		// the message has other signatures.
+		res, err := VerifyMessage(ctx, addSig(sig, msg))
+		if err != nil {
+			t.Fatalf("VerifyMessage error: %v", err)
+		}
+		if len(res.Results) == 0 {
+			t.Fatalf("signature not found when verifying")
+		}
+		if r := res.Results[0]; r.State != SUCCESS {
+			t.Errorf("signature did not verify: %v / %v", r.State, r.Error)
+		}
+	})
 }

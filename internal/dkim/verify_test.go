@@ -520,3 +520,38 @@ func TestAuthenticationResults(t *testing.T) {
 		}
 	}
 }
+
+func FuzzVerifyMessage(f *testing.F) {
+	addTestdataCorpus(f)
+
+	// Return valid keys for every domain, so we can get past the key lookup
+	// and exercise the rest of the verification. The ed25519 key is the one
+	// used by testdata/01-rfc8463.
+	ctx := WithLookupTXTFunc(context.Background(),
+		func(ctx context.Context, domain string) ([]string, error) {
+			return []string{
+				"v=DKIM1; k=ed25519; p=" + exampleEd25519KeyB64,
+				"v=DKIM1; k=rsa; p=" + exampleRSAKeyB64,
+			}, nil
+		})
+
+	f.Fuzz(func(t *testing.T, msg string) {
+		res, err := VerifyMessage(ctx, msg)
+		if err != nil {
+			return
+		}
+
+		if res.Found != uint(len(res.Results)) {
+			t.Errorf("found %d signatures, but got %d results",
+				res.Found, len(res.Results))
+		}
+		if res.Valid > res.Found {
+			t.Errorf("%d valid signatures, but only %d found",
+				res.Valid, res.Found)
+		}
+
+		// This is always called on the result when receiving a message, so
+		// exercise it too.
+		res.AuthenticationResults()
+	})
+}

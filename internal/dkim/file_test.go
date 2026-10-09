@@ -86,6 +86,23 @@ func equalErrors(a, b error) bool {
 	return a.Error() == b.Error()
 }
 
+// Add the messages from the file-based tests to the fuzzing corpus.
+func addTestdataCorpus(f *testing.F) {
+	f.Helper()
+
+	msgfs, err := filepath.Glob("testdata/*.msg")
+	if err != nil {
+		f.Fatalf("error finding test files: %v", err)
+	}
+	for _, msgf := range msgfs {
+		c, err := os.ReadFile(msgf)
+		if err != nil {
+			f.Fatalf("error reading %q: %v", msgf, err)
+		}
+		f.Add(toCRLF(string(c)))
+	}
+}
+
 func mustReadFile(t *testing.T, path string) string {
 	t.Helper()
 	contents, err := os.ReadFile(path)
