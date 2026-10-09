@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -96,7 +97,10 @@ func (s *Signer) Sign(ctx context.Context, message string) (string, error) {
 	// First, the canonicalized headers.
 	b := sha256.New()
 	for _, h := range headersToSign {
-		for _, header := range headers.FindAll(h) {
+		// If a header appears multiple times, we must hash the instances
+		// from the bottom of the header block to the top.
+		// https://datatracker.ietf.org/doc/html/rfc6376#section-5.4.2
+		for _, header := range slices.Backward(headers.FindAll(h)) {
 			hsrc := relaxedCanonicalization.header(header).Source + "\r\n"
 			trace(ctx, "Hashing header: %q", hsrc)
 			b.Write([]byte(hsrc))

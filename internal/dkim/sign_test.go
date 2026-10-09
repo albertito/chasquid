@@ -165,6 +165,51 @@ func TestSignManyHeaders(t *testing.T) {
 	}
 }
 
+func TestSignRepeatedHeaders(t *testing.T) {
+	// When a signed header appears multiple times (with different values),
+	// they must be signed from bottom to top, otherwise the signature will
+	// not verify.
+	ctx := t.Context()
+	ctx = WithTraceFunc(ctx, t.Logf)
+
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("ed25519.GenerateKey: %v", err)
+	}
+
+	ctx = WithLookupTXTFunc(ctx, makeLookupTXT(map[string][]string{
+		"test._domainkey.example.com": {
+			"v=DKIM1; k=ed25519; p=" + base64.StdEncoding.EncodeToString(pub),
+		},
+	}))
+
+	s := &Signer{
+		Domain:   "example.com",
+		Selector: "test",
+		Signer:   priv,
+	}
+
+	message := toCRLF(`From: from@example.com
+To: to1@example.com
+Subject: Subject 1
+To: to2@example.com
+Subject: Subject 2
+To: to3@example.com
+
+Hi.
+`)
+
+	sig, err := s.Sign(ctx, message)
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+
+	res, err := VerifyMessage(ctx, addSig(sig, message))
+	if err != nil || res.Valid != 1 {
+		t.Errorf("VerifyMessage: wanted 1 valid / nil; got %v / %v", res, err)
+	}
+}
+
 func addSig(sig, message string) string {
 	return "DKIM-Signature: " +
 		strings.ReplaceAll(sig, "\r\n", "\r\n\t") +
