@@ -19,6 +19,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode"
 
 	"blitiri.com.ar/go/chasquid/internal/aliases"
 	"blitiri.com.ar/go/chasquid/internal/auth"
@@ -468,6 +469,10 @@ func (c *Conn) MAIL(params string) (code int, msg string) {
 			return 501, "5.1.8 Sender address must contain a domain"
 		}
 
+		if !isSafeAddress(addr) {
+			return 501, "5.1.7 Sender address malformed"
+		}
+
 		// https://tools.ietf.org/html/rfc5321#section-4.5.3.1.3
 		if len(addr) > 256 {
 			return 501, "5.1.7 Sender address too long"
@@ -594,7 +599,7 @@ func (c *Conn) RCPT(params string) (code int, msg string) {
 	}
 
 	e, err := mail.ParseAddress(rawAddr)
-	if err != nil || e.Address == "" {
+	if err != nil || e.Address == "" || !isSafeAddress(e.Address) {
 		return 501, "5.1.3 Malformed destination address"
 	}
 
@@ -788,7 +793,10 @@ func (c *Conn) addReceivedHeader() {
 	}
 
 	// Note we must NOT include c.rcptTo, that would leak BCCs.
-	received += fmt.Sprintf("envelope from %q)\n", c.mailFrom)
+	// We are inside a comment, where quotes have no special meaning, so we
+	// also escape "(" and ")" to prevent them from altering its structure.
+	received += fmt.Sprintf("envelope from %s)\n",
+		commentEscaper.Replace(fmt.Sprintf("%q", c.mailFrom)))
 
 	// This should be the last part in the Received header, by RFC.
 	// The ";" is a mandatory separator. The date format is not standard but
@@ -828,6 +836,10 @@ func (c *Conn) addReceivedHeader() {
 			strings.TrimSpace(arHdr))
 	}
 }
+
+// Escape "(" and ")" with quoted-pairs, for use inside header comments.
+// https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.2
+var commentEscaper = strings.NewReplacer("(", `\(`, ")", `\)`)
 
 // addrLiteral converts a net.Addr (must be TCP) into a string for use as
 // address literal, compliant with
@@ -869,6 +881,18 @@ func checkData(data []byte) error {
 	}
 
 	return nil
+}
+
+// isSafeAddress checks that the address (as returned by mail.ParseAddress,
+// which removes the quoting from the local part) doesn't contain characters
+// that could be problematic where we use it:
+//   - Control characters (e.g. in logs or hooks). CR, LF and other
+//     whitespace are already excluded by how we parse the commands.
+//   - More than one "@" (possible with quoted local parts like "a@b"@c), as
+//     we split addresses on the first one.
+func isSafeAddress(addr string) bool {
+	return strings.Count(addr, "@") == 1 &&
+		!strings.ContainsFunc(addr, unicode.IsControl)
 }
 
 // Placeholder EHLO domain, used when the one given by the client has no valid

@@ -277,6 +277,43 @@ func TestMalformedDomain(t *testing.T) {
 	expectTPErr(t, err, 501, "5.1.2 Malformed destination domain")
 }
 
+func TestUnsafeAddress(t *testing.T) {
+	// Unauthenticated MAIL FROM.
+	c := mustDial(t, ModeSMTP, false)
+	defer c.Close()
+
+	err := c.Mail(`"a@b"@from`)
+	expectTPErr(t, err, 501, "5.1.7 Sender address malformed")
+
+	err = c.Mail("a\u009bb@from")
+	expectTPErr(t, err, 501, "5.1.7 Sender address malformed")
+
+	// Characters that need quoting are fine.
+	if err := c.Mail(`"a;b"@from`); err != nil {
+		t.Errorf("Mail: %v", err)
+	}
+
+	// Authenticated RCPT TO. We need to authenticate, otherwise it may get
+	// rejected as relaying.
+	c = mustDial(t, ModeSubmission, true)
+	defer c.Close()
+
+	auth := smtp.PlainAuth("", "testuser@localhost", "testpasswd", "127.0.0.1")
+	if err := c.Auth(auth); err != nil {
+		t.Fatalf("Auth: %v", err)
+	}
+
+	if err := c.Mail("testuser@localhost"); err != nil {
+		t.Fatalf("Mail: %v", err)
+	}
+
+	err = c.Rcpt(`"a@b"@remote`)
+	expectTPErr(t, err, 501, "5.1.3 Malformed destination address")
+
+	err = c.Rcpt("a\u009bb@remote")
+	expectTPErr(t, err, 501, "5.1.3 Malformed destination address")
+}
+
 func TestNullMailFrom(t *testing.T) {
 	c := mustDial(t, ModeSMTP, false)
 	defer c.Close()

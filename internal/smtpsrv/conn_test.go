@@ -2,6 +2,7 @@ package smtpsrv
 
 import (
 	"net"
+	"strings"
 	"testing"
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
@@ -113,6 +114,45 @@ func TestAddrLiteral(t *testing.T) {
 	}
 }
 
+func TestReceivedHeaderEnvelopeFrom(t *testing.T) {
+	c := &Conn{
+		hostname:   "mx.example.com",
+		ehloDomain: "client.example.com",
+		remoteAddr: &net.TCPAddr{IP: net.ParseIP("192.0.2.1"), Port: 1234},
+		tr:         trace.New("test", "TestReceivedHeaderEnvelopeFrom"),
+		// The local part could have been quoted, see isSafeAddress.
+		mailFrom: `x)(y; z\@example.org`,
+		data:     []byte("Subject: test\n\nbody\n"),
+	}
+	defer c.tr.Finish()
+	c.addReceivedHeader()
+
+	hdr, _, _ := strings.Cut(string(c.data), "Subject:")
+	want := `envelope from "x\)\(y; z\\@example.org")`
+	if !strings.Contains(hdr, want) {
+		t.Errorf("Received header does not contain %q:\n%s", want, hdr)
+	}
+
+	// Parentheses must be balanced, considering the escaped ones.
+	depth := 0
+	for i := 0; i < len(hdr); i++ {
+		switch hdr[i] {
+		case '\\':
+			i++ // Skip the escaped character.
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth < 0 {
+				t.Fatalf("unbalanced ')' at %d:\n%s", i, hdr)
+			}
+		}
+	}
+	if depth != 0 {
+		t.Errorf("unbalanced comments (depth %d):\n%s", depth, hdr)
+	}
+}
+
 func TestSanitizeEHLODomain(t *testing.T) {
 	equal := []string{
 		"domain", "do.main", "do-main",
@@ -165,6 +205,32 @@ func TestEHLODomainIsSanitized(t *testing.T) {
 				t.Errorf("%s %q: got EHLO domain %q, expected %q",
 					cmd, c.params, conn.ehloDomain, c.expected)
 			}
+		}
+	}
+}
+
+func TestIsSafeAddress(t *testing.T) {
+	safe := []string{
+		"john@example.com", "ñandú@example.com", "用户@例子.广告",
+		// Characters that need quoting are fine, we're lenient with them.
+		"a;b@example.com", "a(b)@example.com", `a"b@example.com`,
+	}
+	for _, addr := range safe {
+		if !isSafeAddress(addr) {
+			t.Errorf("%q: expected safe, got unsafe", addr)
+		}
+	}
+
+	unsafe := []string{
+		// More than one "@" (or none).
+		"a@b@example.com", "@a@example.com", "example.com",
+		// Control characters (C1, U+009B is CSI).
+		"a\u0081b@example.com", "a\u009b31mb@example.com",
+		"a@exam\u0085ple.com",
+	}
+	for _, addr := range unsafe {
+		if isSafeAddress(addr) {
+			t.Errorf("%q: expected unsafe, got safe", addr)
 		}
 	}
 }
