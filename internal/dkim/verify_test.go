@@ -262,6 +262,41 @@ func TestVerifyBodyLength(t *testing.T) {
 	}
 }
 
+func TestVerifyInvalidDomain(t *testing.T) {
+	ctx := t.Context()
+	ctx = WithTraceFunc(ctx, t.Logf)
+	ctx = WithLookupTXTFunc(ctx, makeLookupTXT(map[string][]string{}))
+
+	// A d= tag that is not a valid domain must be rejected, and must not
+	// make it to the Authentication-Results header, where it could inject
+	// content.
+	message := toCRLF(
+		"DKIM-Signature: v=1; a=ed25519-sha256; c=simple/simple;\n" +
+			" d=example.com dkim=pass header.d=example.net; s=sel;\n" +
+			" h=from; bh=AAAA; b=AAAA\n" +
+			"From: Joe SixPack <joe@example.com>\n" +
+			"\n" +
+			"Hi.\n")
+
+	res, err := VerifyMessage(ctx, message)
+	if err != nil {
+		t.Fatalf("VerifyMessage returned error: %v", err)
+	}
+	if res.Found != 1 || res.Valid != 0 {
+		t.Fatalf("wanted 1 found, 0 valid; got %v", res)
+	}
+	r := res.Results[0]
+	if r.State != PERMFAIL || !errors.Is(r.Error, errInvalidTag) {
+		t.Errorf("wanted PERMFAIL / %v; got %v / %v",
+			errInvalidTag, r.State, r.Error)
+	}
+
+	ar := res.AuthenticationResults()
+	if strings.Contains(ar, "example.net") {
+		t.Errorf("Authentication-Results contains the invalid d=: %q", ar)
+	}
+}
+
 func TestHeadersToInclude(t *testing.T) {
 	// Test that headersToInclude returns the expected headers.
 	cases := []struct {

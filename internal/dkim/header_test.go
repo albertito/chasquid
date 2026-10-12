@@ -338,6 +338,30 @@ func TestCheckRequiredTags(t *testing.T) {
 				a:  "rsa-sha256",
 				b:  []byte("hola que tal"),
 				bh: []byte("como andas"),
+				d:  "example.com dkim=pass header.d=example.net",
+				h:  []string{"from"},
+				s:  "selector",
+			},
+			err: "invalid tag: d= is not a valid domain: " +
+				"invalid domain: invalid character ' '",
+		},
+		{
+			sig: &dkimSignature{
+				a:  "rsa-sha256",
+				b:  []byte("hola que tal"),
+				bh: []byte("como andas"),
+				d:  "example.com",
+				h:  []string{"from"},
+				s:  "sel/ector",
+			},
+			err: "invalid tag: s= is not a valid selector: " +
+				"invalid domain: invalid character '/'",
+		},
+		{
+			sig: &dkimSignature{
+				a:  "rsa-sha256",
+				b:  []byte("hola que tal"),
+				bh: []byte("como andas"),
 				d:  "example.com",
 				h:  []string{"from"},
 				s:  "selector",
@@ -378,6 +402,17 @@ func TestCheckRequiredTags(t *testing.T) {
 				h:  []string{"From"},
 				s:  "selector",
 				i:  "@sub.example.com", // i= is a subdomain of d=
+			},
+			err: "<nil>",
+		},
+		{
+			sig: &dkimSignature{
+				a:  "rsa-sha256",
+				b:  []byte("hola que tal"),
+				bh: []byte("como andas"),
+				d:  "ñandú.example", // U-labels are allowed (RFC 8616).
+				h:  []string{"from"},
+				s:  "sel_2026.ector", // "_" and "." are allowed.
 			},
 			err: "<nil>",
 		},

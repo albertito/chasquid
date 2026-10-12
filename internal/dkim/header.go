@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"blitiri.com.ar/go/chasquid/internal/normalize"
 )
 
 // https://datatracker.ietf.org/doc/html/rfc6376#section-6
@@ -134,6 +136,20 @@ func (sig *dkimSignature) checkRequiredTags() error {
 	}
 	if sig.s == "" {
 		return fmt.Errorf("%w: s=", errMissingRequiredTag)
+	}
+
+	// d= and s= must be valid domain names (a selector has the same syntax).
+	// They are attacker-controlled, and used to build the DNS name of the
+	// key; d= is also included in the Authentication-Results header, so
+	// otherwise it could be used to inject content into it.
+	// https://datatracker.ietf.org/doc/html/rfc6376#section-3.5
+	if _, err := normalize.Domain(sig.d); err != nil {
+		return fmt.Errorf("%w: d= is not a valid domain: %w",
+			errInvalidTag, err)
+	}
+	if _, err := normalize.Domain(sig.s); err != nil {
+		return fmt.Errorf("%w: s= is not a valid selector: %w",
+			errInvalidTag, err)
 	}
 
 	if len(sig.h) > maxHTagEntries {
