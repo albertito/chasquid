@@ -167,6 +167,7 @@ var (
 	errInvalidRSAPublicKey = errors.New("invalid RSA public key")
 	errNotRSAPublicKey     = errors.New("not an RSA public key")
 	errRSAKeyTooSmall      = errors.New("RSA public key too small")
+	errRSAKeyTooLarge      = errors.New("RSA public key too large")
 	errInvalidEd25519Key   = errors.New("invalid Ed25519 public key")
 )
 
@@ -190,6 +191,22 @@ func parseRSAPublicKey(p []byte) (verifyFunc, error) {
 	// https://datatracker.ietf.org/doc/html/rfc8301#section-3.2
 	if rsaPub.Size()*8 < 1024 {
 		return nil, errRSAKeyTooSmall
+	}
+
+	// Enforce 8192-bit maximum.
+	//
+	// The RFC requires verifiers to handle keys of 1024 to 4096 bits, and
+	// does not set a maximum. But the key is attacker-controlled, and the
+	// cost of verifying grows quickly with its size: a key that fits in a
+	// TXT record can take seconds to verify.
+	//
+	// 8192 is chosen to be well above what legitimate signers use:
+	//   - DMARC.org saw 277 keys of 8192 bits in 2025 (out of ~11.8M), and
+	//     none larger.
+	//   - rspamd and Go's crypto/tls (for certificates) use the same limit.
+	// https://datatracker.ietf.org/doc/html/rfc8301#section-3.2
+	if rsaPub.Size()*8 > 8192 {
+		return nil, errRSAKeyTooLarge
 	}
 
 	return func(h crypto.Hash, hashed, signature []byte) error {

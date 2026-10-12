@@ -3,8 +3,11 @@ package dkim
 import (
 	"context"
 	"crypto"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"math/big"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -180,6 +183,39 @@ func TestParsePublicKey(t *testing.T) {
 		if !errors.Is(err, c.err) {
 			t.Errorf("%d: parsePublicKey(%q) error: want %v, got %v",
 				i, c.in, c.err, err)
+		}
+	}
+}
+
+func TestRSAKeySize(t *testing.T) {
+	// Builds an RSA public key record with a modulus of the given size. The
+	// key doesn't need to be real, as long as it can be parsed.
+	keyRecord := func(bits int) string {
+		n := new(big.Int).Lsh(big.NewInt(1), uint(bits-1))
+		n.SetBit(n, 0, 1)
+		der, err := x509.MarshalPKIXPublicKey(&rsa.PublicKey{N: n, E: 65537})
+		if err != nil {
+			t.Fatalf("error marshalling %d-bit key: %v", bits, err)
+		}
+		return "p=" + base64.StdEncoding.EncodeToString(der)
+	}
+
+	cases := []struct {
+		bits int
+		err  error
+	}{
+		{1024, nil},
+		{2048, nil},
+		{4096, nil},
+		{8192, nil},
+		{8193, errRSAKeyTooLarge},
+		{16384, errRSAKeyTooLarge},
+		{262144, errRSAKeyTooLarge},
+	}
+	for _, c := range cases {
+		_, err := parsePublicKey(keyRecord(c.bits))
+		if !errors.Is(err, c.err) {
+			t.Errorf("%d bits: want %v, got %v", c.bits, c.err, err)
 		}
 	}
 }
