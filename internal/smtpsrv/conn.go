@@ -356,7 +356,7 @@ func (c *Conn) HELO(params string) (code int, msg string) {
 	if len(strings.TrimSpace(params)) == 0 {
 		return 501, "Invisible customers are not welcome!"
 	}
-	c.ehloDomain = strings.Fields(params)[0]
+	c.setEHLODomain(params)
 
 	types := []string{
 		"general store", "used armor dealership", "second-hand bookstore",
@@ -374,7 +374,7 @@ func (c *Conn) EHLO(params string) (code int, msg string) {
 	if len(strings.TrimSpace(params)) == 0 {
 		return 501, "Invisible customers are not welcome!"
 	}
-	c.ehloDomain = strings.Fields(params)[0]
+	c.setEHLODomain(params)
 	c.isESMTP = true
 
 	buf := bytes.NewBuffer(nil)
@@ -871,11 +871,26 @@ func checkData(data []byte) error {
 	return nil
 }
 
+// Placeholder EHLO domain, used when the one given by the client has no valid
+// characters. The .invalid TLD is reserved for names that are guaranteed to
+// be invalid (RFC 6761).
+const invalidEHLODomain = "no-valid-characters.invalid"
+
+// setEHLODomain sets the EHLO domain from the (non-empty) HELO/EHLO
+// parameters, sanitizing it.
+func (c *Conn) setEHLODomain(params string) {
+	c.ehloDomain = sanitizeEHLODomain(strings.Fields(params)[0])
+	if c.ehloDomain == "" {
+		c.ehloDomain = invalidEHLODomain
+	}
+}
+
 // Sanitize HELO/EHLO domain.
 // RFC is extremely flexible with EHLO domain values, allowing all printable
 // ASCII characters. They can be tricky to use in shell scripts (commonly used
-// as post-data hooks), so this function sanitizes the value to make it
-// shell-safe.
+// as post-data hooks), and in headers (e.g. "(", ")" and ";" have special
+// meanings in the Received header), so this function sanitizes the value to
+// make it safe for both.
 func sanitizeEHLODomain(s string) string {
 	var n strings.Builder
 	for _, c := range s {
@@ -918,7 +933,10 @@ func (c *Conn) runPostDataHook(data []byte) ([]byte, bool, error) {
 		cmd.Env = append(cmd.Env, v+"="+os.Getenv(v))
 	}
 	cmd.Env = append(cmd.Env, "REMOTE_ADDR="+c.remoteAddr.String())
-	cmd.Env = append(cmd.Env, "EHLO_DOMAIN="+sanitizeEHLODomain(c.ehloDomain))
+	cmd.Env = append(cmd.Env, "EHLO_DOMAIN="+c.ehloDomain)
+
+	// The EHLO domain is already sanitized, so this is the same as
+	// EHLO_DOMAIN. We keep it for backwards compatibility.
 	cmd.Env = append(cmd.Env, "EHLO_DOMAIN_RAW="+c.ehloDomain)
 	cmd.Env = append(cmd.Env, "MAIL_FROM="+c.mailFrom)
 	cmd.Env = append(cmd.Env, "RCPT_TO="+strings.Join(c.rcptTo, " "))

@@ -142,3 +142,29 @@ func TestSanitizeEHLODomain(t *testing.T) {
 		}
 	}
 }
+
+func TestEHLODomainIsSanitized(t *testing.T) {
+	cases := []struct {
+		params   string
+		expected string
+	}{
+		{"mx.example.com", "mx.example.com"},
+		{"[1.2.3.4] extra params", "[1.2.3.4]"},
+		{"evil;(x", "evilx"},
+		{"!!!", invalidEHLODomain},
+	}
+	for _, c := range cases {
+		for _, cmd := range []string{"HELO", "EHLO"} {
+			conn := &Conn{}
+			if cmd == "HELO" {
+				conn.HELO(c.params)
+			} else {
+				conn.EHLO(c.params)
+			}
+			if conn.ehloDomain != c.expected {
+				t.Errorf("%s %q: got EHLO domain %q, expected %q",
+					cmd, c.params, conn.ehloDomain, c.expected)
+			}
+		}
+	}
+}

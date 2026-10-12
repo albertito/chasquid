@@ -42,9 +42,10 @@ The environment will contain the following variables:
  - `$PWD`: The working directory, which will be the config directory.
  - `$REMOTE_ADDR`: IP address of the remote side of the connection.
  - `$EHLO_DOMAIN`: EHLO/HELO domain, as given by the client; sanitized for
-   safety.
- - `$EHLO_DOMAIN_RAW`: Same as `$EHLO_DOMAIN`, but not sanitized; be careful as
-   it can contain problematic characters.
+   safety (only letters, digits, and `-.[]:` are kept). If there are no valid
+   characters, it is `no-valid-characters.invalid`.
+ - `$EHLO_DOMAIN_RAW`: Same as `$EHLO_DOMAIN`. Kept for backwards
+   compatibility; it used to be the unsanitized value.
  - `$MAIL_FROM`: MAIL FROM address.
  - `$RCPT_TO`: RCPT TO addresses, space separated.
  - `$AUTH_AS`: Authenticated user; empty if the connection has not
