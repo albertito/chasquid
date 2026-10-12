@@ -101,6 +101,76 @@ func TestLog(t *testing.T) {
 	}
 }
 
+func TestTruncate(t *testing.T) {
+	rep := strings.Repeat
+	cases := []struct {
+		in, want string
+	}{
+		{"", ""},
+		{"short", "short"},
+		{rep("a", maxMsgLen), rep("a", maxMsgLen)},
+		{rep("a", maxMsgLen+1),
+			rep("a", maxMsgLen) + "… [truncated, 8193 bytes total]"},
+
+		// The limit is in characters, not bytes ("ñ" is 2 bytes).
+		{rep("ñ", maxMsgLen), rep("ñ", maxMsgLen)},
+		{rep("ñ", maxMsgLen+1),
+			rep("ñ", maxMsgLen) + "… [truncated, 16386 bytes total]"},
+
+		// Invalid UTF-8 bytes count as one character each, and are kept.
+		{rep("\xff", maxMsgLen+1),
+			rep("\xff", maxMsgLen) + "… [truncated, 8193 bytes total]"},
+	}
+	for i, c := range cases {
+		if got := truncate(c.in); got != c.want {
+			t.Errorf("%d: truncate(%d bytes) = %q (%d bytes), want %q",
+				i, len(c.in), got[max(0, len(got)-40):], len(got),
+				c.want[max(0, len(c.want)-40):])
+		}
+	}
+}
+
+func TestTruncateMessages(t *testing.T) {
+	buf := setupLog(t, log.Debug)
+	tr := New("TestTruncateMessages", "title")
+
+	long := strings.Repeat("x", 3*maxMsgLen)
+	tr.Printf("printf %s", long)
+	tr.Debugf("debugf %s", long)
+	err := tr.Errorf("errorf %s", long)
+	tr.Error(errors.New("error " + long))
+
+	// The error returned by Errorf must not be truncated.
+	if len(err.Error()) != len("errorf ")+len(long) {
+		t.Errorf("Errorf returned a truncated error (%d bytes)",
+			len(err.Error()))
+	}
+
+	// All messages are truncated in the log...
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 4 {
+		t.Fatalf("expected 4 log lines, got %d", len(lines))
+	}
+	for _, l := range lines {
+		if len(l) > maxMsgLen+100 ||
+			!strings.HasSuffix(l, " bytes total]") {
+			t.Errorf("log line not truncated (%d bytes): ...%s",
+				len(l), l[max(0, len(l)-60):])
+		}
+	}
+
+	// ... and in the trace.
+	body := traceEvents(t, "TestTruncateMessages")
+	if n := strings.Count(body, " bytes total]"); n != 4 {
+		t.Errorf("expected 4 truncated events in the trace, got %d", n)
+	}
+	if len(body) > 4*maxMsgLen+10*1024 {
+		t.Errorf("trace too large (%d bytes), events not truncated?",
+			len(body))
+	}
+	tr.Finish()
+}
+
 func TestTraceEvents(t *testing.T) {
 	// Debug messages are added to the trace even if they are not logged.
 	setupLog(t, log.Info)
