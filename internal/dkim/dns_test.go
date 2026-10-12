@@ -66,6 +66,34 @@ func TestSkipBadRecords(t *testing.T) {
 	}
 }
 
+func TestMaxKeyRecords(t *testing.T) {
+	ctx := WithLookupTXTFunc(t.Context(), testLookupTXT)
+	defer clear(results)
+
+	// Only the first maxKeyRecords records are used, even if the rest are
+	// valid keys.
+	key := "v=DKIM1; p=" + exampleRSAKeyB64
+	results["selector._domainkey.example.com"] = []string{
+		key, key, key, key, key,
+	}
+	pks, err := findPublicKeys(ctx, "example.com", "selector")
+	if err != nil || len(pks) != maxKeyRecords {
+		t.Errorf("findPublicKeys expected %d keys / nil, got %d / %v",
+			maxKeyRecords, len(pks), err)
+	}
+
+	// Records after the first maxKeyRecords are ignored, even if the first
+	// ones are not valid keys.
+	results["selector._domainkey.example.com"] = []string{
+		"not a tag", "not a tag", "not a tag", key,
+	}
+	pks, err = findPublicKeys(ctx, "example.com", "selector")
+	if err != nil || len(pks) != 0 {
+		t.Errorf("findPublicKeys expected 0 keys / nil, got %d / %v",
+			len(pks), err)
+	}
+}
+
 func TestParsePublicKey(t *testing.T) {
 	cases := []struct {
 		in  string

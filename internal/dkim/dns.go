@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+// Maximum number of TXT records we consider when looking up the public key.
+// See findPublicKeys for details.
+const maxKeyRecords = 3
+
 func findPublicKeys(ctx context.Context, domain, selector string) ([]*publicKey, error) {
 	// Subdomain where the key lives.
 	// https://datatracker.ietf.org/doc/html/rfc6376#section-3.6.2
@@ -33,8 +37,16 @@ func findPublicKeys(ctx context.Context, domain, selector string) ([]*publicKey,
 	//  - driusan/dkim: Use the first TXT record that can be parsed as a key.
 	//  - go-msgauth: Reject if there are multiple records.
 	//
-	// What we do: use _all_ TXT records that can be parsed as keys. This is
-	// possibly too much, and we could reconsider this in the future.
+	// What we do: use the TXT records that can be parsed as keys, but only
+	// look at the first few. The records are attacker-controlled, and each
+	// key can cost a signature verification, so we need to cap them.
+	// This is still more lenient than the implementations above, and we
+	// could reconsider this in the future.
+	if len(values) > maxKeyRecords {
+		trace(ctx, "Too many TXT records for %q (%d), using the first %d",
+			d, len(values), maxKeyRecords)
+		values = values[:maxKeyRecords]
+	}
 
 	pks := []*publicKey{}
 	for _, v := range values {
