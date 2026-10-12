@@ -39,18 +39,23 @@ func (t *Trace) NewChild(family, title string) *Trace {
 
 // Printf adds this message to the trace's log.
 func (t *Trace) Printf(format string, a ...any) {
-	t.t.Printf(format, a...)
-
-	log.Log(log.Info, 1, "%s %s: %s", t.family, t.title,
-		quote(fmt.Sprintf(format, a...)))
+	t.printf(log.Info, format, a...)
 }
 
 // Debugf adds this message to the trace's log, with a debugging level.
 func (t *Trace) Debugf(format string, a ...any) {
-	t.t.Printf(format, a...)
+	t.printf(log.Debug, format, a...)
+}
 
-	log.Log(log.Debug, 1, "%s %s: %s",
-		t.family, t.title, quote(fmt.Sprintf(format, a...)))
+func (t *Trace) printf(level log.Level, format string, a ...any) {
+	// Format the message only once, as it can be expensive.
+	msg := fmt.Sprintf(format, a...)
+	t.t.Printf("%s", msg)
+
+	// Only quote and log the message if it's going to be logged.
+	if log.V(level) {
+		log.Log(level, 2, "%s %s: %s", t.family, t.title, quote(msg))
+	}
 }
 
 // Errorf adds this message to the trace's log, with an error level.
