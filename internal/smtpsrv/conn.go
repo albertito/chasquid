@@ -214,7 +214,7 @@ func (c *Conn) Handle() {
 
 		cstate := tc.ConnectionState()
 		c.tlsConnState = &cstate
-		if name := c.tlsConnState.ServerName; name != "" {
+		if name := c.validServerName(); name != "" {
 			c.hostname = name
 		}
 	}
@@ -837,6 +837,35 @@ func (c *Conn) addReceivedHeader() {
 	}
 }
 
+// validServerName returns the server name the client requested via TLS SNI,
+// if one of our certificates is valid for it; otherwise it returns "".
+//
+// The SNI is controlled by the client, and Go accepts almost any value (e.g.
+// with spaces, ";", or CR/LF), so we must not use it blindly: it ends up in
+// our greeting, and the Received and Authentication-Results headers.
+// VerifyHostname only accepts valid hostnames, and then checks them against
+// the certificate.
+//
+// TODO: Once we can depend on Go 1.27, use ConnectionState.LocalCertificate
+// to check against the certificate we actually presented. Today they are
+// almost always the same, and when not, the name is still valid for one of
+// our certificates.
+func (c *Conn) validServerName() string {
+	name := c.tlsConnState.ServerName
+	if name == "" {
+		return ""
+	}
+
+	for _, cert := range c.tlsConfig.Certificates {
+		if cert.Leaf != nil && cert.Leaf.VerifyHostname(name) == nil {
+			return name
+		}
+	}
+
+	c.tr.Debugf("ignoring SNI %q, no certificate is valid for it", name)
+	return ""
+}
+
 // Escape "(" and ")" with quoted-pairs, for use inside header comments.
 // https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.2
 var commentEscaper = strings.NewReplacer("(", `\(`, ")", `\)`)
@@ -1173,7 +1202,7 @@ func (c *Conn) STARTTLS(params string) (code int, msg string) {
 
 	// If the client requested a specific server and we complied, that's our
 	// identity from now on.
-	if name := c.tlsConnState.ServerName; name != "" {
+	if name := c.validServerName(); name != "" {
 		c.hostname = name
 	}
 

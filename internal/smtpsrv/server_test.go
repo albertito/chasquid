@@ -550,6 +550,55 @@ func TestStartTLSOnTLS(t *testing.T) {
 	}
 }
 
+// The server name requested via SNI must only be used as our hostname if one
+// of our certificates is valid for it.
+func TestServerNameFromSNI(t *testing.T) {
+	cases := []struct {
+		sni  string
+		want string
+	}{
+		{"localhost", "localhost"},
+		{"other.example.com", "localhost"},
+		{"localhost; dkim=pass header.d=example.com", "localhost"},
+	}
+
+	for _, c := range cases {
+		cfg := tlsConfig.Clone()
+		cfg.ServerName = c.sni
+		cfg.InsecureSkipVerify = true
+
+		// STARTTLS, and then EHLO, whose reply starts with our hostname.
+		sc, err := smtp.Dial(smtpAddr)
+		if err != nil {
+			t.Fatalf("smtp.Dial: %v", err)
+		}
+		if err := sc.StartTLS(cfg); err != nil {
+			t.Fatalf("%q: StartTLS: %v", c.sni, err)
+		}
+		msg := simpleCmd(t, sc, "EHLO test", 250)
+		if !strings.HasPrefix(msg, c.want+" ") {
+			t.Errorf("%q: STARTTLS: EHLO reply %q, expected hostname %q",
+				c.sni, msg, c.want)
+		}
+		sc.Close()
+
+		// TLS-wrapped, where the greeting contains our hostname.
+		conn, err := tls.Dial("tcp", submissionTLSAddr, cfg)
+		if err != nil {
+			t.Fatalf("%q: tls.Dial: %v", c.sni, err)
+		}
+		_, msg, err = textproto.NewConn(conn).ReadResponse(220)
+		if err != nil {
+			t.Fatalf("%q: reading greeting: %v", c.sni, err)
+		}
+		if !strings.HasPrefix(msg, c.want+" ") {
+			t.Errorf("%q: TLS: greeting %q, expected hostname %q",
+				c.sni, msg, c.want)
+		}
+		conn.Close()
+	}
+}
+
 func TestAddDKIMSigner(t *testing.T) {
 	s := NewServer()
 	err := s.AddDKIMSigner("example.com", "selector", "keyfile-does-not-exist")

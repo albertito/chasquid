@@ -1,9 +1,14 @@
 package smtpsrv
 
 import (
+	"crypto/ed25519"
+	"crypto/tls"
+	"crypto/x509"
+	"math/big"
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"blitiri.com.ar/go/chasquid/internal/domaininfo"
 	"blitiri.com.ar/go/chasquid/internal/trace"
@@ -151,6 +156,71 @@ func TestReceivedHeaderEnvelopeFrom(t *testing.T) {
 	if depth != 0 {
 		t.Errorf("unbalanced comments (depth %d):\n%s", depth, hdr)
 	}
+}
+
+func TestValidServerName(t *testing.T) {
+	// Self-signed certificate valid for mx.example.com and *.example.net.
+	pub, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		DNSNames:     []string{"mx.example.com", "*.example.net"},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(time.Hour),
+	}
+	der, err := x509.CreateCertificate(nil, tmpl, tmpl, pub, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaf, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert := tls.Certificate{
+		Certificate: [][]byte{der},
+		PrivateKey:  priv,
+		Leaf:        leaf,
+	}
+
+	cases := []struct {
+		sni  string
+		want string
+	}{
+		{"", ""},
+		{"mx.example.com", "mx.example.com"},
+		{"MX.Example.COM", "MX.Example.COM"},
+		{"a.example.net", "a.example.net"},
+		{"a.b.example.net", ""},
+		{"other.example.com", ""},
+		{"mx.example.com; dkim=pass header.d=example.org", ""},
+		{"mx.example.com\r\nX-Injected: yes", ""},
+		{"a;b.example.net", ""},
+	}
+	for _, c := range cases {
+		conn := &Conn{
+			tlsConfig:    &tls.Config{Certificates: []tls.Certificate{cert}},
+			tlsConnState: &tls.ConnectionState{ServerName: c.sni},
+			tr:           trace.New("test", "TestValidServerName"),
+		}
+		if got := conn.validServerName(); got != c.want {
+			t.Errorf("SNI %q: got %q, want %q", c.sni, got, c.want)
+		}
+		conn.tr.Finish()
+	}
+
+	// Without the parsed leaf, we can't check, so the SNI is not used.
+	cert.Leaf = nil
+	conn := &Conn{
+		tlsConfig:    &tls.Config{Certificates: []tls.Certificate{cert}},
+		tlsConnState: &tls.ConnectionState{ServerName: "mx.example.com"},
+		tr:           trace.New("test", "TestValidServerName"),
+	}
+	if got := conn.validServerName(); got != "" {
+		t.Errorf("without leaf: got %q, want \"\"", got)
+	}
+	conn.tr.Finish()
 }
 
 func TestSanitizeEHLODomain(t *testing.T) {
