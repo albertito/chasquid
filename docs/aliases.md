@@ -76,21 +76,14 @@ pepe: jose
 *: pepe, rose@backgarden
 ```
 
-!!! warning "Experimental"
+If the destination address has `*` as its user, then it will be replaced
+by the sender user. Note that in this case, the user is copied as-is, no
+characters or suffixes will be dropped.
 
-    If the destination address has `*` as its user, then it will be replaced
-    by the sender user. Note that in this case, the user is copied as-is, no
-    characters or suffixes will be dropped.
+For example, `*: *@pond` will redirect `lilly@domain` to `lilly@pond`.
 
-    For example, `*: *@pond` will redirect `lilly@domain` to `lilly@pond`.
 
-    This is experimental as of chasquid 1.16.0, and subject to change.
-
-### "Via" aliases (experimental) {#via}
-
-!!! warning
-
-    This feature is experimental as of chasquid 1.16.0, and subject to change.
+### "Via" aliases {#via}
 
 A "via" alias is like an email alias, but it explicitly specifies which
 server(s) to use when delivering that email. The servers are used to attempt

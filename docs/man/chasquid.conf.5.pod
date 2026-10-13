@@ -122,8 +122,6 @@ Default: C<false>.
 
 =item B<max_queue_items> (int):
 
-B<EXPERIMENTAL>, might change in backwards-incompatible ways.
-
 Maximum number of items in the queue.
 
 If we have this many items in the queue, we reject new incoming email. Be
@@ -131,8 +129,6 @@ careful when increasing this, as we keep all items in memory.
 Default: C<200> (but may change in the future).
 
 =item B<give_up_send_after> (string):
-
-B<EXPERIMENTAL>, might change in backwards-incompatible ways.
 
 How long do we keep retrying sending an email before we give up.  Once we give
 up, a DSN will be sent back to the sender.
