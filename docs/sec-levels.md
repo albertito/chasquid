@@ -1,4 +1,3 @@
-
 # Security level checks
 
 chasquid tracks per-domain TLS support, and uses it to prevent connection
@@ -11,28 +10,26 @@ servers.
 
 This is very different from other MTAs, and has some tradeoffs.
 
-
 ## Outgoing connections
 
 An outgoing connection has one of 3 security levels, which are (in order):
 
 1. Plain: connection is plain-text (the server does not support TLS).
-2. TLS insecure: TLS connection established, but the certificate itself was
-   not valid.
+2. TLS insecure: TLS connection established, but the certificate itself was not
+   valid.
 3. TLS secure: TLS connection established, with a valid certificate.
 
 When establishing an outgoing connection, chasquid will always attempt to
-negotiate up to the *TLS secure* level.  After the negotiation, it will
-compare which level it got, with the previously recorded value for this
-domain:
+negotiate up to the *TLS secure* level. After the negotiation, it will compare
+which level it got, with the previously recorded value for this domain:
 
-* If the connection level is lower than the recorded value, then the
-  connection will be dropped, and the delivery will fail (with a transient
-  failure). The delivery will be retried as usual (using other MXs if
-  available, and repeat after some delay).
-* If the connection level is the same as the recorded value, then the
+- If the connection level is lower than the recorded value, then the connection
+  will be dropped, and the delivery will fail (with a transient failure). The
+  delivery will be retried as usual (using other MXs if available, and repeat
+  after some delay).
+- If the connection level is the same as the recorded value, then the
   connection will proceed.
-* If the connection level is higher, chasquid will record this new value, and
+- If the connection level is higher, chasquid will record this new value, and
   proceed.
 
 If there is no previously recorded value for this domain, a *plain* level is
@@ -55,25 +52,24 @@ with MTA-STS and HTTPS, but it is not universally agreed upon. It's also why
 the "TLS insecure" state exists, instead of the connection being rejected
 directly.
 
-
 ### Tradeoffs
 
 Almost all other MTAs do TLS negotiation but accept *all* certificates, even
-self-signed or expired ones.  chasquid operates differently, as described
-above.
+self-signed or expired ones. chasquid operates differently, as described above.
 
 The main advantage is that, *with domains where secure connections were
-previously established*, chasquid will detect connection downgrading (caused
-by malicious interception such as STARTTLS blocking, as well as
-misconfiguration such as incorrectly configured or expired certificates), and
-avoid communicating insecurely.
+previously established*, chasquid will detect connection downgrading (caused by
+malicious interception such as STARTTLS blocking, as well as misconfiguration
+such as incorrectly configured or expired certificates), and avoid
+communicating insecurely.
 
 The main disadvantage is that if a domain changes the configuration to a lower
 security level, chasquid will fail the delivery (returning a message to the
-sender explaining why).  Because there is no formal standard for TLS
-certificate validation, and most MTAs will deliver email in this situation,
-the domain owners might not see this as a problem and thus require [manual
-intervention](#manual-override) on the chasquid side to explicitly allow it.
+sender explaining why). Because there is no formal standard for TLS certificate
+validation, and most MTAs will deliver email in this situation, the domain
+owners might not see this as a problem and thus require
+[manual intervention](#manual-override) on the chasquid side to explicitly
+allow it.
 
 ### MTA-STS
 
@@ -84,7 +80,6 @@ ability to receive TLS connections, amongst other things.
 It is supported by chasquid, out of the box, and in practice it means that for
 domains that advertise MTA-STS support, the *secure* level will be enforced
 even if the domain was previously unknown.
-
 
 ## Incoming connections
 
@@ -107,11 +102,11 @@ security levels, which are (in order):
 At this point, chasquid will compare the level with the previously recorded
 value for this domain:
 
-* If the connection level is lower than the recorded value, then the
-  connection is rejected with an SMTP error.
-* If the connection level is the same as the recorded value, then the
+- If the connection level is lower than the recorded value, then the connection
+  is rejected with an SMTP error.
+- If the connection level is the same as the recorded value, then the
   connection is allowed.
-* If the connection level is higher, chasquid will record this new value, and
+- If the connection level is higher, chasquid will record this new value, and
   the connection is allowed.
 
 If there is no previously recorded value for this domain, a *plain* level is
@@ -136,14 +131,12 @@ MTAs will accept the connection anyway, domain owners might not even notice
 there is a problem, and might require [manual intervention](#manual-override)
 on the chasquid side to explicitly allow it.
 
-
-
 ## Accepting lower security levels {#manual-override}
 
 If a domain changes its configuration to a lower security level and is causing
 chasquid to fail delivery, you can use
-`chasquid-util domaininfo-remove <domain>` to make the server forget about
-that domain.
+`chasquid-util domaininfo-remove <domain>` to make the server forget about that
+domain.
 
 Then, the next time there is a connection, there is no high security
 expectation so it will proceed just fine, regardless of the level that was

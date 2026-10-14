@@ -14,6 +14,8 @@ markdown_extensions:
       guess_lang: false
   - attr_list
   - admonition
+  - pymdownx.escapeall:
+      hardbreak: true
 
 theme: readthedocs
 

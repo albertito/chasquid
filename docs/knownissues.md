@@ -1,13 +1,11 @@
-
 # Known issues
 
 This file contains a list of the most common known issues, and the release
-range affected. It can be useful for people running older versions, to
-identify problems (and workarounds) faster.
+range affected. It can be useful for people running older versions, to identify
+problems (and workarounds) faster.
 
 Entries are eventually be purged once their affected versions become uncommon,
 to prevent confusion.
-
 
 ## Dovecot auth occasionally not functional after a reboot (0.04 to 1.6)
 
@@ -29,7 +27,6 @@ After=dovecot.service
 ```
 
 The issue is fixed in 1.7.
-
 
 ## `dkimsign` causes parsing errors in post-data hook (0.07 to 1.5)
 

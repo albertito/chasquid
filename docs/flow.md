@@ -1,34 +1,31 @@
-
 # Message flows
 
 This document explains at a high level some parts of chasquid's message
 processing, in particular how messages flow through the system.
-
 
 ## Message reception
 
 - Client connects to chasquid on the smtp or submission ports, and issues
   HELO/EHLO.
 - Client optionally performs STARTTLS.
-- Client optionally performs AUTH.
-    - Check that this is done over TLS.
-- Client sends MAIL FROM.
-    - Check SPF.
-    - Check connection security level.
-- Client sends one or more RCPT TO.
-    - If the destination is remote, then the user must have authenticated.
-    - If the destination is local, check that the user exists.
+- Client optionally performs AUTH, which must be done over TLS.
+- Client sends MAIL FROM, and we check SPF and the connection security level.
+- Client sends one or more RCPT TO. If the destination is remote, then the user
+  must have authenticated. If the destination is local, check that the user
+  exists.
 - Client sends DATA.
 - Client sends actual data, and ends it with '.'
-    - Parse the data contents to perform loop detection.
-    - If the sender is authenticated, DKIM-sign the email with the
-      corresponding key.
-    - If the sender is not authenticated, verify the DKIM signature (if the
-      email has one).
-    - Add the required headers (Received, SPF results, post-data hook output).
-    - Run the post-data hook. If the hook fails, return an error.
-    - Put it in the queue and reply success.
 
+Then, to process the data:
+
+- Parse the data contents to perform loop detection.
+- If the sender is authenticated, DKIM-sign the email with the corresponding
+  key.
+- If the sender is not authenticated, verify the DKIM signature (if the email
+  has one).
+- Add the required headers (Received, SPF results, post-data hook output).
+- Run the post-data hook. If the hook fails, return an error.
+- Put it in the queue and reply success.
 
 ### Authenticated mail, and email spoofing
 
@@ -41,9 +38,9 @@ Users who want to be strict about "MAIL FROM" or even "From:" validation can
 add additional checks in the [post-DATA hook](hooks.md).
 
 In the future, chasquid may get some option to be strict about it by default,
-or on a per-domain or per-user basis. But for now, using a [post-DATA
-hook](hooks.md) is the best way to make chasquid more strict about this.
-
+or on a per-domain or per-user basis. But for now, using a
+[post-DATA hook](hooks.md) is the best way to make chasquid more strict about
+this.
 
 ## Queue processing
 
@@ -57,11 +54,9 @@ Before accepting a message:
 Queue processing runs asynchronously, there's a goroutine for each message
 which does, in a loop:
 
-- For each recipient which we have not delivered yet:
-    - Attempt delivery.
-    - Write to disk the results.
+- For each recipient which we have not delivered yet, attempt delivery, and
+  write the results to disk.
 - If there are mails still pending, wait for some time (incrementally).
 - When all the recipients have completed delivery, or enough time has passed:
-    - If all were successful, remove from the queue.
-    - If some failed, send a delivery status notification back to the sender.
-
+  if all were successful, remove from the queue; if some failed, send a
+  delivery status notification back to the sender.

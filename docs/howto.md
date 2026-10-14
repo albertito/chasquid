@@ -1,4 +1,3 @@
-
 # chasquid how-to guide
 
 This is a practical guide for setting up an email server for personal or small
@@ -7,33 +6,21 @@ detailed references where possible.
 
 While a lot of the contents are generic, for simplicity it will use:
 
- - [Debian] as base operating system ([Ubuntu] also works)
- - [Dovecot] for [POP3]+[IMAP]
- - [chasquid] for [SMTP]
- - [Let's Encrypt] for [TLS] certificates
-
-[Debian]: https://debian.org
-[Ubuntu]: https://ubuntu.com
-[Dovecot]: https://dovecot.org
-[chasquid]: https://blitiri.com.ar/p/chasquid
-[Let's Encrypt]: https://letsencrypt.org
-[POP3]: https://en.wikipedia.org/wiki/Post_Office_Protocol
-[IMAP]: https://en.wikipedia.org/wiki/Internet_Message_Access_Protocol
-[SMTP]: https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
-[TLS]: https://en.wikipedia.org/wiki/Transport_Layer_Security
-
+- [Debian] as base operating system ([Ubuntu] also works)
+- [Dovecot] for [POP3]+[IMAP]
+- [chasquid] for [SMTP]
+- [Let's Encrypt] for [TLS] certificates
 
 ## Example data
 
 This guide will use the following data for illustration purposes, replace them
 with your own where appropriate.
 
- - Domain name: `example.com`.
- - IPv4 address of your mail server: `198.51.100.7`.
- - IPv6 address of your mail server: `2001:db8::7`.
+- Domain name: `example.com`.
+- IPv4 address of your mail server: `198.51.100.7`.
+- IPv6 address of your mail server: `2001:db8::7`.
 
 Note IPv6 is optional but highly encouraged, and supported by most providers.
-
 
 ## Getting a server
 
@@ -43,33 +30,26 @@ exclusive for email.
 
 In this guide we will use a separate server, mostly for clarity.
 
-For small groups the size of the server does not matter, any small VPS
-(virtual private server) will do just fine.
+For small groups the size of the server does not matter, any small VPS (virtual
+private server) will do just fine.
 
 Specifically for hosting email servers, there are some things to check when
 selecting a provider:
 
- - Make sure they allow traffic on TCP port 25 (SMTP). While almost all VPS
-   and dedicated server providers are fine, some "cloud" providers (like
-   Google Cloud) block port 25, which is used for sending and receiving mails.
- - Once you get a server, make sure the IP addresses are not listed in any
-   [blackhole lists].
-   There are many services to check them, for example [the
-   Anti-Abuse project] or [multirbl.valli.org].
+- Make sure they allow traffic on TCP port 25 (SMTP). While almost all VPS and
+  dedicated server providers are fine, some "cloud" providers (like Google
+  Cloud) block port 25, which is used for sending and receiving mails.
+- Once you get a server, make sure the IP addresses are not listed in any
+  [blackhole lists]. There are many services to check them, for example
+  [the Anti-Abuse project] or [multirbl.valli.org].
 
 Remember to update your server regularly, setting up [unattended upgrades] is
 highly recommended.
 
-[the Anti-Abuse project]: http://www.anti-abuse.org/multi-rbl-check/
-[blackhole lists]: https://en.wikipedia.org/wiki/DNSBL
-[unattended upgrades]: https://wiki.debian.org/UnattendedUpgrades
-[multirbl.valli.org]: http://multirbl.valli.org/
-
-
 ## DNS
 
-Set up the following DNS records for `example.com`.  This is usually done
-either in your DNS server, or in the user interface of your DNS provider.
+Set up the following DNS records for `example.com`. This is usually done either
+in your DNS server, or in the user interface of your DNS provider.
 
 ```
 ; Assign "mail.example.com" to the server's IP addresses.
@@ -86,20 +66,18 @@ mail    AAAA    2001:db8::7
 ```
 
 Finally, you should go to your server provider and configure the "reverse DNS"
-(also known as "PTR") for the IP addresses to be to "mail.example.com". This
-is important, as some spam checkers will consider it a factor.
+(also known as "PTR") for the IP addresses to be to "mail.example.com". This is
+important, as some spam checkers will consider it a factor.
 
-*References:
-[A record](https://en.wikipedia.org/wiki/A_record),
+*References: [A record](https://en.wikipedia.org/wiki/A_record),
 [MX record](https://en.wikipedia.org/wiki/MX_record),
 [Sender Policy Framework (SPF)](https://en.wikipedia.org/wiki/Sender_Policy_Framework).*
 
-
 ## TLS certificate
 
-[TLS] certificates are needed to send and receive email securely.
-[letsencrypt] will provide us with a free certificate, which needs to be
-renewed every 90 days, so the following relies on automatic renewal.
+[TLS] certificates are needed to send and receive email securely. [letsencrypt]
+will provide us with a free certificate, which needs to be renewed every 90
+days, so the following relies on automatic renewal.
 
 Note `certbot` is the recommended letsencrypt command line client.
 
@@ -124,10 +102,6 @@ EOF
 sudo chmod +x /etc/letsencrypt/renewal-hooks/post/restart
 ```
 
-[TLS]: https://en.wikipedia.org/wiki/Transport_Layer_Security
-[letsencrypt]: https://letsencrypt.org
-
-
 ## Configure dovecot
 
 First, install dovecot, and let chasquid use it for authorizing users. That
@@ -151,12 +125,11 @@ service auth {
 EOF
 ```
 
-You will need to configure dovecot authentication depending on your needs.
-For example, if you want to use only system users, or virtual users.
-See the `/etc/dovecot/conf.d/10-auth.conf` file, and the [dovecot
-documentation](https://wiki.dovecot.org/HowTo/SimpleVirtualInstall) for more
-details.
-
+You will need to configure dovecot authentication depending on your needs. For
+example, if you want to use only system users, or virtual users. See the
+`/etc/dovecot/conf.d/10-auth.conf` file, and the
+[dovecot documentation](https://wiki.dovecot.org/HowTo/SimpleVirtualInstall)
+for more details.
 
 ## Configure chasquid
 
@@ -191,12 +164,11 @@ EOF
 
 ## Add users
 
-With this configuration, chasquid will use dovecot to manage users, so refer
-to the [dovecot documentation](https://wiki.dovecot.org/BasicConfiguration)
-for the details.
+With this configuration, chasquid will use dovecot to manage users, so refer to
+the [dovecot documentation](https://wiki.dovecot.org/BasicConfiguration) for
+the details.
 
 You can also add chasquid-specific users with `chasquid-util user-add`.
-
 
 ## Additional domains
 
@@ -208,12 +180,12 @@ following records to `otherdomain.com`:
 @       TXT     "v=spf1 mx -all"
 ```
 
-Then, tell chasquid about it by running `mkdir
-/etc/chasquid/domains/otherdomain.com`. Don't forget to restart it afterwards.
+Then, tell chasquid about it by running
+`mkdir /etc/chasquid/domains/otherdomain.com`. Don't forget to restart it
+afterwards.
 
 Alternatively, you can use a different MX record, as long as you can get
 chasquid a certificate for it.
-
 
 ## Optional software
 
@@ -223,6 +195,19 @@ chasquid a certificate for it.
 That's all it takes. chasquid default hooks will pass incoming mail through
 both if (and only if) they are installed.
 
-[SpamAssassin]: https://spamassassin.apache.org/
-[ClamAV]: https://www.clamav.net/
-
+[blackhole lists]: https://en.wikipedia.org/wiki/DNSBL
+[chasquid]: https://blitiri.com.ar/p/chasquid
+[clamav]: https://www.clamav.net/
+[debian]: https://debian.org
+[dovecot]: https://dovecot.org
+[imap]: https://en.wikipedia.org/wiki/Internet_Message_Access_Protocol
+[let's encrypt]: https://letsencrypt.org
+[letsencrypt]: https://letsencrypt.org
+[multirbl.valli.org]: http://multirbl.valli.org/
+[pop3]: https://en.wikipedia.org/wiki/Post_Office_Protocol
+[smtp]: https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol
+[spamassassin]: https://spamassassin.apache.org/
+[the anti-abuse project]: http://www.anti-abuse.org/multi-rbl-check/
+[tls]: https://en.wikipedia.org/wiki/Transport_Layer_Security
+[ubuntu]: https://ubuntu.com
+[unattended upgrades]: https://wiki.debian.org/UnattendedUpgrades

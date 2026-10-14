@@ -60,10 +60,13 @@ fmt:
 	gofmt -s -w .
 	go fix ./...
 	clang-format -i $(shell find . -iname '*.proto')
-	black -l 79 \
+	black -l 79 --quiet \
 		test/util/check-hostaliases \
 		test/util/chamuyero \
 		test/util/mail_diff
+	mdformat --wrap 79 --number \
+		--exclude 'docs/man/*.[15].md' \
+		README.md docs/
 
 .PHONY: chasquid test \
 	chasquid-util smtp-check mda-lmtp dovecot-auth-cli \

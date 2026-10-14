@@ -5,5 +5,4 @@ albertito@blitiri.com.ar, or do it via [GitHub's Security tab].
 
 Thank you!
 
-
-[GitHub's Security tab]: https://github.com/albertito/chasquid/security
+[github's security tab]: https://github.com/albertito/chasquid/security

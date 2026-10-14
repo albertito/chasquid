@@ -1,4 +1,3 @@
-
 # Installing and configuring [chasquid](https://blitiri.com.ar/p/chasquid)
 
 ## Installation
@@ -17,9 +16,9 @@ sudo apt install chasquid
 
 If you're using Arch, there is a
 [chasquid AUR package](https://aur.archlinux.org/packages/chasquid/) you can
-use.  See the [official Arch
-documentation](https://wiki.archlinux.org/index.php/Arch_User_Repository) for
-how to install it.  If you use the [pacaur](https://github.com/E5ten/pacaur)
+use. See the
+[official Arch documentation](https://wiki.archlinux.org/index.php/Arch_User_Repository)
+for how to install it. If you use the [pacaur](https://github.com/E5ten/pacaur)
 [helper](https://wiki.archlinux.org/index.php/AUR_helpers), you can just run:
 
 ```shell
@@ -28,7 +27,6 @@ pacaur -S chasquid
 
 [Binary packages](https://maddy.email/archlinux/README.txt) are also available,
 courtesy of [foxcpp](https://github.com/foxcpp/).
-
 
 ### Alpine
 
@@ -42,7 +40,6 @@ apk add chasquid
 
 Thanks to [raspbeguy](https://github.com/raspbeguy) for maintaining the Alpine
 package.
-
 
 ### From source
 
@@ -62,7 +59,6 @@ sudo make install-binaries
 # the /var/lib/chasquid directory.
 sudo make install-config-skeleton
 ```
-
 
 ## Configuration
 
@@ -88,27 +84,23 @@ structure:
 ### Certificates
 
 The certs/ directory layout matches the one from
-[certbot](https://certbot.eff.org/),
-[letsencrypt](https://letsencrypt.org)'s
-default client, to make it easier to integrate.
-The layout from the [NixOS ACME module](https://wiki.nixos.org/wiki/ACME)
-(`/var/lib/acme`) is also supported.
+[certbot](https://certbot.eff.org/), [letsencrypt](https://letsencrypt.org)'s
+default client, to make it easier to integrate. The layout from the
+[NixOS ACME module](https://wiki.nixos.org/wiki/ACME) (`/var/lib/acme`) is also
+supported.
 
 A convenient way to set this up is:
 
-1) Obtain TLS certificates using `certbot` as needed.
-2) Symlink chasquid's `certs/` to `/etc/letsencrypt/live`:\
+1. Obtain TLS certificates using `certbot` as needed.
+2. Symlink chasquid's `certs/` to `/etc/letsencrypt/live`:\
    `sudo ln -s /etc/letsencrypt/live/ /etc/chasquid/certs`
-3) Give chasquid permissions to read the certificates:\
+3. Give chasquid permissions to read the certificates:\
    `sudo setfacl -R -m u:chasquid:rX /etc/letsencrypt/{live,archive}`
-4) Set up [automatic renewal] to restart chasquid when certificates are
+4. Set up [automatic renewal] to restart chasquid when certificates are
    renewed.
 
 Please see the [how-to guide](howto.md#tls-certificate) for more detailed
 examples.
-
-[automatic renewal]: https://eff-certbot.readthedocs.io/en/stable/using.html#setting-up-automated-renewal
-
 
 ### Adding users
 
@@ -120,24 +112,21 @@ chasquid-util user-add user@domain
 
 This will also create the corresponding domain directory if it doesn't exist.
 
-
 ### Checking your configuration
 
 Run `chasquid-util print-config` to parse your configuration and display the
 resulting values.
 
-
 ### Checking your setup
 
 Run `smtp-check yourdomain.com`, it will check:
 
-* MX DNS records.
-* SPF DNS records (will just warn if not present).
-* TLS certificates.
+- MX DNS records.
+- SPF DNS records (will just warn if not present).
+- TLS certificates.
 
-It needs to access port 25, which is often blocked by ISPs, so it's likely
-that you need to run it from your server.
-
+It needs to access port 25, which is often blocked by ISPs, so it's likely that
+you need to run it from your server.
 
 ### Greylisting, anti-spam and anti-virus
 
@@ -146,12 +135,11 @@ greylisting, and run anti-spam and anti-virus filters.
 
 The hook should be at `/etc/chasquid/hooks/post-data`.
 
-
 The one installed by default is a bash script supporting:
 
-* greylisting using greylistd.
-* anti-spam using spamassassin or rspamd.
-* anti-virus using clamav.
+- greylisting using greylistd.
+- anti-spam using spamassassin or rspamd.
+- anti-virus using clamav.
 
 To use them, they just need to be available in your system.
 
@@ -163,6 +151,6 @@ usermod -a -G greylist mail
 ```
 
 Note that the default hook may not work in all cases, it is provided as a
-practical example but you should adjust it to your particular system if
-needed.
+practical example but you should adjust it to your particular system if needed.
 
+[automatic renewal]: https://eff-certbot.readthedocs.io/en/stable/using.html#setting-up-automated-renewal
