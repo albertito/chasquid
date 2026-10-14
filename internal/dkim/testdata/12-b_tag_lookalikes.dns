@@ -1,0 +1,3 @@
+brisbane._domainkey.football.example.com: \
+  v=DKIM1; k=ed25519; \
+  p=11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=

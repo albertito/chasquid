@@ -141,10 +141,15 @@ func VerifyMessage(ctx context.Context, message string) (*VerifyResult, error) {
 	return results, nil
 }
 
-// Regular expression that matches the "b=" tag.
-// First capture group is the "b=" part (including any whitespace up to the
+// Regular expression that matches the "b=" tag, in a (canonicalized)
+// DKIM-Signature header, including the header name.
+// It must be anchored at the beginning of a tag, so it doesn't match other
+// tags or values that contain "b=" (e.g. "xb=", or "z=...club=20...").
+// First capture group is what precedes the tag: the header name and ':' if
+// it is the first tag, or ';' otherwise.
+// Second capture group is the "b=" part (including any whitespace up to the
 // '=').
-var bTag = regexp.MustCompile(`(b[ \t\r\n]*=)[^;]+`)
+var bTag = regexp.MustCompile(`(^[^:]*:|;)([ \t\r\n]*b[ \t\r\n]*=)[^;]*`)
 
 func verifySignature(ctx context.Context, sigH header,
 	headers headers, body string) *OneResult {
@@ -233,7 +238,7 @@ func verifySignature(ctx context.Context, sigH header,
 	// with an empty b= tag, and without a trailing \r\n.
 	// https://datatracker.ietf.org/doc/html/rfc6376#section-3.7
 	sigC := sig.cH.header(sigH)
-	sigCStr := bTag.ReplaceAllString(sigC.Source, "$1")
+	sigCStr := bTag.ReplaceAllString(sigC.Source, "$1$2")
 	trace(ctx, "Hashing header: %q", sigCStr)
 	b.Write([]byte(sigCStr))
 	bSum := b.Sum(nil)

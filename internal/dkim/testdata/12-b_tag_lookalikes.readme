@@ -1,0 +1,9 @@
+This tests a DKIM signature with tags that contain "b=" but are not the b=
+tag: an unknown "xb=" tag, and a z= tag with a quoted-printable "club=20".
+The b= tag is also not the last one.
+
+When verifying, only the value of the real b= tag must be removed before
+hashing the DKIM-Signature header.
+
+It was signed with Mail::DKIM (Perl), using the RFC 8463 ed25519 key, and
+verified with both Mail::DKIM and dkimpy.

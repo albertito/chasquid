@@ -297,6 +297,110 @@ func TestVerifyInvalidDomain(t *testing.T) {
 	}
 }
 
+func TestBTag(t *testing.T) {
+	// Test that we remove the value of the b= tag (and only that) from the
+	// canonicalized DKIM-Signature header.
+	// The expected values match what Mail::DKIM does (except for the cases
+	// without a b= tag, where it appends one).
+	cases := []struct {
+		in, want string
+	}{
+		// Relaxed canonicalization, b= in different positions.
+		{"dkim-signature:v=1; bh=AAAA; b=SIG",
+			"dkim-signature:v=1; bh=AAAA; b="},
+		{"dkim-signature:v=1; bh=AAAA; b=SIG;",
+			"dkim-signature:v=1; bh=AAAA; b=;"},
+		{"dkim-signature:b=SIG; v=1",
+			"dkim-signature:b=; v=1"},
+		{"dkim-signature:v=1; b=SIG; bh=AAAA; a=ed25519-sha256",
+			"dkim-signature:v=1; b=; bh=AAAA; a=ed25519-sha256"},
+
+		// Simple canonicalization: the header name is unchanged, and
+		// whitespace (including folding) is preserved.
+		{"DKIM-Signature: b=SIG; v=1",
+			"DKIM-Signature: b=; v=1"},
+		{"DKIM-Signature: v=1;\r\n\tb=SIG1\r\n\t SIG2;\r\n\tbh=AAAA",
+			"DKIM-Signature: v=1;\r\n\tb=;\r\n\tbh=AAAA"},
+		{"DKIM-Signature: v=1;\r\n\t b=SIG",
+			"DKIM-Signature: v=1;\r\n\t b="},
+		{"DKIM-Signature: v=1;\r\n b\r\n =\r\n SIG\r\n ;",
+			"DKIM-Signature: v=1;\r\n b\r\n =;"},
+
+		// Whitespace around and inside the value is removed.
+		{"dkim-signature:v=1; b = SI G ;",
+			"dkim-signature:v=1; b =;"},
+
+		// Empty b= tag.
+		{"dkim-signature:v=1; b=; bh=AAAA",
+			"dkim-signature:v=1; b=; bh=AAAA"},
+		{"dkim-signature:v=1; b=",
+			"dkim-signature:v=1; b="},
+
+		// The whole value is removed, even if it's not valid base64.
+		{"dkim-signature:v=1; b=SI!G; x=1",
+			"dkim-signature:v=1; b=; x=1"},
+
+		// Degenerate folding, with a ':' at the beginning of a continuation
+		// line.
+		{"DKIM-Signature: v=1; h=from:to\r\n\t:subject;\r\n\tb=SIG",
+			"DKIM-Signature: v=1; h=from:to\r\n\t:subject;\r\n\tb="},
+
+		// Tags and values that contain "b=" but are not the b= tag must be
+		// left alone.
+		{"dkim-signature:v=1; bh=AAAA",
+			"dkim-signature:v=1; bh=AAAA"},
+		{"dkim-signature:v=1; bh=AAb=; b=SIG",
+			"dkim-signature:v=1; bh=AAb=; b="},
+		{"dkim-signature:v=1; xb=1; b=SIG",
+			"dkim-signature:v=1; xb=1; b="},
+		{"dkim-signature:v=1; x=b=1; b=SIG",
+			"dkim-signature:v=1; x=b=1; b="},
+		{"dkim-signature:v=1; x=y b=1; b=SIG",
+			"dkim-signature:v=1; x=y b=1; b="},
+		{"dkim-signature:v=1; z=Subject:Is=20the=20club=20open?; b=SIG",
+			"dkim-signature:v=1; z=Subject:Is=20the=20club=20open?; b="},
+		{"dkim-signature:z=Subject:b=20x; b=SIG",
+			"dkim-signature:z=Subject:b=20x; b="},
+		{"dkim-signature:v=1; i=bob=2B@example.com; b=SIG",
+			"dkim-signature:v=1; i=bob=2B@example.com; b="},
+		{"dkim-signature:v=1; xb=1; z=a:b=20",
+			"dkim-signature:v=1; xb=1; z=a:b=20"},
+
+		// Tag names are case-sensitive.
+		{"dkim-signature:v=1; B=SIG; b=SIG",
+			"dkim-signature:v=1; B=SIG; b="},
+	}
+
+	for _, c := range cases {
+		got := bTag.ReplaceAllString(c.in, "$1$2")
+		if got != c.want {
+			t.Errorf("bTag replace on %q:", c.in)
+			t.Errorf("      want %q", c.want)
+			t.Errorf("      got  %q", got)
+		}
+
+		// Cross-check against the tag parser: the result must have the
+		// same tags as the input, with only b= (if present) emptied.
+		_, inV, _ := strings.Cut(c.in, ":")
+		_, gotV, _ := strings.Cut(got, ":")
+		inTags, err := parseTags(inV)
+		if err != nil {
+			t.Fatalf("parseTags(%q) error: %v", inV, err)
+		}
+		gotTags, err := parseTags(gotV)
+		if err != nil {
+			t.Fatalf("parseTags(%q) error: %v", gotV, err)
+		}
+		if _, ok := inTags["b"]; ok {
+			inTags["b"] = ""
+		}
+		if diff := cmp.Diff(inTags, gotTags); diff != "" {
+			t.Errorf("bTag replace on %q: tags diff (-want +got):\n%s",
+				c.in, diff)
+		}
+	}
+}
+
 func TestHeadersToInclude(t *testing.T) {
 	// Test that headersToInclude returns the expected headers.
 	cases := []struct {

@@ -1,0 +1,14 @@
+{
+	"Found": 1,
+	"Valid": 1,
+	"Results": [
+		{
+			"Error": "",
+			"SignatureHeader": " v=1; a=ed25519-sha256; c=relaxed/relaxed;\r\n d=football.example.com; s=brisbane; t=1528637909;\r\n h=from:to:subject:date:message-id;\r\n b=xjoLeGfcxnO99aQ8Tlc/unAH+heqD8dXVjKLdvzbUr7sctU9pf/V3FRluuVyLtxiZieesO7xRWJAcThkMDIqAA==;\r\n bh=W3XNOuZiySVQVWa4kPgRp9uVKwEhAmhwKC5NysNOjhg=;\r\n xb=1;\r\n z=Subject:Is=20the=20club=20open?",
+			"Domain": "football.example.com",
+			"Selector": "brisbane",
+			"B": "xjoLeGfcxnO99aQ8Tlc/unAH+heqD8dXVjKLdvzbUr7sctU9pf/V3FRluuVyLtxiZieesO7xRWJAcThkMDIqAA==",
+			"State": "SUCCESS"
+		}
+	]
+}
