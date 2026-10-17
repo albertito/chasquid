@@ -3,6 +3,39 @@
 This file contains notes for each release, summarizing changes and explicitly
 noting backward-incompatible changes or known security issues.
 
+## 1.19.0 (2026-10-17)
+
+Security fixes:
+
+- Invalid characters in the sender domain could crash the server
+  ([GHSA-gxpq-7pw8-6jff](https://github.com/albertito/chasquid/security/advisories/GHSA-gxpq-7pw8-6jff),
+  [reported by John JEAN](https://johnjean.io/advisories/chasquid-unauthenticated-remote-dos/)).
+- DKIM verification could cause CPU exhaustion
+  ([GHSA-fpm2-hmv2-6j82](https://github.com/albertito/chasquid/security/advisories/GHSA-fpm2-hmv2-6j82),
+  [reported by John JEAN](https://johnjean.io/advisories/chasquid-unauthenticated-remote-dos/))
+  or crash the server.
+- Stricter validation of client-provided values (domains in DKIM signatures,
+  SNI, HELO/EHLO, addresses), to prevent header and log injection.
+  `$EHLO_DOMAIN_RAW` in [hooks](hooks.md) is now sanitized.
+- Hardening: don't exit on connection exhaustion (also
+  [reported by John JEAN](https://johnjean.io/advisories/chasquid-unauthenticated-remote-dos/));
+  limit the number of concurrent connections, DKIM key sizes and lookups, and
+  debug trace message sizes; CSRF protection for the monitoring server.
+
+Other changes:
+
+- DKIM: Several bug fixes, mostly found via new fuzz tests. Most notably,
+  messages with repeated signed headers (e.g. `To:`) with different values
+  would get invalid signatures.
+- Support `key.pem` as the private key file name, and auto-detect Dovecot
+  sockets in `/run/dovecot2`, for compatibility with NixOS.
+- Return an error if a private key file exists but can't be read, to make
+  permission problems easier to troubleshoot.
+- Internal cleanups to take advantage of modern Go features and simplify the
+  codebase.
+- `*` destination users, "via" aliases, and the `max_queue_items` and
+  `give_up_send_after` options are no longer considered experimental.
+
 ## 1.18.0 (2026-06-07)
 
 - Conform to the stricter OpenMetrics format in the monitoring exporter, which
