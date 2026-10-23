@@ -113,6 +113,34 @@ func TestWriteFileWithFailingOp(t *testing.T) {
 	}
 }
 
+func TestWriteFileWithFailingRename(t *testing.T) {
+	dir := t.ArtifactDir()
+	t.Chdir(dir)
+
+	// A regular file cannot replace a directory, so the final rename fails.
+	if err := os.Mkdir("destination", 0700); err != nil {
+		t.Fatal(err)
+	}
+	var temporary string
+	err := WriteFile("destination", []byte("synthetic content"), 0600,
+		func(name string) error {
+			temporary = name
+			return nil
+		})
+	if err == nil {
+		t.Fatal("expected rename to fail")
+	}
+	if temporary == "" {
+		t.Fatal("operation was not reached")
+	}
+	if _, err := os.Stat(temporary); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("temporary file remains after failed rename: %v", err)
+	}
+	if info, err := os.Stat("destination"); err != nil || !info.IsDir() {
+		t.Errorf("destination directory was not preserved: %v", err)
+	}
+}
+
 type testFile struct {
 	t *testing.T
 
