@@ -79,7 +79,11 @@ func WriteFile(filename string, data []byte, perm os.FileMode, ops ...FileOp) er
 		}
 	}
 
-	return os.Rename(tmpf.Name(), filename)
+	if err = os.Rename(tmpf.Name(), filename); err != nil {
+		os.Remove(tmpf.Name())
+		return err
+	}
+	return nil
 }
 
 func getOwner(fname string) (uid, gid int) {
